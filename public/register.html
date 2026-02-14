@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - EduRate</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #1e3a5f 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .register-container { width: 100%; max-width: 420px; }
+    .logo { text-align: center; margin-bottom: 32px; }
+    .logo h1 { color: #fff; font-size: 2.5rem; font-weight: 700; letter-spacing: -1px; }
+    .logo h1 span { color: #60a5fa; }
+    .logo p { color: #93c5fd; font-size: 0.9rem; margin-top: 8px; }
+    .card {
+      background: #fff; border-radius: 16px; padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .card h2 { color: #1e293b; font-size: 1.5rem; margin-bottom: 8px; }
+    .card p.subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 28px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; color: #334155; font-size: 0.875rem; font-weight: 500; margin-bottom: 6px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px;
+      font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; outline: none;
+      background: #fff;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .btn {
+      width: 100%; padding: 14px; background: #2563eb; color: #fff; border: none;
+      border-radius: 10px; font-size: 1rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .error-msg {
+      background: #fef2f2; color: #dc2626; padding: 10px 14px; border-radius: 8px;
+      font-size: 0.85rem; margin-bottom: 16px; display: none; border: 1px solid #fecaca;
+    }
+    .error-msg.show { display: block; }
+    .success-msg {
+      background: #f0fdf4; color: #16a34a; padding: 10px 14px; border-radius: 8px;
+      font-size: 0.85rem; margin-bottom: 16px; display: none; border: 1px solid #bbf7d0;
+    }
+    .success-msg.show { display: block; }
+    .links { text-align: center; margin-top: 20px; font-size: 0.875rem; color: #64748b; }
+    .links a { color: #2563eb; text-decoration: none; font-weight: 500; }
+    .links a:hover { text-decoration: underline; }
+    .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="register-container">
+    <div class="logo">
+      <h1>Edu<span>Rate</span></h1>
+      <p>Student Registration</p>
+    </div>
+    <div class="card">
+      <h2>Create your account</h2>
+      <p class="subtitle">Only students can self-register using a school email</p>
+      <div id="error" class="error-msg"></div>
+      <div id="success" class="success-msg"></div>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="full_name">Full Name</label>
+          <input type="text" id="full_name" placeholder="Your full name" required>
+        </div>
+        <div class="form-group">
+          <label for="email">School Email</label>
+          <input type="email" id="email" placeholder="you@edurate.school.edu" required>
+          <p class="hint">Must be a @edurate.school.edu email</p>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8">
+          <p class="hint">Must include uppercase, lowercase, and a number</p>
+        </div>
+        <div class="form-group">
+          <label for="grade">Grade / Class</label>
+          <select id="grade" required>
+            <option value="">Select your grade</option>
+            <option value="Grade 9">Grade 9</option>
+            <option value="Grade 10">Grade 10</option>
+            <option value="Grade 11">Grade 11</option>
+            <option value="Grade 12">Grade 12</option>
+          </select>
+        </div>
+        <button type="submit" class="btn" id="registerBtn">Create Account</button>
+      </form>
+      <div class="links">
+        Already have an account? <a href="/">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('registerBtn');
+      const errorEl = document.getElementById('error');
+      const successEl = document.getElementById('success');
+      errorEl.className = 'error-msg';
+      successEl.className = 'success-msg';
+
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            full_name: document.getElementById('full_name').value,
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            grade_or_position: document.getElementById('grade').value
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent = data.error;
+          errorEl.className = 'error-msg show';
+          btn.disabled = false;
+          btn.textContent = 'Create Account';
+          return;
+        }
+
+        localStorage.setItem('edurate_token', data.token);
+        localStorage.setItem('edurate_user', JSON.stringify(data.user));
+        successEl.textContent = 'Account created! Redirecting...';
+        successEl.className = 'success-msg show';
+        setTimeout(() => { window.location.href = '/app'; }, 1000);
+      } catch (err) {
+        errorEl.textContent = 'Connection error. Please try again.';
+        errorEl.className = 'error-msg show';
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+const express = require('express');
+const { v4: uuidv4 } = require('uuid');
+const db = require('../database');
+const { authenticate, authorize } = require('../middleware/auth');
+const { logAuditEvent } = require('../utils/audit');
+
+const router = express.Router();
+
+function generateJoinCode() {
+  return uuidv4().substring(0, 8).toUpperCase();
+}
+
+// GET /api/classrooms - list classrooms based on role
+router.get('/', authenticate, (req, res) => {
+  try {
+    const { role, id: userId } = req.user;
+
+    let classrooms;
+    if (role === 'teacher') {
+      const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(userId);
+      if (!teacher) return res.json([]);
+      classrooms = db.prepare(`
+        SELECT c.*, t.name as term_name,
+          (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
+        FROM classrooms c
+        JOIN terms t ON c.term_id = t.id
+        WHERE c.teacher_id = ?
+        ORDER BY c.created_at DESC
+      `).all(teacher.id);
+    } else if (role === 'student') {
+      classrooms = db.prepare(`
+        SELECT c.*, t.name as term_name, te.full_name as teacher_name, te.subject as teacher_subject,
+          cm.joined_at
+        FROM classroom_members cm
+        JOIN classrooms c ON cm.classroom_id = c.id
+        JOIN terms t ON c.term_id = t.id
+        JOIN teachers te ON c.teacher_id = te.id
+        WHERE cm.student_id = ?
+        ORDER BY cm.joined_at DESC
+      `).all(userId);
+    } else {
+      // admin or school_head see all
+      classrooms = db.prepare(`
+        SELECT c.*, t.name as term_name, te.full_name as teacher_name,
+          (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
+        FROM classrooms c
+        JOIN terms t ON c.term_id = t.id
+        JOIN teachers te ON c.teacher_id = te.id
+        ORDER BY c.created_at DESC
+      `).all();
+    }
+
+    res.json(classrooms);
+  } catch (err) {
+    console.error('List classrooms error:', err);
+    res.status(500).json({ error: 'Failed to fetch classrooms' });
+  }
+});
+
+// POST /api/classrooms - create classroom (teacher/admin)
+router.post('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
+  try {
+    const { subject, grade_level, term_id } = req.body;
+
+    if (!subject || !grade_level || !term_id) {
+      return res.status(400).json({ error: 'Subject, grade level, and term are required' });
+    }
+
+    let teacherId;
+    if (req.user.role === 'teacher') {
+      const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(req.user.id);
+      if (!teacher) return res.status(400).json({ error: 'Teacher profile not found' });
+      teacherId = teacher.id;
+    } else {
+      teacherId = req.body.teacher_id;
+      if (!teacherId) return res.status(400).json({ error: 'teacher_id is required for admin' });
+    }
+
+    const term = db.prepare('SELECT id FROM terms WHERE id = ?').get(term_id);
+    if (!term) return res.status(404).json({ error: 'Term not found' });
+
+    const join_code = generateJoinCode();
+
+    const result = db.prepare(`
+      INSERT INTO classrooms (teacher_id, subject, grade_level, term_id, join_code)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(teacherId, subject, grade_level, term_id, join_code);
+
+    const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(result.lastInsertRowid);
+
+    // Log audit event
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'classroom_create',
+      actionDescription: `Created classroom: ${subject} (${grade_level})`,
+      targetType: 'classroom',
+      targetId: result.lastInsertRowid,
+      metadata: { subject, grade_level, term_id, teacher_id: teacherId },
+      ipAddress: req.ip
+    });
+
+    res.status(201).json(classroom);
+  } catch (err) {
+    console.error('Create classroom error:', err);
+    res.status(500).json({ error: 'Failed to create classroom' });
+  }
+});
+
+// GET /api/classrooms/:id - classroom detail
+router.get('/:id', authenticate, (req, res) => {
+  try {
+    const classroom = db.prepare(`
+      SELECT c.*, t.name as term_name, te.full_name as teacher_name, te.subject as teacher_subject
+      FROM classrooms c
+      JOIN terms t ON c.term_id = t.id
+      JOIN teachers te ON c.teacher_id = te.id
+      WHERE c.id = ?
+    `).get(req.params.id);
+
+    if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    const members = db.prepare(`
+      SELECT cm.id, cm.joined_at, u.full_name, u.email, u.grade_or_position
+      FROM classroom_members cm
+      JOIN users u ON cm.student_id = u.id
+      WHERE cm.classroom_id = ?
+      ORDER BY cm.joined_at
+    `).all(req.params.id);
+
+    // Students only see member count, not details
+    if (req.user.role === 'student') {
+      res.json({ ...classroom, member_count: members.length });
+    } else {
+      res.json({ ...classroom, members });
+    }
+  } catch (err) {
+    console.error('Get classroom error:', err);
+    res.status(500).json({ error: 'Failed to fetch classroom' });
+  }
+});
+
+// POST /api/classrooms/join - student joins via code
+router.post('/join', authenticate, authorize('student'), (req, res) => {
+  try {
+    const { join_code } = req.body;
+    if (!join_code) return res.status(400).json({ error: 'Join code is required' });
+
+    const classroom = db.prepare(`
+      SELECT c.*, te.full_name as teacher_name
+      FROM classrooms c
+      JOIN teachers te ON c.teacher_id = te.id
+      WHERE c.join_code = ? AND c.active_status = 1
+    `).get(join_code.toUpperCase());
+
+    if (!classroom) return res.status(404).json({ error: 'Invalid or inactive join code' });
+
+    // Check if already a member
+    const existing = db.prepare(
+      'SELECT id FROM classroom_members WHERE classroom_id = ? AND student_id = ?'
+    ).get(classroom.id, req.user.id);
+
+    if (existing) return res.status(409).json({ error: 'You are already in this classroom' });
+
+    db.prepare(
+      'INSERT INTO classroom_members (classroom_id, student_id) VALUES (?, ?)'
+    ).run(classroom.id, req.user.id);
+
+    res.status(201).json({ message: `Joined ${classroom.subject} with ${classroom.teacher_name}`, classroom });
+  } catch (err) {
+    console.error('Join classroom error:', err);
+    res.status(500).json({ error: 'Failed to join classroom' });
+  }
+});
+
+// POST /api/classrooms/:id/regenerate-code - teacher regenerates join code
+router.post('/:id/regenerate-code', authenticate, authorize('teacher', 'admin'), (req, res) => {
+  try {
+    const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
+    if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    if (req.user.role === 'teacher') {
+      const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(req.user.id);
+      if (!teacher || classroom.teacher_id !== teacher.id) {
+        return res.status(403).json({ error: 'Not your classroom' });
+      }
+    }
+
+    const newCode = generateJoinCode();
+    db.prepare('UPDATE classrooms SET join_code = ? WHERE id = ?').run(newCode, req.params.id);
+
+    res.json({ join_code: newCode });
+  } catch (err) {
+    console.error('Regenerate code error:', err);
+    res.status(500).json({ error: 'Failed to regenerate code' });
+  }
+});
+
+// DELETE /api/classrooms/:id/leave - student leaves classroom
+router.delete('/:id/leave', authenticate, authorize('student'), (req, res) => {
+  try {
+    const result = db.prepare(
+      'DELETE FROM classroom_members WHERE classroom_id = ? AND student_id = ?'
+    ).run(req.params.id, req.user.id);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'You are not a member of this classroom' });
+    }
+
+    res.json({ message: 'Left classroom successfully' });
+  } catch (err) {
+    console.error('Leave classroom error:', err);
+    res.status(500).json({ error: 'Failed to leave classroom' });
+  }
+});
+
+// GET /api/classrooms/:id/members - get members
+router.get('/:id/members', authenticate, authorize('teacher', 'admin', 'school_head'), (req, res) => {
+  try {
+    const members = db.prepare(`
+      SELECT cm.id, cm.joined_at, u.id as student_id, u.full_name, u.email, u.grade_or_position
+      FROM classroom_members cm
+      JOIN users u ON cm.student_id = u.id
+      WHERE cm.classroom_id = ?
+      ORDER BY u.full_name
+    `).all(req.params.id);
+
+    res.json(members);
+  } catch (err) {
+    console.error('Get members error:', err);
+    res.status(500).json({ error: 'Failed to fetch members' });
+  }
+});
+
+module.exports = router;
