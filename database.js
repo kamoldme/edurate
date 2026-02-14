@@ -150,6 +150,28 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action_type);
   CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
   CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs(target_type, target_id);
+
+  CREATE TABLE IF NOT EXISTS support_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    user_name TEXT NOT NULL,
+    user_email TEXT NOT NULL,
+    user_role TEXT NOT NULL,
+    category TEXT NOT NULL CHECK(category IN ('technical', 'account', 'question', 'feature', 'other')),
+    subject TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'new' CHECK(status IN ('new', 'in_progress', 'resolved')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME,
+    resolved_by INTEGER,
+    admin_notes TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages(user_id);
+  CREATE INDEX IF NOT EXISTS idx_support_messages_status ON support_messages(status);
+  CREATE INDEX IF NOT EXISTS idx_support_messages_created ON support_messages(created_at);
 `);
 
 module.exports = db;

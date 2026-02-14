@@ -1076,4 +1076,187 @@ router.get('/stats', authenticate, authorize('admin', 'school_head'), (req, res)
   }
 });
 
+// ============ SUPPORT MESSAGES MANAGEMENT ============
+
+// GET /api/admin/support/messages - list all support messages
+router.get('/support/messages', authenticate, authorize('admin'), (req, res) => {
+  try {
+    const { status, user_id, category, limit, offset } = req.query;
+
+    let query = 'SELECT * FROM support_messages WHERE 1=1';
+    const params = [];
+
+    if (status) {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+
+    if (user_id) {
+      query += ' AND user_id = ?';
+      params.push(parseInt(user_id));
+    }
+
+    if (category) {
+      query += ' AND category = ?';
+      params.push(category);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    if (limit) {
+      query += ' LIMIT ?';
+      params.push(parseInt(limit));
+    }
+
+    if (offset) {
+      query += ' OFFSET ?';
+      params.push(parseInt(offset));
+    }
+
+    const messages = db.prepare(query).all(...params);
+
+    // Get total count for pagination
+    let countQuery = 'SELECT COUNT(*) as count FROM support_messages WHERE 1=1';
+    const countParams = [];
+
+    if (status) {
+      countQuery += ' AND status = ?';
+      countParams.push(status);
+    }
+
+    if (user_id) {
+      countQuery += ' AND user_id = ?';
+      countParams.push(parseInt(user_id));
+    }
+
+    if (category) {
+      countQuery += ' AND category = ?';
+      countParams.push(category);
+    }
+
+    const totalCount = db.prepare(countQuery).get(...countParams).count;
+
+    res.json({ messages, total: totalCount });
+  } catch (err) {
+    console.error('List support messages error:', err);
+    res.status(500).json({ error: 'Failed to fetch support messages' });
+  }
+});
+
+// PUT /api/admin/support/messages/:id - update support message status
+router.put('/support/messages/:id', authenticate, authorize('admin'), (req, res) => {
+  try {
+    const message = db.prepare('SELECT * FROM support_messages WHERE id = ?').get(req.params.id);
+    if (!message) return res.status(404).json({ error: 'Support message not found' });
+
+    const { status, admin_notes } = req.body;
+
+    if (status && !['new', 'in_progress', 'resolved'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (status) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+
+    if (admin_notes !== undefined) {
+      updates.push('admin_notes = ?');
+      params.push(admin_notes ? sanitizeInput(admin_notes) : null);
+    }
+
+    if (status === 'resolved') {
+      updates.push('resolved_at = CURRENT_TIMESTAMP');
+      updates.push('resolved_by = ?');
+      params.push(req.user.id);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No updates provided' });
+    }
+
+    params.push(req.params.id);
+
+    db.prepare(`
+      UPDATE support_messages SET ${updates.join(', ')}
+      WHERE id = ?
+    `).run(...params);
+
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'support_message_update',
+      actionDescription: `Updated support message #${req.params.id} to status: ${status || 'updated'}`,
+      targetType: 'support_message',
+      targetId: parseInt(req.params.id),
+      metadata: { status, admin_notes },
+      ipAddress: req.ip
+    });
+
+    const updated = db.prepare('SELECT * FROM support_messages WHERE id = ?').get(req.params.id);
+    res.json(updated);
+  } catch (err) {
+    console.error('Update support message error:', err);
+    res.status(500).json({ error: 'Failed to update support message' });
+  }
+});
+
+// DELETE /api/admin/support/messages/:id - delete support message
+router.delete('/support/messages/:id', authenticate, authorize('admin'), (req, res) => {
+  try {
+    const message = db.prepare('SELECT * FROM support_messages WHERE id = ?').get(req.params.id);
+    if (!message) return res.status(404).json({ error: 'Support message not found' });
+
+    db.prepare('DELETE FROM support_messages WHERE id = ?').run(req.params.id);
+
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'support_message_delete',
+      actionDescription: `Deleted support message #${req.params.id} from ${message.user_name}`,
+      targetType: 'support_message',
+      targetId: parseInt(req.params.id),
+      metadata: { subject: message.subject, category: message.category },
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Support message deleted successfully' });
+  } catch (err) {
+    console.error('Delete support message error:', err);
+    res.status(500).json({ error: 'Failed to delete support message' });
+  }
+});
+
+// GET /api/admin/support/stats - get support message statistics
+router.get('/support/stats', authenticate, authorize('admin'), (req, res) => {
+  try {
+    const totalMessages = db.prepare('SELECT COUNT(*) as count FROM support_messages').get().count;
+    const newMessages = db.prepare("SELECT COUNT(*) as count FROM support_messages WHERE status = 'new'").get().count;
+    const inProgressMessages = db.prepare("SELECT COUNT(*) as count FROM support_messages WHERE status = 'in_progress'").get().count;
+    const resolvedMessages = db.prepare("SELECT COUNT(*) as count FROM support_messages WHERE status = 'resolved'").get().count;
+
+    const categoryBreakdown = db.prepare(`
+      SELECT category, COUNT(*) as count
+      FROM support_messages
+      GROUP BY category
+    `).all();
+
+    res.json({
+      total: totalMessages,
+      new: newMessages,
+      in_progress: inProgressMessages,
+      resolved: resolvedMessages,
+      by_category: categoryBreakdown
+    });
+  } catch (err) {
+    console.error('Support stats error:', err);
+    res.status(500).json({ error: 'Failed to fetch support statistics' });
+  }
+});
+
 module.exports = router;

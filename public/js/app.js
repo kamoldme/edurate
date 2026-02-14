@@ -113,6 +113,7 @@ function buildNavigation() {
       { id: 'admin-submissions', label: 'Submission Tracking', icon: 'check' },
       { id: 'admin-moderate', label: 'Moderate Reviews', icon: 'shield' },
       { id: 'admin-flagged', label: 'Flagged', icon: 'flag' },
+      { id: 'admin-support', label: 'Support Messages', icon: 'settings' },
       { id: 'admin-audit', label: 'Audit Logs', icon: 'list' }
     ];
   }
@@ -129,10 +130,10 @@ function buildNavigation() {
       ${ICONS.settings}
       Account Details
     </button>
-    <button class="nav-item" onclick="showSupportModal()">
+    ${role !== 'admin' ? `<button class="nav-item" onclick="showSupportModal()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
       Support
-    </button></div>`;
+    </button>` : ''}</div>`;
 }
 
 // ============ NAVIGATION ============
@@ -167,6 +168,7 @@ function navigateTo(view) {
     'admin-submissions': 'Submission Tracking',
     'admin-moderate': 'Review Moderation',
     'admin-flagged': 'Flagged Reviews',
+    'admin-support': 'Support Messages',
     'admin-audit': 'Audit Logs',
     'account': 'Account Details'
   };
@@ -193,6 +195,7 @@ function navigateTo(view) {
     'admin-submissions': renderAdminSubmissions,
     'admin-moderate': renderAdminModerate,
     'admin-flagged': renderAdminFlagged,
+    'admin-support': renderAdminSupport,
     'admin-audit': renderAdminAudit,
     'account': renderAccount
   };
@@ -1989,6 +1992,221 @@ async function viewClassroomSubmissions(classroomId, periodId) {
   `);
 }
 
+// ============ ADMIN: SUPPORT MESSAGES ============
+async function renderAdminSupport() {
+  const { messages, total } = await API.get('/admin/support/messages?limit=100');
+  const stats = await API.get('/admin/support/stats');
+  const el = document.getElementById('contentArea');
+
+  const categoryLabels = {
+    technical: 'Technical Issue / Bug',
+    account: 'Account & Login',
+    question: 'General Question',
+    feature: 'Feature Request',
+    other: 'Other'
+  };
+
+  el.innerHTML = `
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card">
+        <div class="stat-label">Total Messages</div>
+        <div class="stat-value">${stats.total}</div>
+      </div>
+      <div class="stat-card" style="background:var(--warning-light);border-left:4px solid var(--warning)">
+        <div class="stat-label">New</div>
+        <div class="stat-value">${stats.new}</div>
+      </div>
+      <div class="stat-card" style="background:#e3f2fd;border-left:4px solid var(--primary)">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value">${stats.in_progress}</div>
+      </div>
+      <div class="stat-card" style="background:var(--success-light);border-left:4px solid var(--success)">
+        <div class="stat-label">Resolved</div>
+        <div class="stat-value">${stats.resolved}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Support Messages (${total} total)</h3>
+      </div>
+      <div class="card-body">
+        ${messages.length === 0 ? `
+          <div class="empty-state">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
+            <h3>No Support Messages</h3>
+            <p>When users submit support requests, they will appear here.</p>
+          </div>
+        ` : `
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>User</th>
+                  <th>Category</th>
+                  <th>Subject</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${messages.map(msg => `
+                  <tr>
+                    <td style="white-space:nowrap;font-size:0.85rem">${new Date(msg.created_at).toLocaleString()}</td>
+                    <td>
+                      <div><strong>${msg.user_name}</strong></div>
+                      <div style="font-size:0.85rem;color:var(--gray-500)">${msg.user_email}</div>
+                      <div><span class="badge badge-pending">${msg.user_role}</span></div>
+                    </td>
+                    <td><span class="badge badge-approved">${categoryLabels[msg.category]}</span></td>
+                    <td style="max-width:300px">
+                      <strong>${msg.subject}</strong>
+                    </td>
+                    <td>
+                      <span class="badge ${
+                        msg.status === 'new' ? 'badge-flagged' :
+                        msg.status === 'in_progress' ? 'badge-pending' :
+                        'badge-approved'
+                      }">${msg.status.replace('_', ' ')}</span>
+                    </td>
+                    <td style="white-space:nowrap">
+                      <button class="btn btn-sm btn-outline" onclick="viewSupportMessage(${msg.id})">View</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+async function viewSupportMessage(id) {
+  const message = await API.get(`/admin/support/messages?limit=1000`).then(data =>
+    data.messages.find(m => m.id === id)
+  );
+
+  if (!message) {
+    return toast('Message not found', 'error');
+  }
+
+  const categoryLabels = {
+    technical: 'Technical Issue / Bug',
+    account: 'Account & Login',
+    question: 'General Question',
+    feature: 'Feature Request',
+    other: 'Other'
+  };
+
+  openModal(`
+    <div class="modal-header">
+      <h3>Support Message #${message.id}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--gray-50);padding:16px;border-radius:8px;margin-bottom:20px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+          <div>
+            <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">FROM</div>
+            <div style="font-weight:600">${message.user_name}</div>
+            <div style="font-size:0.85rem;color:var(--gray-600)">${message.user_email}</div>
+            <span class="badge badge-pending" style="margin-top:4px;display:inline-block">${message.user_role}</span>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">DATE</div>
+            <div>${new Date(message.created_at).toLocaleString()}</div>
+            <div style="margin-top:8px">
+              <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">CATEGORY</div>
+              <span class="badge badge-approved">${categoryLabels[message.category]}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">STATUS</div>
+          <span class="badge ${
+            message.status === 'new' ? 'badge-flagged' :
+            message.status === 'in_progress' ? 'badge-pending' :
+            'badge-approved'
+          }">${message.status.replace('_', ' ')}</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-weight:600;margin-bottom:8px">Subject:</div>
+        <div style="font-size:1.1rem">${message.subject}</div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-weight:600;margin-bottom:8px">Message:</div>
+        <div style="background:#fff;padding:16px;border:1px solid var(--gray-200);border-radius:8px;white-space:pre-wrap">${message.message}</div>
+      </div>
+
+      ${message.admin_notes ? `
+        <div style="margin-bottom:20px">
+          <div style="font-weight:600;margin-bottom:8px">Admin Notes:</div>
+          <div style="background:var(--success-light);padding:16px;border-radius:8px;white-space:pre-wrap">${message.admin_notes}</div>
+        </div>
+      ` : ''}
+
+      ${message.resolved_at ? `
+        <div style="color:var(--gray-600);font-size:0.85rem">
+          Resolved on ${new Date(message.resolved_at).toLocaleString()}
+        </div>
+      ` : ''}
+
+      <div style="margin-top:20px">
+        <label style="display:block;margin-bottom:8px;font-weight:600">Update Status:</label>
+        <select class="form-control" id="supportMessageStatus" style="margin-bottom:12px">
+          <option value="new" ${message.status === 'new' ? 'selected' : ''}>New</option>
+          <option value="in_progress" ${message.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+          <option value="resolved" ${message.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+        </select>
+
+        <label style="display:block;margin-bottom:8px;font-weight:600">Admin Notes (optional):</label>
+        <textarea class="form-control" id="supportMessageNotes" rows="3" placeholder="Add internal notes about this support request...">${message.admin_notes || ''}</textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="deleteSupportMessage(${message.id})">Delete</button>
+      <button class="btn btn-outline" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" onclick="updateSupportMessage(${message.id})">Update</button>
+    </div>
+  `);
+}
+
+async function updateSupportMessage(id) {
+  const status = document.getElementById('supportMessageStatus').value;
+  const admin_notes = document.getElementById('supportMessageNotes').value;
+
+  try {
+    await API.put(`/admin/support/messages/${id}`, { status, admin_notes });
+    toast('Support message updated successfully', 'success');
+    closeModal();
+    navigateTo('admin-support');
+  } catch (error) {
+    toast(error.message || 'Failed to update support message', 'error');
+  }
+}
+
+async function deleteSupportMessage(id) {
+  if (!confirm('Are you sure you want to delete this support message? This action cannot be undone.')) {
+    return;
+  }
+
+  try {
+    await API.delete(`/admin/support/messages/${id}`);
+    toast('Support message deleted successfully', 'success');
+    closeModal();
+    navigateTo('admin-support');
+  } catch (error) {
+    toast(error.message || 'Failed to delete support message', 'error');
+  }
+}
+
 // ============ ADMIN: AUDIT LOGS ============
 async function renderAdminAudit() {
   const logs = await API.get('/admin/audit-logs?limit=100');
@@ -2268,21 +2486,19 @@ async function submitSupportRequest(e) {
     return toast('Please fill in all fields', 'error');
   }
 
-  // In a real app, this would send to a support API
-  // For now, we'll just show a success message and log it
-  console.log('Support Request:', {
-    category,
-    subject,
-    message,
-    user: currentUser.full_name,
-    email: currentUser.email,
-    role: currentUser.role,
-    timestamp: new Date().toISOString()
-  });
+  if (subject.trim().length < 3) {
+    return toast('Subject must be at least 3 characters', 'error');
+  }
 
-  toast('Support request submitted! We\'ll get back to you soon.', 'success');
-  closeModal();
+  if (message.trim().length < 10) {
+    return toast('Message must be at least 10 characters', 'error');
+  }
 
-  // You could implement actual email sending via backend:
-  // await API.post('/support/request', { category, subject, message });
+  try {
+    await API.post('/support/message', { category, subject, message });
+    toast('Support request submitted! An administrator will review it shortly.', 'success');
+    closeModal();
+  } catch (error) {
+    toast(error.message || 'Failed to submit support request', 'error');
+  }
 }
