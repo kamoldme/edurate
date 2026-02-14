@@ -55,9 +55,8 @@ router.get('/eligible-teachers', authenticate, authorize('student'), (req, res) 
         AND r.feedback_period_id = ?
       WHERE cm.student_id = ?
         AND c.active_status = 1
-        AND c.term_id = ?
       ORDER BY te.full_name
-    `).all(activePeriod.id, req.user.id, activePeriod.term_id);
+    `).all(activePeriod.id, req.user.id);
 
     res.json({ period: activePeriod, teachers });
   } catch (err) {
