@@ -882,25 +882,16 @@ async function renderTeacherFeedback() {
     <!-- Individual Reviews -->
     <div class="card">
       <div class="card-header">
-        <h3>All Reviews (${approvedReviews.length} approved, ${pendingReviews.length} pending)</h3>
+        <h3>Approved Reviews (${approvedReviews.length})</h3>
       </div>
       <div class="card-body">
-        ${pendingReviews.length > 0 ? `
-          <div style="background:var(--warning-bg);border:1px solid var(--warning);border-radius:var(--radius-md);padding:12px;margin-bottom:20px">
-            <strong style="color:var(--warning)">⏳ ${pendingReviews.length} Review${pendingReviews.length !== 1 ? 's' : ''} Pending Approval</strong>
-            <p style="margin:4px 0 0;font-size:0.85rem;color:var(--gray-600)">These reviews are visible to you but awaiting admin approval before being included in your official scores.</p>
-          </div>
-        ` : ''}
-        ${data.recent_reviews.length === 0
-          ? '<div class="empty-state"><h3>No reviews yet</h3><p>Reviews will appear here once students submit feedback</p></div>'
-          : data.recent_reviews.map(r => `
-            <div class="review-card" style="${r.approved_status === 0 ? 'opacity:0.7;border-left:4px solid var(--warning)' : ''}">
+        ${approvedReviews.length === 0
+          ? '<div class="empty-state"><h3>No approved reviews yet</h3><p>Approved reviews will appear here once admins review student feedback</p></div>'
+          : approvedReviews.map(r => `
+            <div class="review-card">
               <div class="review-header">
                 <div>
                   <span style="color:var(--gray-500);font-size:0.85rem">${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}</span>
-                  ${r.approved_status === 0 ? '<span class="badge" style="background:var(--warning);color:white;margin-left:8px">⏳ Pending Approval</span>' : ''}
-                  ${r.flagged_status === 'flagged' ? '<span class="badge" style="background:var(--danger);color:white;margin-left:8px">🚩 Flagged</span>' : ''}
-                  ${r.flagged_status === 'rejected' ? '<span class="badge" style="background:var(--gray-400);color:white;margin-left:8px">❌ Rejected</span>' : ''}
                 </div>
                 ${starsHTML(r.overall_rating)}
               </div>
