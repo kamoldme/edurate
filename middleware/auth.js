@@ -19,7 +19,7 @@ function authenticate(req, res, next) {
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, suspended FROM users WHERE id = ?').get(decoded.id);
+    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, suspended, avatar_url FROM users WHERE id = ?').get(decoded.id);
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }

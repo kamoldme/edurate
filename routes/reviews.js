@@ -42,6 +42,7 @@ router.get('/eligible-teachers', authenticate, authorize('student'), (req, res) 
         te.full_name as teacher_name,
         te.subject,
         te.department,
+        te.avatar_url,
         c.id as classroom_id,
         c.subject as classroom_subject,
         c.grade_level,

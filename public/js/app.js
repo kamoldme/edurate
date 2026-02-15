@@ -59,7 +59,17 @@ function setupUI() {
   document.getElementById('roleBadge').textContent = u.role.replace('_', ' ');
   document.getElementById('userName').textContent = u.full_name;
   document.getElementById('userEmail').textContent = u.email;
-  document.getElementById('userAvatar').textContent = u.full_name.split(' ').map(n => n[0]).join('');
+
+  const avatar = document.getElementById('userAvatar');
+  if (u.avatar_url) {
+    avatar.style.backgroundImage = `url('${u.avatar_url}')`;
+    avatar.style.backgroundSize = 'cover';
+    avatar.style.backgroundPosition = 'center';
+    avatar.textContent = '';
+  } else {
+    avatar.textContent = u.full_name.split(' ').map(n => n[0]).join('');
+  }
+
   buildNavigation();
 }
 
@@ -247,6 +257,22 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.remove('active');
 }
 
+function avatarHTML(user, size = 'normal', clickable = false) {
+  const sizeMap = { small: '32px', normal: '48px', large: '72px' };
+  const fontSize = { small: '0.9rem', normal: '1.2rem', large: '1.5rem' };
+  const dimension = sizeMap[size] || sizeMap.normal;
+  const fontSz = fontSize[size] || fontSize.normal;
+
+  const initials = user.full_name ? user.full_name.split(' ').map(n => n[0]).join('') : '?';
+  const clickHandler = clickable && user.teacher_id ? `onclick="viewTeacherProfile(${user.teacher_id})" style="cursor:pointer"` : '';
+
+  if (user.avatar_url) {
+    return `<div ${clickHandler} style="width:${dimension};height:${dimension};background:url('${user.avatar_url}') center/cover;border-radius:50%;flex-shrink:0"></div>`;
+  }
+
+  return `<div ${clickHandler} style="width:${dimension};height:${dimension};background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${fontSz};font-weight:700;flex-shrink:0">${initials}</div>`;
+}
+
 function destroyCharts() {
   Object.values(chartInstances).forEach(c => c.destroy());
   chartInstances = {};
@@ -306,9 +332,13 @@ async function renderStudentHome() {
           ${data.classrooms.length === 0
             ? '<div class="empty-state"><h3>No classrooms yet</h3><p>Join a classroom using a code from your teacher</p></div>'
             : data.classrooms.map(c => `
-              <div class="classroom-card" style="margin-bottom:12px">
-                <div class="class-subject">${c.subject}</div>
-                <div class="class-meta">${c.teacher_name} &middot; ${c.grade_level} &middot; ${c.term_name}</div>
+              <div class="classroom-card" style="margin-bottom:12px;display:flex;align-items:center;gap:12px">
+                ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'small', true)}
+                <div style="flex:1">
+                  <div class="class-subject" style="margin:0">${c.subject}</div>
+                  <div class="class-meta" style="margin:0;cursor:pointer" onclick="viewTeacherProfile(${c.teacher_id})">${c.teacher_name}</div>
+                  <div class="class-meta" style="margin:0">${c.grade_level}</div>
+                </div>
               </div>
             `).join('')}
         </div>
@@ -357,9 +387,14 @@ async function renderStudentClassrooms() {
         ? '<div class="empty-state" style="grid-column:1/-1"><h3>No classrooms yet</h3><p>Ask your teacher for a classroom join code</p></div>'
         : classrooms.map(c => `
           <div class="classroom-card">
-            <div class="class-subject">${c.subject}</div>
-            <div class="class-meta">${c.teacher_name} &middot; ${c.grade_level} &middot; ${c.term_name}</div>
-            <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'small', true)}
+              <div style="flex:1">
+                <div class="class-subject" style="margin:0">${c.subject}</div>
+                <div class="class-meta" style="margin:0;cursor:pointer" onclick="viewTeacherProfile(${c.teacher_id})">${c.teacher_name} &middot; ${c.grade_level}</div>
+              </div>
+            </div>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
               <span class="badge badge-active">Enrolled</span>
               <button class="btn btn-sm btn-outline" onclick="leaveClassroom(${c.id}, '${c.subject}')">Leave</button>
             </div>
@@ -439,9 +474,12 @@ async function renderStudentReview() {
 
       ${eligible.map(t => `
         <div class="card" style="margin-bottom:16px">
-          <div class="card-header">
-            <h3>${t.teacher_name} - ${t.classroom_subject}</h3>
-            <span style="color:var(--gray-500);font-size:0.85rem">${t.grade_level}</span>
+          <div class="card-header" style="display:flex;align-items:center;gap:12px">
+            ${avatarHTML({ full_name: t.teacher_name, avatar_url: t.avatar_url, teacher_id: t.teacher_id }, 'normal', true)}
+            <div style="flex:1">
+              <h3 style="margin:0;cursor:pointer" onclick="viewTeacherProfile(${t.teacher_id})">${t.teacher_name}</h3>
+              <span style="color:var(--gray-500);font-size:0.85rem">${t.classroom_subject} &middot; ${t.grade_level}</span>
+            </div>
           </div>
           <div class="card-body">
             <form onsubmit="submitReview(event, ${t.teacher_id}, ${t.classroom_id})">
@@ -476,8 +514,11 @@ async function renderStudentReview() {
           <div class="card-header"><h3>Already Reviewed (${reviewed.length})</h3></div>
           <div class="card-body">
             ${reviewed.map(t => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-                <span>${t.teacher_name} - ${t.classroom_subject}</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);gap:12px">
+                <div style="display:flex;align-items:center;gap:12px;flex:1">
+                  ${avatarHTML({ full_name: t.teacher_name, avatar_url: t.avatar_url, teacher_id: t.teacher_id }, 'small', true)}
+                  <span style="cursor:pointer" onclick="viewTeacherProfile(${t.teacher_id})">${t.teacher_name} - ${t.classroom_subject}</span>
+                </div>
                 <span class="badge badge-approved">Submitted</span>
               </div>
             `).join('')}
@@ -576,6 +617,100 @@ async function renderStudentMyReviews() {
       </div>
     </div>
   `;
+}
+
+async function viewTeacherProfile(teacherId) {
+  try {
+    const data = await API.get(`/teachers/${teacherId}/profile`);
+    const teacher = data.teacher;
+    const scores = data.scores;
+
+    openModal(`
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:16px">
+          ${avatarHTML({ full_name: teacher.full_name, avatar_url: teacher.avatar_url }, 'large')}
+          <div>
+            <h2 style="margin:0">${teacher.full_name}</h2>
+            <p style="margin:4px 0 0;color:var(--gray-500)">${teacher.subject || ''} ${teacher.department ? '&middot; ' + teacher.department : ''}</p>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        ${teacher.bio ? `
+          <div style="margin-bottom:24px;padding:16px;background:var(--gray-50);border-radius:8px">
+            <h4 style="margin:0 0 8px">About</h4>
+            <p style="margin:0;color:var(--gray-700)">${teacher.bio}</p>
+          </div>
+        ` : ''}
+
+        ${teacher.experience_years ? `
+          <div style="margin-bottom:20px">
+            <strong>Experience:</strong> ${teacher.experience_years} years
+          </div>
+        ` : ''}
+
+        ${data.reviews.length > 0 ? `
+          <div style="margin-bottom:24px">
+            <h3>Overall Performance</h3>
+            <div class="grid grid-2" style="gap:16px;margin-top:12px">
+              <div class="stat-card">
+                <div class="stat-label">Overall Rating</div>
+                <div class="stat-value" style="display:flex;align-items:center;gap:8px">
+                  ${starsHTML(scores.avg_overall || 0, 'large')}
+                  <span style="font-size:1.5rem;font-weight:700">${scores.avg_overall?.toFixed(1) || 'N/A'}</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Total Reviews</div>
+                <div class="stat-value">${data.reviews.length}</div>
+              </div>
+            </div>
+
+            <div style="margin-top:20px">
+              <h4>Category Ratings</h4>
+              ${['clarity', 'engagement', 'fairness', 'supportiveness'].map(cat => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+                  <span style="font-weight:500;text-transform:capitalize">${cat}</span>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    ${starsHTML(scores[`avg_${cat}`] || 0)}
+                    <span style="font-weight:600">${scores[`avg_${cat}`]?.toFixed(1) || '-'}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div>
+            <h3>Recent Feedback</h3>
+            <div style="max-height:300px;overflow-y:auto">
+              ${data.reviews.slice(0, 10).map(r => `
+                <div style="padding:12px;margin-bottom:12px;background:var(--gray-50);border-radius:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    ${starsHTML(r.overall_rating)}
+                    <span style="font-size:0.85rem;color:var(--gray-500)">${new Date(r.created_at).toLocaleDateString()}</span>
+                  </div>
+                  ${r.feedback_text ? `<p style="margin:0;color:var(--gray-700)">${r.feedback_text}</p>` : '<p style="margin:0;color:var(--gray-400);font-style:italic">No written feedback</p>'}
+                  ${r.tags && r.tags !== '[]' ? `
+                    <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+                      ${JSON.parse(r.tags).map(tag => `<span class="badge badge-pending">${tag}</span>`).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : `
+          <div class="empty-state">
+            <h3>No Reviews Yet</h3>
+            <p>This teacher hasn't received any feedback yet.</p>
+          </div>
+        `}
+      </div>
+    `);
+  } catch (err) {
+    toast('Failed to load teacher profile: ' + err.message, 'error');
+  }
 }
 
 // ============ TEACHER VIEWS ============
@@ -1952,29 +2087,48 @@ async function viewTeacherFeedback(teacherId) {
 }
 
 // ============ ADMIN: SUBMISSION TRACKING ============
-async function renderAdminSubmissions() {
+async function renderAdminSubmissions(selectedPeriodId = null) {
   const periods = await API.get('/admin/feedback-periods');
   const activePeriod = periods.find(p => p.active_status === 1);
   const el = document.getElementById('contentArea');
 
-  if (!activePeriod) {
-    el.innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>No active feedback period</h3><p>Activate a feedback period to track submissions</p></div></div></div>';
+  // Use selected period or default to active period
+  const currentPeriod = selectedPeriodId
+    ? periods.find(p => p.id === selectedPeriodId)
+    : activePeriod;
+
+  if (!currentPeriod && !activePeriod) {
+    el.innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>No feedback periods</h3><p>Create a feedback period to track submissions</p></div></div></div>';
     return;
   }
 
-  const overview = await API.get(`/admin/submission-overview?feedback_period_id=${activePeriod.id}`);
+  const periodToShow = currentPeriod || activePeriod;
+  const overview = await API.get(`/admin/submission-overview?feedback_period_id=${periodToShow.id}`);
 
   el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <label style="margin-right:10px;font-weight:600">Feedback Period:</label>
+        <select class="form-control" style="display:inline-block;width:auto" onchange="renderAdminSubmissions(parseInt(this.value))">
+          ${periods.map(p => `
+            <option value="${p.id}" ${p.id === periodToShow.id ? 'selected' : ''}>
+              ${p.name} - ${p.term_name} ${p.active_status ? '(Active)' : ''}
+            </option>
+          `).join('')}
+        </select>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <h3>Submission Overview - ${activePeriod.name} (${activePeriod.term_name})</h3>
+        <h3>Submission Overview - ${periodToShow.name} (${periodToShow.term_name})</h3>
       </div>
       <div class="card-body">
         <div class="grid grid-4" style="margin-bottom:24px">
           <div class="stat-card"><div class="stat-label">Total Classrooms</div><div class="stat-value">${overview.summary.total_classrooms}</div></div>
           <div class="stat-card"><div class="stat-label">Total Students</div><div class="stat-value">${overview.summary.total_students}</div></div>
           <div class="stat-card"><div class="stat-label">Submitted</div><div class="stat-value" style="color:var(--success)">${overview.summary.total_submitted}</div></div>
-          <div class="stat-card"><div class="stat-label">Completion Rate</div><div class="stat-value" style="color:${overview.summary.overall_completion_rate >= 70 ? 'var(--success)' : 'var(--warning)'}">${overview.summary.overall_completion_rate}%</div></div>
+          <div class="stat-card"><div class="stat-label">Completion Rate</div><div class="stat-value" style="color:${overview.summary.overall_completion_rate >= 70 ? 'var(--success)' : overview.summary.overall_completion_rate >= 50 ? 'var(--warning)' : 'var(--danger)'}">${overview.summary.overall_completion_rate}%</div></div>
         </div>
 
         <table>
@@ -2005,11 +2159,57 @@ async function renderAdminSubmissions() {
                     <span style="font-weight:600;min-width:40px">${c.completion_rate}%</span>
                   </div>
                 </td>
-                <td><button class="btn btn-sm btn-outline" onclick="viewClassroomSubmissions(${c.id}, ${activePeriod.id})">View Details</button></td>
+                <td><button class="btn btn-sm btn-outline" onclick="viewClassroomSubmissions(${c.id}, ${periodToShow.id})">View Details</button></td>
               </tr>
             `).join('')}
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Student Participation Analysis</h3>
+      </div>
+      <div class="card-body">
+        <p style="color:var(--gray-600);margin-bottom:16px">
+          Classrooms with low participation rates may need additional reminders or support.
+        </p>
+        ${(() => {
+          const lowCompletionClassrooms = overview.classrooms.filter(c => c.completion_rate < 50);
+
+          if (lowCompletionClassrooms.length === 0) {
+            return '<div style="padding:20px;text-align:center;color:var(--success);background:var(--success-light);border-radius:8px"><strong>✓ All classrooms have 50%+ completion rate!</strong></div>';
+          }
+
+          return `
+            <div style="margin-bottom:16px">
+              <strong style="color:var(--danger)">${lowCompletionClassrooms.length} classroom${lowCompletionClassrooms.length === 1 ? '' : 's'} with low participation (&lt;50%)</strong>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Classroom</th>
+                  <th>Teacher</th>
+                  <th>Completion Rate</th>
+                  <th>Missing Submissions</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lowCompletionClassrooms.map(c => `
+                  <tr>
+                    <td><strong>${c.subject} (${c.grade_level})</strong></td>
+                    <td>${c.teacher_name}</td>
+                    <td><span style="color:var(--danger);font-weight:600">${c.completion_rate}%</span></td>
+                    <td>${c.not_submitted} of ${c.total_students} students</td>
+                    <td><button class="btn btn-sm btn-outline" onclick="viewClassroomSubmissions(${c.id}, ${periodToShow.id})">View Details</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        })()}
       </div>
     </div>
   `;
@@ -2378,8 +2578,8 @@ async function renderAccount() {
         <div class="card-header"><h3>Profile Information</h3></div>
         <div class="card-body">
           <div style="display:flex;align-items:center;gap:20px;margin-bottom:28px">
-            <div style="width:72px;height:72px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;font-weight:700;flex-shrink:0">
-              ${u.full_name.split(' ').map(n => n[0]).join('')}
+            <div id="avatarPreview" style="width:72px;height:72px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;font-weight:700;flex-shrink:0;background-size:cover;background-position:center;${u.avatar_url ? `background-image:url('${u.avatar_url}')` : ''}">
+              ${u.avatar_url ? '' : u.full_name.split(' ').map(n => n[0]).join('')}
             </div>
             <div>
               <div style="font-size:1.25rem;font-weight:600">${u.full_name}</div>
@@ -2391,6 +2591,18 @@ async function renderAccount() {
           </div>
 
           <form onsubmit="updateProfile(event)">
+            ${u.role === 'teacher' || u.role === 'school_head' ? `
+              <div class="form-group">
+                <label>Profile Photo</label>
+                <div style="display:flex;gap:10px;align-items:center">
+                  <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(event)">
+                  <button type="button" class="btn btn-outline" onclick="document.getElementById('avatarInput').click()">Choose Photo</button>
+                  ${u.avatar_url ? `<button type="button" class="btn btn-outline" style="color:var(--danger)" onclick="removeAvatar()">Remove</button>` : ''}
+                  <span id="avatarFileName" style="font-size:0.85rem;color:var(--gray-500)"></span>
+                </div>
+                <p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px">Max 5MB. JPG, PNG, or GIF.</p>
+              </div>
+            ` : ''}
             <div class="form-group">
               <label>Full Name</label>
               <input type="text" class="form-control" id="profileName" value="${u.full_name}" required>
@@ -2483,6 +2695,34 @@ async function updateProfile(e) {
   btn.disabled = true;
   btn.textContent = 'Saving...';
   try {
+    // Upload avatar first if selected
+    if (selectedAvatarFile) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const avatarData = await API.post('/auth/avatar', {
+            avatar: e.target.result,
+            filename: selectedAvatarFile.name
+          });
+          currentUser.avatar_url = avatarData.avatar_url;
+
+          // Update sidebar avatar
+          const sidebarAvatar = document.getElementById('userAvatar');
+          if (sidebarAvatar) {
+            sidebarAvatar.style.backgroundImage = `url('${avatarData.avatar_url}')`;
+            sidebarAvatar.textContent = '';
+          }
+
+          selectedAvatarFile = null;
+          document.getElementById('avatarInput').value = '';
+          document.getElementById('avatarFileName').textContent = '';
+        } catch (err) {
+          toast('Avatar upload failed: ' + err.message, 'error');
+        }
+      };
+      reader.readAsDataURL(selectedAvatarFile);
+    }
+
     const body = {
       full_name: document.getElementById('profileName').value.trim(),
       grade_or_position: document.getElementById('profileGrade').value.trim()
@@ -2502,13 +2742,78 @@ async function updateProfile(e) {
     currentUser = data.user;
     // Update sidebar
     document.getElementById('userName').textContent = data.user.full_name;
-    document.getElementById('userAvatar').textContent = data.user.full_name.split(' ').map(n => n[0]).join('');
+    const userAvatar = document.getElementById('userAvatar');
+    if (currentUser.avatar_url) {
+      userAvatar.style.backgroundImage = `url('${currentUser.avatar_url}')`;
+      userAvatar.textContent = '';
+    } else {
+      userAvatar.textContent = data.user.full_name.split(' ').map(n => n[0]).join('');
+    }
     toast('Profile updated');
   } catch (err) {
     toast(err.message, 'error');
   }
   btn.disabled = false;
   btn.textContent = 'Save Changes';
+}
+
+let selectedAvatarFile = null;
+
+function previewAvatar(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validate file size (5MB max)
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Image must be smaller than 5MB', 'error');
+    event.target.value = '';
+    return;
+  }
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    toast('Please select an image file', 'error');
+    event.target.value = '';
+    return;
+  }
+
+  selectedAvatarFile = file;
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('avatarPreview');
+    preview.style.backgroundImage = `url('${e.target.result}')`;
+    preview.textContent = '';
+    document.getElementById('avatarFileName').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function removeAvatar() {
+  if (!confirm('Remove your profile photo?')) return;
+
+  try {
+    const data = await API.delete('/auth/avatar');
+    currentUser.avatar_url = null;
+
+    // Reset preview to initials
+    const preview = document.getElementById('avatarPreview');
+    preview.style.backgroundImage = '';
+    preview.textContent = currentUser.full_name.split(' ').map(n => n[0]).join('');
+
+    // Update sidebar avatar
+    const sidebarAvatar = document.getElementById('userAvatar');
+    if (sidebarAvatar) {
+      sidebarAvatar.style.backgroundImage = '';
+      sidebarAvatar.textContent = currentUser.full_name.split(' ').map(n => n[0]).join('');
+    }
+
+    toast('Profile photo removed');
+    renderAccount(); // Refresh to update UI
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
 async function changePassword(e) {

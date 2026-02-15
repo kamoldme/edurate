@@ -19,6 +19,7 @@ db.exec(`
     school_id INTEGER DEFAULT 1,
     verified_status INTEGER DEFAULT 0,
     suspended INTEGER DEFAULT 0,
+    avatar_url TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -30,6 +31,7 @@ db.exec(`
     department TEXT,
     experience_years INTEGER DEFAULT 0,
     bio TEXT,
+    avatar_url TEXT,
     school_id INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -183,6 +185,32 @@ try {
   if (!hasFeedbackVisible) {
     db.exec('ALTER TABLE terms ADD COLUMN feedback_visible INTEGER DEFAULT 1');
     console.log('✅ Migration: Added feedback_visible column to terms table');
+  }
+} catch (err) {
+  // Column might already exist, ignore error
+}
+
+// Migration: Add avatar_url column to users table if it doesn't exist
+try {
+  const userColumns = db.prepare("PRAGMA table_info(users)").all();
+  const hasUserAvatar = userColumns.some(col => col.name === 'avatar_url');
+
+  if (!hasUserAvatar) {
+    db.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT');
+    console.log('✅ Migration: Added avatar_url column to users table');
+  }
+} catch (err) {
+  // Column might already exist, ignore error
+}
+
+// Migration: Add avatar_url column to teachers table if it doesn't exist
+try {
+  const teacherColumns = db.prepare("PRAGMA table_info(teachers)").all();
+  const hasTeacherAvatar = teacherColumns.some(col => col.name === 'avatar_url');
+
+  if (!hasTeacherAvatar) {
+    db.exec('ALTER TABLE teachers ADD COLUMN avatar_url TEXT');
+    console.log('✅ Migration: Added avatar_url column to teachers table');
   }
 } catch (err) {
   // Column might already exist, ignore error

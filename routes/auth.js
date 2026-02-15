@@ -49,7 +49,7 @@ router.post('/register', (req, res) => {
     // In production, send verification email. For demo, auto-verify.
     db.prepare('UPDATE users SET verified_status = 1 WHERE id = ?').run(result.lastInsertRowid);
 
-    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status FROM users WHERE id = ?')
+    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, avatar_url FROM users WHERE id = ?')
       .get(result.lastInsertRowid);
 
     const token = generateToken(user);
@@ -207,7 +207,7 @@ router.put('/update-profile', authenticate, (req, res) => {
       }
     }
 
-    const updated = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, suspended FROM users WHERE id = ?').get(req.user.id);
+    const updated = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, suspended, avatar_url FROM users WHERE id = ?').get(req.user.id);
 
     let teacherInfo = null;
     if (req.user.role === 'teacher') {
@@ -218,6 +218,129 @@ router.put('/update-profile', authenticate, (req, res) => {
   } catch (err) {
     console.error('Update profile error:', err);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// POST /api/auth/avatar
+router.post('/avatar', authenticate, (req, res) => {
+  try {
+    const { avatar, filename } = req.body;
+    const { logAuditEvent } = require('../utils/audit');
+    const fs = require('fs');
+    const path = require('path');
+
+    // Validate user role
+    if (req.user.role !== 'teacher' && req.user.role !== 'school_head') {
+      return res.status(403).json({ error: 'Only teachers and school heads can upload avatars' });
+    }
+
+    if (!avatar || !avatar.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Invalid image data' });
+    }
+
+    // Extract base64 data and file extension
+    const matches = avatar.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ error: 'Invalid image format' });
+    }
+
+    const ext = matches[1];
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Validate file size (5MB max)
+    if (buffer.length > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image must be smaller than 5MB' });
+    }
+
+    // Create avatars directory if it doesn't exist
+    const avatarsDir = path.join(__dirname, '..', 'public', 'avatars');
+    if (!fs.existsSync(avatarsDir)) {
+      fs.mkdirSync(avatarsDir, { recursive: true });
+    }
+
+    // Generate unique filename
+    const avatarFilename = `avatar_${req.user.id}_${Date.now()}.${ext}`;
+    const avatarPath = path.join(avatarsDir, avatarFilename);
+    const avatarUrl = `/avatars/${avatarFilename}`;
+
+    // Delete old avatar if exists
+    if (req.user.avatar_url) {
+      const oldPath = path.join(__dirname, '..', 'public', req.user.avatar_url);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
+
+    // Save new avatar
+    fs.writeFileSync(avatarPath, buffer);
+
+    // Update database
+    db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatarUrl, req.user.id);
+
+    if (req.user.role === 'teacher') {
+      db.prepare('UPDATE teachers SET avatar_url = ? WHERE user_id = ?').run(avatarUrl, req.user.id);
+    }
+
+    // Log audit event
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'avatar_upload',
+      actionDescription: 'Updated profile photo',
+      targetType: 'user',
+      targetId: req.user.id,
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Avatar uploaded', avatar_url: avatarUrl });
+  } catch (err) {
+    console.error('Avatar upload error:', err);
+    res.status(500).json({ error: 'Failed to upload avatar' });
+  }
+});
+
+// DELETE /api/auth/avatar
+router.delete('/avatar', authenticate, (req, res) => {
+  try {
+    const { logAuditEvent } = require('../utils/audit');
+    const fs = require('fs');
+    const path = require('path');
+
+    if (!req.user.avatar_url) {
+      return res.status(400).json({ error: 'No avatar to remove' });
+    }
+
+    // Delete avatar file
+    const avatarPath = path.join(__dirname, '..', 'public', req.user.avatar_url);
+    if (fs.existsSync(avatarPath)) {
+      fs.unlinkSync(avatarPath);
+    }
+
+    // Update database
+    db.prepare('UPDATE users SET avatar_url = NULL WHERE id = ?').run(req.user.id);
+
+    if (req.user.role === 'teacher') {
+      db.prepare('UPDATE teachers SET avatar_url = NULL WHERE user_id = ?').run(req.user.id);
+    }
+
+    // Log audit event
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'avatar_remove',
+      actionDescription: 'Removed profile photo',
+      targetType: 'user',
+      targetId: req.user.id,
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Avatar removed' });
+  } catch (err) {
+    console.error('Avatar remove error:', err);
+    res.status(500).json({ error: 'Failed to remove avatar' });
   }
 });
 

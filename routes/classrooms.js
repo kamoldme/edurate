@@ -30,7 +30,7 @@ router.get('/', authenticate, (req, res) => {
     } else if (role === 'student') {
       classrooms = db.prepare(`
         SELECT c.*, t.name as term_name, te.full_name as teacher_name, te.subject as teacher_subject,
-          cm.joined_at
+          te.avatar_url as teacher_avatar_url, cm.joined_at
         FROM classroom_members cm
         JOIN classrooms c ON cm.classroom_id = c.id
         JOIN terms t ON c.term_id = t.id
@@ -42,6 +42,7 @@ router.get('/', authenticate, (req, res) => {
       // admin or school_head see all
       classrooms = db.prepare(`
         SELECT c.*, t.name as term_name, te.full_name as teacher_name,
+          te.avatar_url as teacher_avatar_url,
           (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
         FROM classrooms c
         JOIN terms t ON c.term_id = t.id
@@ -112,7 +113,8 @@ router.post('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
 router.get('/:id', authenticate, (req, res) => {
   try {
     const classroom = db.prepare(`
-      SELECT c.*, t.name as term_name, te.full_name as teacher_name, te.subject as teacher_subject
+      SELECT c.*, t.name as term_name, te.full_name as teacher_name, te.subject as teacher_subject,
+        te.avatar_url as teacher_avatar_url
       FROM classrooms c
       JOIN terms t ON c.term_id = t.id
       JOIN teachers te ON c.teacher_id = te.id
@@ -148,7 +150,7 @@ router.post('/join', authenticate, authorize('student'), (req, res) => {
     if (!join_code) return res.status(400).json({ error: 'Join code is required' });
 
     const classroom = db.prepare(`
-      SELECT c.*, te.full_name as teacher_name
+      SELECT c.*, te.full_name as teacher_name, te.avatar_url as teacher_avatar_url
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
       WHERE c.join_code = ? AND c.active_status = 1

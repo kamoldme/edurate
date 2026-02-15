@@ -14,6 +14,7 @@ const reviewRoutes = require('./routes/reviews');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
 const supportRoutes = require('./routes/support');
+const teacherRoutes = require('./routes/teachers');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,6 +69,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/teachers', teacherRoutes);
 
 // SPA fallback - serve app.html for /app routes
 app.get('/app', (req, res) => {

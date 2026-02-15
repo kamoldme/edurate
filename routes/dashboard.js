@@ -9,7 +9,8 @@ const router = express.Router();
 router.get('/student', authenticate, authorize('student'), (req, res) => {
   try {
     const classrooms = db.prepare(`
-      SELECT c.*, te.full_name as teacher_name, te.subject as teacher_subject, t.name as term_name
+      SELECT c.*, te.id as teacher_id, te.full_name as teacher_name, te.subject as teacher_subject,
+        te.avatar_url as teacher_avatar_url, t.name as term_name
       FROM classroom_members cm
       JOIN classrooms c ON cm.classroom_id = c.id
       JOIN teachers te ON c.teacher_id = te.id
