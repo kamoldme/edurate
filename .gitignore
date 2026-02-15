@@ -42,3 +42,4 @@ temp/
 
 # Claude agent output
 .claude/
+.vercel
