@@ -1,12 +1,12 @@
 const express = require('express');
 const db = require('../database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { getTeacherScores } = require('../utils/scoring');
 
 const router = express.Router();
 
-// GET /api/teachers/:id/profile - Public teacher profile with approved reviews
-router.get('/:id/profile', authenticate, (req, res) => {
+// GET /api/teachers/:id/profile - Teacher profile with approved reviews (Admin & School Head only)
+router.get('/:id/profile', authenticate, authorize('admin', 'school_head'), (req, res) => {
   try {
     const teacher = db.prepare('SELECT * FROM teachers WHERE id = ?').get(req.params.id);
 

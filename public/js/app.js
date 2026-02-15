@@ -61,14 +61,7 @@ function setupUI() {
   document.getElementById('userEmail').textContent = u.email;
 
   const avatar = document.getElementById('userAvatar');
-  if (u.avatar_url) {
-    avatar.style.backgroundImage = `url('${u.avatar_url}')`;
-    avatar.style.backgroundSize = 'cover';
-    avatar.style.backgroundPosition = 'center';
-    avatar.textContent = '';
-  } else {
-    avatar.textContent = u.full_name.split(' ').map(n => n[0]).join('');
-  }
+  avatar.textContent = u.full_name.split(' ').map(n => n[0]).join('');
 
   buildNavigation();
 }
@@ -259,16 +252,14 @@ function closeModal() {
 
 function avatarHTML(user, size = 'normal', clickable = false) {
   const sizeMap = { small: '32px', normal: '48px', large: '72px' };
-  const fontSize = { small: '0.9rem', normal: '1.2rem', large: '1.5rem' };
+  const fontSize = { small: '0.72rem', normal: '0.96rem', large: '1.2rem' };
   const dimension = sizeMap[size] || sizeMap.normal;
   const fontSz = fontSize[size] || fontSize.normal;
 
   const initials = user.full_name ? user.full_name.split(' ').map(n => n[0]).join('') : '?';
-  const clickHandler = clickable && user.teacher_id ? `onclick="viewTeacherProfile(${user.teacher_id})" style="cursor:pointer"` : '';
-
-  if (user.avatar_url) {
-    return `<div ${clickHandler} style="width:${dimension};height:${dimension};background:url('${user.avatar_url}') center/cover;border-radius:50%;flex-shrink:0"></div>`;
-  }
+  // Only admins and school heads can view teacher profiles
+  const canViewProfile = currentUser && (currentUser.role === 'admin' || currentUser.role === 'school_head');
+  const clickHandler = clickable && user.teacher_id && canViewProfile ? `onclick="viewTeacherProfile(${user.teacher_id})" style="cursor:pointer"` : '';
 
   return `<div ${clickHandler} style="width:${dimension};height:${dimension};background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${fontSz};font-weight:700;flex-shrink:0">${initials}</div>`;
 }
@@ -388,10 +379,10 @@ async function renderStudentClassrooms() {
         : classrooms.map(c => `
           <div class="classroom-card">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-              ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'small', true)}
+              ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'normal', true)}
               <div style="flex:1">
                 <div class="class-subject" style="margin:0">${c.subject}</div>
-                <div class="class-meta" style="margin:0;cursor:pointer" onclick="viewTeacherProfile(${c.teacher_id})">${c.teacher_name} &middot; ${c.grade_level}</div>
+                <div class="class-meta" style="margin:0">${c.teacher_name} &middot; ${c.grade_level}</div>
               </div>
             </div>
             <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
@@ -477,14 +468,20 @@ async function renderStudentReview() {
           <div class="card-header" style="display:flex;align-items:center;gap:12px">
             ${avatarHTML({ full_name: t.teacher_name, avatar_url: t.avatar_url, teacher_id: t.teacher_id }, 'normal', true)}
             <div style="flex:1">
-              <h3 style="margin:0;cursor:pointer" onclick="viewTeacherProfile(${t.teacher_id})">${t.teacher_name}</h3>
+              <h3 style="margin:0">${t.teacher_name}</h3>
               <span style="color:var(--gray-500);font-size:0.85rem">${t.classroom_subject} &middot; ${t.grade_level}</span>
             </div>
           </div>
           <div class="card-body">
             <form onsubmit="submitReview(event, ${t.teacher_id}, ${t.classroom_id})">
+              <div class="form-group" style="margin-bottom:24px;padding:16px;background:var(--gray-50);border-radius:8px">
+                <label style="font-size:1.1rem;font-weight:600;margin-bottom:12px;display:block">Overall Rating</label>
+                <div class="star-rating-input star-rating-large" data-name="overall_rating" data-form="review-${t.teacher_id}">
+                  ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn" data-value="${i}" onclick="setRating(this)">\u2606</button>`).join('')}
+                </div>
+              </div>
               <div class="grid grid-2" style="margin-bottom:20px">
-                ${['Overall', 'Clarity', 'Engagement', 'Fairness', 'Supportiveness'].map(cat => `
+                ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness'].map(cat => `
                   <div class="form-group" style="margin-bottom:12px">
                     <label>${cat} Rating</label>
                     <div class="star-rating-input" data-name="${cat.toLowerCase()}_rating" data-form="review-${t.teacher_id}">
@@ -517,7 +514,7 @@ async function renderStudentReview() {
               <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);gap:12px">
                 <div style="display:flex;align-items:center;gap:12px;flex:1">
                   ${avatarHTML({ full_name: t.teacher_name, avatar_url: t.avatar_url, teacher_id: t.teacher_id }, 'small', true)}
-                  <span style="cursor:pointer" onclick="viewTeacherProfile(${t.teacher_id})">${t.teacher_name} - ${t.classroom_subject}</span>
+                  <span>${t.teacher_name} - ${t.classroom_subject}</span>
                 </div>
                 <span class="badge badge-approved">Submitted</span>
               </div>
@@ -596,15 +593,18 @@ async function renderStudentMyReviews() {
                 <div>
                   <strong>${r.teacher_name}</strong>
                   <span style="color:var(--gray-500);font-size:0.85rem"> &middot; ${r.classroom_subject} &middot; ${r.period_name} (${r.term_name})</span>
+                  <div style="margin-top:8px;font-size:1.1rem;font-weight:700;color:${scoreColor(r.overall_rating)}">Overall Rating</div>
                 </div>
-                ${badgeHTML(r.flagged_status)}
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+                  ${starsHTML(r.overall_rating, 'large')}
+                  ${badgeHTML(r.flagged_status)}
+                </div>
               </div>
-              <div class="review-ratings">
-                <div class="rating-item"><span>Overall</span> ${starsHTML(r.overall_rating)}</div>
-                <div class="rating-item"><span>Clarity</span> ${starsHTML(r.clarity_rating)}</div>
-                <div class="rating-item"><span>Engagement</span> ${starsHTML(r.engagement_rating)}</div>
-                <div class="rating-item"><span>Fairness</span> ${starsHTML(r.fairness_rating)}</div>
-                <div class="rating-item"><span>Supportiveness</span> ${starsHTML(r.supportiveness_rating)}</div>
+              <div class="review-ratings" style="gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
+                <div class="rating-item"><span>Clarity</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.clarity_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Engagement</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.engagement_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Fairness</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.fairness_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Supportiveness</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.supportiveness_rating, 'small')}</span></div>
               </div>
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -970,11 +970,11 @@ async function renderTeacherFeedback() {
                     </div>
                     ${starsHTML(parseFloat(s.avg_overall))}
                   </div>
-                  <div class="review-ratings">
-                    <div class="rating-item"><span>Clarity</span><span style="font-weight:600;color:${scoreColor(s.avg_clarity)}">${s.avg_clarity} ${starsHTML(parseFloat(s.avg_clarity))}</span></div>
-                    <div class="rating-item"><span>Engagement</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)}">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
-                    <div class="rating-item"><span>Fairness</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)}">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
-                    <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;color:${scoreColor(s.avg_supportiveness)}">${s.avg_supportiveness} ${starsHTML(parseFloat(s.avg_supportiveness))}</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+                    <div class="rating-item"><span>Clarity</span><span style="font-weight:600;color:${scoreColor(s.avg_clarity)};display:flex;align-items:center;gap:8px">${s.avg_clarity} ${starsHTML(parseFloat(s.avg_clarity))}</span></div>
+                    <div class="rating-item"><span>Engagement</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)};display:flex;align-items:center;gap:8px">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
+                    <div class="rating-item"><span>Fairness</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)};display:flex;align-items:center;gap:8px">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
+                    <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;color:${scoreColor(s.avg_supportiveness)};display:flex;align-items:center;gap:8px">${s.avg_supportiveness} ${starsHTML(parseFloat(s.avg_supportiveness))}</span></div>
                   </div>
                 </div>
               `;
@@ -1028,14 +1028,15 @@ async function renderTeacherFeedback() {
               <div class="review-header">
                 <div>
                   <span style="color:var(--gray-500);font-size:0.85rem">${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}</span>
+                  <div style="margin-top:8px;font-size:1.1rem;font-weight:700;color:${scoreColor(r.overall_rating)}">Overall Rating</div>
                 </div>
-                ${starsHTML(r.overall_rating)}
+                ${starsHTML(r.overall_rating, 'large')}
               </div>
-              <div class="review-ratings">
-                <div class="rating-item"><span>Clarity</span><span style="font-weight:600">${r.clarity_rating}/5 ${starsHTML(r.clarity_rating)}</span></div>
-                <div class="rating-item"><span>Engagement</span><span style="font-weight:600">${r.engagement_rating}/5 ${starsHTML(r.engagement_rating)}</span></div>
-                <div class="rating-item"><span>Fairness</span><span style="font-weight:600">${r.fairness_rating}/5 ${starsHTML(r.fairness_rating)}</span></div>
-                <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600">${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating)}</span></div>
+              <div class="review-ratings" style="gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
+                <div class="rating-item"><span>Clarity</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Engagement</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Fairness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</span></div>
               </div>
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -1055,9 +1056,13 @@ async function renderTeacherAnalytics() {
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
+    <div style="margin-bottom:16px;padding:12px 16px;background:var(--primary-light);border-left:4px solid var(--primary);border-radius:8px">
+      <strong>Current Term:</strong> ${data.active_term?.name || 'No active term'}
+      <span style="color:var(--gray-600);margin-left:12px;font-size:0.9rem">Analytics shown below are for the active term only</span>
+    </div>
     <div class="grid grid-2" style="margin-bottom:28px">
       <div class="card">
-        <div class="card-header"><h3>Score Trend (${data.active_term?.name || 'Current Term'})</h3></div>
+        <div class="card-header"><h3>Score Trend</h3></div>
         <div class="card-body"><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
       </div>
       <div class="card">
@@ -2166,52 +2171,6 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
         </table>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h3>Student Participation Analysis</h3>
-      </div>
-      <div class="card-body">
-        <p style="color:var(--gray-600);margin-bottom:16px">
-          Classrooms with low participation rates may need additional reminders or support.
-        </p>
-        ${(() => {
-          const lowCompletionClassrooms = overview.classrooms.filter(c => c.completion_rate < 50);
-
-          if (lowCompletionClassrooms.length === 0) {
-            return '<div style="padding:20px;text-align:center;color:var(--success);background:var(--success-light);border-radius:8px"><strong>✓ All classrooms have 50%+ completion rate!</strong></div>';
-          }
-
-          return `
-            <div style="margin-bottom:16px">
-              <strong style="color:var(--danger)">${lowCompletionClassrooms.length} classroom${lowCompletionClassrooms.length === 1 ? '' : 's'} with low participation (&lt;50%)</strong>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Classroom</th>
-                  <th>Teacher</th>
-                  <th>Completion Rate</th>
-                  <th>Missing Submissions</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${lowCompletionClassrooms.map(c => `
-                  <tr>
-                    <td><strong>${c.subject} (${c.grade_level})</strong></td>
-                    <td>${c.teacher_name}</td>
-                    <td><span style="color:var(--danger);font-weight:600">${c.completion_rate}%</span></td>
-                    <td>${c.not_submitted} of ${c.total_students} students</td>
-                    <td><button class="btn btn-sm btn-outline" onclick="viewClassroomSubmissions(${c.id}, ${periodToShow.id})">View Details</button></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          `;
-        })()}
-      </div>
-    </div>
   `;
 }
 
@@ -2246,8 +2205,8 @@ async function viewClassroomSubmissions(classroomId, periodId) {
                 <td>${s.grade_or_position || '-'}</td>
                 <td>
                   ${s.submitted
-                    ? `<span class="badge badge-approved">Submitted</span>`
-                    : `<span class="badge badge-rejected">Not Submitted</span>`}
+                    ? `<span class="badge badge-approved" style="white-space:nowrap">Submitted</span>`
+                    : `<span class="badge badge-rejected" style="white-space:nowrap">Not Submitted</span>`}
                 </td>
                 <td>${s.submitted ? starsHTML(s.overall_rating) : '-'}</td>
                 <td>${s.submitted_at ? new Date(s.submitted_at).toLocaleString() : '-'}</td>
@@ -2578,8 +2537,8 @@ async function renderAccount() {
         <div class="card-header"><h3>Profile Information</h3></div>
         <div class="card-body">
           <div style="display:flex;align-items:center;gap:20px;margin-bottom:28px">
-            <div id="avatarPreview" style="width:72px;height:72px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;font-weight:700;flex-shrink:0;background-size:cover;background-position:center;${u.avatar_url ? `background-image:url('${u.avatar_url}')` : ''}">
-              ${u.avatar_url ? '' : u.full_name.split(' ').map(n => n[0]).join('')}
+            <div id="avatarPreview" style="width:72px;height:72px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;font-weight:700;flex-shrink:0">
+              ${u.full_name.split(' ').map(n => n[0]).join('')}
             </div>
             <div>
               <div style="font-size:1.25rem;font-weight:600">${u.full_name}</div>
@@ -2591,18 +2550,6 @@ async function renderAccount() {
           </div>
 
           <form onsubmit="updateProfile(event)">
-            ${u.role === 'teacher' || u.role === 'school_head' ? `
-              <div class="form-group">
-                <label>Profile Photo</label>
-                <div style="display:flex;gap:10px;align-items:center">
-                  <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(event)">
-                  <button type="button" class="btn btn-outline" onclick="document.getElementById('avatarInput').click()">Choose Photo</button>
-                  ${u.avatar_url ? `<button type="button" class="btn btn-outline" style="color:var(--danger)" onclick="removeAvatar()">Remove</button>` : ''}
-                  <span id="avatarFileName" style="font-size:0.85rem;color:var(--gray-500)"></span>
-                </div>
-                <p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px">Max 5MB. JPG, PNG, or GIF.</p>
-              </div>
-            ` : ''}
             <div class="form-group">
               <label>Full Name</label>
               <input type="text" class="form-control" id="profileName" value="${u.full_name}" required>
@@ -2695,34 +2642,6 @@ async function updateProfile(e) {
   btn.disabled = true;
   btn.textContent = 'Saving...';
   try {
-    // Upload avatar first if selected
-    if (selectedAvatarFile) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const avatarData = await API.post('/auth/avatar', {
-            avatar: e.target.result,
-            filename: selectedAvatarFile.name
-          });
-          currentUser.avatar_url = avatarData.avatar_url;
-
-          // Update sidebar avatar
-          const sidebarAvatar = document.getElementById('userAvatar');
-          if (sidebarAvatar) {
-            sidebarAvatar.style.backgroundImage = `url('${avatarData.avatar_url}')`;
-            sidebarAvatar.textContent = '';
-          }
-
-          selectedAvatarFile = null;
-          document.getElementById('avatarInput').value = '';
-          document.getElementById('avatarFileName').textContent = '';
-        } catch (err) {
-          toast('Avatar upload failed: ' + err.message, 'error');
-        }
-      };
-      reader.readAsDataURL(selectedAvatarFile);
-    }
-
     const body = {
       full_name: document.getElementById('profileName').value.trim(),
       grade_or_position: document.getElementById('profileGrade').value.trim()
@@ -2743,77 +2662,13 @@ async function updateProfile(e) {
     // Update sidebar
     document.getElementById('userName').textContent = data.user.full_name;
     const userAvatar = document.getElementById('userAvatar');
-    if (currentUser.avatar_url) {
-      userAvatar.style.backgroundImage = `url('${currentUser.avatar_url}')`;
-      userAvatar.textContent = '';
-    } else {
-      userAvatar.textContent = data.user.full_name.split(' ').map(n => n[0]).join('');
-    }
+    userAvatar.textContent = data.user.full_name.split(' ').map(n => n[0]).join('');
     toast('Profile updated');
   } catch (err) {
     toast(err.message, 'error');
   }
   btn.disabled = false;
   btn.textContent = 'Save Changes';
-}
-
-let selectedAvatarFile = null;
-
-function previewAvatar(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  // Validate file size (5MB max)
-  if (file.size > 5 * 1024 * 1024) {
-    toast('Image must be smaller than 5MB', 'error');
-    event.target.value = '';
-    return;
-  }
-
-  // Validate file type
-  if (!file.type.startsWith('image/')) {
-    toast('Please select an image file', 'error');
-    event.target.value = '';
-    return;
-  }
-
-  selectedAvatarFile = file;
-
-  // Show preview
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const preview = document.getElementById('avatarPreview');
-    preview.style.backgroundImage = `url('${e.target.result}')`;
-    preview.textContent = '';
-    document.getElementById('avatarFileName').textContent = file.name;
-  };
-  reader.readAsDataURL(file);
-}
-
-async function removeAvatar() {
-  if (!confirm('Remove your profile photo?')) return;
-
-  try {
-    const data = await API.delete('/auth/avatar');
-    currentUser.avatar_url = null;
-
-    // Reset preview to initials
-    const preview = document.getElementById('avatarPreview');
-    preview.style.backgroundImage = '';
-    preview.textContent = currentUser.full_name.split(' ').map(n => n[0]).join('');
-
-    // Update sidebar avatar
-    const sidebarAvatar = document.getElementById('userAvatar');
-    if (sidebarAvatar) {
-      sidebarAvatar.style.backgroundImage = '';
-      sidebarAvatar.textContent = currentUser.full_name.split(' ').map(n => n[0]).join('');
-    }
-
-    toast('Profile photo removed');
-    renderAccount(); // Refresh to update UI
-  } catch (err) {
-    toast(err.message, 'error');
-  }
 }
 
 async function changePassword(e) {
