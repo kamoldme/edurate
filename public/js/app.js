@@ -208,8 +208,9 @@ function navigateTo(view) {
 }
 
 // ============ UTILITIES ============
-function starsHTML(rating, size = '') {
-  let html = '<div class="stars">';
+function starsHTML(rating, size = 'normal') {
+  const sizeClass = size === 'large' ? 'stars-large' : size === 'small' ? 'stars-small' : '';
+  let html = `<div class="stars ${sizeClass}">`;
   for (let i = 1; i <= 5; i++) {
     html += `<span class="star ${i <= Math.round(rating) ? 'filled' : ''}">${i <= Math.round(rating) ? '\u2605' : '\u2606'}</span>`;
   }
@@ -851,11 +852,11 @@ async function renderTeacherFeedback() {
         <div class="card-header"><h3>Overall Performance</h3></div>
         <div class="card-body">
           <div style="text-align:center;padding:20px 0">
-            <div style="font-size:3rem;font-weight:700;color:${scoreColor(data.overall_scores.avg_overall || 0)};margin-bottom:8px">
+            <div style="font-size:3rem;font-weight:700;color:${scoreColor(data.overall_scores.avg_overall || 0)};margin-bottom:16px">
               ${data.overall_scores.avg_overall || 'N/A'}
             </div>
-            ${starsHTML(data.overall_scores.avg_overall || 0)}
-            <div style="color:var(--gray-500);margin-top:12px">${data.overall_scores.review_count} total reviews</div>
+            ${starsHTML(data.overall_scores.avg_overall || 0, 'large')}
+            <div style="color:var(--gray-500);margin-top:16px;font-size:1rem">${data.overall_scores.review_count} total reviews</div>
           </div>
           <div style="margin-top:24px">
             <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">

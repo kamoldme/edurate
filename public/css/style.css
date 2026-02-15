@@ -311,16 +311,39 @@ body {
 /* ============ STARS ============ */
 .stars {
   display: inline-flex;
-  gap: 2px;
+  gap: 4px;
+  margin: 0 8px;
+  vertical-align: middle;
 }
 
 .stars .star {
   color: var(--gray-300);
   font-size: 1.2rem;
   cursor: default;
+  line-height: 1;
 }
 
 .stars .star.filled { color: var(--warning); }
+
+/* Large stars for overall ratings */
+.stars-large {
+  gap: 6px;
+  margin: 0 12px;
+}
+
+.stars-large .star {
+  font-size: 2.5rem;
+}
+
+/* Small stars for compact views */
+.stars-small {
+  gap: 2px;
+  margin: 0 4px;
+}
+
+.stars-small .star {
+  font-size: 0.9rem;
+}
 
 .stars-interactive .star {
   cursor: pointer;
