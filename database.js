@@ -42,6 +42,7 @@ db.exec(`
     end_date DATE NOT NULL,
     school_id INTEGER DEFAULT 1,
     active_status INTEGER DEFAULT 1,
+    feedback_visible INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -173,5 +174,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_support_messages_status ON support_messages(status);
   CREATE INDEX IF NOT EXISTS idx_support_messages_created ON support_messages(created_at);
 `);
+
+// Migration: Add feedback_visible column to terms table if it doesn't exist
+try {
+  const columns = db.prepare("PRAGMA table_info(terms)").all();
+  const hasFeedbackVisible = columns.some(col => col.name === 'feedback_visible');
+
+  if (!hasFeedbackVisible) {
+    db.exec('ALTER TABLE terms ADD COLUMN feedback_visible INTEGER DEFAULT 1');
+    console.log('✅ Migration: Added feedback_visible column to terms table');
+  }
+} catch (err) {
+  // Column might already exist, ignore error
+}
 
 module.exports = db;

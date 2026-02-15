@@ -252,7 +252,7 @@ router.post('/terms', authenticate, authorize('admin'), (req, res) => {
 // PUT /api/admin/terms/:id
 router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
   try {
-    const { name, start_date, end_date, active_status } = req.body;
+    const { name, start_date, end_date, active_status, feedback_visible } = req.body;
     const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(req.params.id);
     if (!term) return res.status(404).json({ error: 'Term not found' });
 
@@ -266,9 +266,10 @@ router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
         name = COALESCE(?, name),
         start_date = COALESCE(?, start_date),
         end_date = COALESCE(?, end_date),
-        active_status = COALESCE(?, active_status)
+        active_status = COALESCE(?, active_status),
+        feedback_visible = COALESCE(?, feedback_visible)
       WHERE id = ?
-    `).run(name, start_date, end_date, active_status, req.params.id);
+    `).run(name, start_date, end_date, active_status, feedback_visible, req.params.id);
 
     const updated = db.prepare('SELECT * FROM terms WHERE id = ?').get(req.params.id);
 
@@ -278,6 +279,7 @@ router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
     if (start_date) changes.push(`start date to ${start_date}`);
     if (end_date) changes.push(`end date to ${end_date}`);
     if (active_status !== undefined) changes.push(active_status ? 'activated' : 'deactivated');
+    if (feedback_visible !== undefined) changes.push(feedback_visible ? 'feedback visible' : 'feedback hidden');
 
     logAuditEvent({
       userId: req.user.id,
@@ -287,7 +289,7 @@ router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
       actionDescription: `Updated term "${term.name}": ${changes.join(', ')}`,
       targetType: 'term',
       targetId: term.id,
-      metadata: { name, start_date, end_date, active_status },
+      metadata: { name, start_date, end_date, active_status, feedback_visible },
       ipAddress: req.ip
     });
 
@@ -295,6 +297,34 @@ router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
   } catch (err) {
     console.error('Update term error:', err);
     res.status(500).json({ error: 'Failed to update term' });
+  }
+});
+
+// DELETE /api/admin/terms/:id
+router.delete('/terms/:id', authenticate, authorize('admin'), (req, res) => {
+  try {
+    const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(req.params.id);
+    if (!term) return res.status(404).json({ error: 'Term not found' });
+
+    // Delete term (cascade will handle feedback_periods and related data)
+    db.prepare('DELETE FROM terms WHERE id = ?').run(req.params.id);
+
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'term_delete',
+      actionDescription: `Deleted term "${term.name}" and all associated data`,
+      targetType: 'term',
+      targetId: term.id,
+      metadata: { term_name: term.name },
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Term and all associated data deleted successfully' });
+  } catch (err) {
+    console.error('Delete term error:', err);
+    res.status(500).json({ error: 'Failed to delete term' });
   }
 });
 

@@ -1400,7 +1400,9 @@ async function renderAdminTerms() {
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <span class="badge ${term.active_status ? 'badge-active' : 'badge-inactive'}">${term.active_status ? 'Active' : 'Inactive'}</span>
-            ${!term.active_status ? `<button class="btn btn-sm btn-success" onclick="activateTerm(${term.id})">Activate</button>` : ''}
+            <span class="badge ${term.feedback_visible ? 'badge-approved' : 'badge-flagged'}">${term.feedback_visible ? 'Feedback Visible' : 'Feedback Hidden'}</span>
+            <button class="btn btn-sm btn-outline" onclick="editTerm(${term.id}, '${term.name}', '${term.start_date}', '${term.end_date}', ${term.active_status}, ${term.feedback_visible})">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTerm(${term.id}, '${term.name}')">Delete</button>
           </div>
         </div>
         <div class="card-body">
@@ -1466,6 +1468,80 @@ async function togglePeriod(periodId, status) {
     toast(status ? 'Period opened' : 'Period closed');
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
+}
+
+function editTerm(termId, name, startDate, endDate, activeStatus, feedbackVisible) {
+  openModal(`
+    <div class="modal-header"><h3>Edit Term</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Term Name</label><input type="text" class="form-control" id="editTermName" value="${name}"></div>
+      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="editTermStart" value="${startDate}"></div>
+      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="editTermEnd" value="${endDate}"></div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="editTermActive" ${activeStatus ? 'checked' : ''}>
+          <span>Term Active</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="editTermFeedbackVisible" ${feedbackVisible ? 'checked' : ''}>
+          <span>Feedback Visible to Teachers</span>
+        </label>
+        <p style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">When unchecked, feedback from this term will be hidden from teacher dashboards</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="updateTerm(${termId})">Save Changes</button>
+    </div>
+  `);
+}
+
+async function updateTerm(termId) {
+  const name = document.getElementById('editTermName').value;
+  const start_date = document.getElementById('editTermStart').value;
+  const end_date = document.getElementById('editTermEnd').value;
+  const active_status = document.getElementById('editTermActive').checked ? 1 : 0;
+  const feedback_visible = document.getElementById('editTermFeedbackVisible').checked ? 1 : 0;
+
+  if (!name || !start_date || !end_date) return toast('Fill all fields', 'error');
+
+  try {
+    await API.put(`/admin/terms/${termId}`, { name, start_date, end_date, active_status, feedback_visible });
+    toast('Term updated successfully');
+    closeModal();
+    renderAdminTerms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteTerm(termId, termName) {
+  const confirmed = confirm(
+    `⚠️ DELETE TERM: "${termName}"?\n\n` +
+    `This will permanently delete:\n` +
+    `• All feedback periods for this term\n` +
+    `• All student reviews from this term\n` +
+    `• All classrooms linked to this term\n\n` +
+    `This action CANNOT be undone!\n\n` +
+    `Type "DELETE" to confirm:`
+  );
+
+  if (!confirmed) return;
+
+  // Additional confirmation with text input
+  const doubleConfirm = prompt(`To confirm deletion of "${termName}", type DELETE in capital letters:`);
+
+  if (doubleConfirm !== 'DELETE') {
+    return toast('Deletion cancelled', 'info');
+  }
+
+  try {
+    await API.delete(`/admin/terms/${termId}`);
+    toast('Term and all associated data deleted', 'success');
+    renderAdminTerms();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
 async function renderAdminClassrooms() {
@@ -2199,14 +2275,56 @@ async function deleteSupportMessage(id) {
 }
 
 // ============ ADMIN: AUDIT LOGS ============
-async function renderAdminAudit() {
-  const logs = await API.get('/admin/audit-logs?limit=100');
+let currentAuditPage = 1;
+const LOGS_PER_PAGE = 50;
+
+async function renderAdminAudit(page = 1) {
+  currentAuditPage = page;
+  const offset = (page - 1) * LOGS_PER_PAGE;
+
+  // Get total count and logs for current page
+  const [allLogs, pagedLogs] = await Promise.all([
+    API.get('/admin/audit-logs?limit=10000'), // Get all to count total
+    API.get(`/admin/audit-logs?limit=${LOGS_PER_PAGE}&offset=${offset}`)
+  ]);
+
+  const totalLogs = allLogs.length;
+  const totalPages = Math.ceil(totalLogs / LOGS_PER_PAGE);
   const el = document.getElementById('contentArea');
+
+  // Generate pagination buttons
+  const paginationHTML = totalPages > 1 ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding:0 16px">
+      <div style="color:var(--gray-600);font-size:0.9rem">
+        Showing ${offset + 1}-${Math.min(offset + LOGS_PER_PAGE, totalLogs)} of ${totalLogs} logs
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(1)" ${page === 1 ? 'disabled' : ''}>First</button>
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+        ${Array.from({length: Math.min(5, totalPages)}, (_, i) => {
+          let pageNum;
+          if (totalPages <= 5) {
+            pageNum = i + 1;
+          } else if (page <= 3) {
+            pageNum = i + 1;
+          } else if (page >= totalPages - 2) {
+            pageNum = totalPages - 4 + i;
+          } else {
+            pageNum = page - 2 + i;
+          }
+          return `<button class="btn ${pageNum === page ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="renderAdminAudit(${pageNum})">${pageNum}</button>`;
+        }).join('')}
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${page + 1})" ${page === totalPages ? 'disabled' : ''}>Next</button>
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${totalPages})" ${page === totalPages ? 'disabled' : ''}>Last</button>
+      </div>
+    </div>
+  ` : '';
 
   el.innerHTML = `
     <div class="card">
       <div class="card-header">
-        <h3>Audit Logs (Last 100 actions)</h3>
+        <h3>Audit Logs - All Actions (${totalLogs} total)</h3>
+        <p style="margin:4px 0 0;color:var(--gray-600);font-size:0.9rem">Page ${page} of ${totalPages}</p>
       </div>
       <div class="card-body">
         <div style="overflow-x:auto">
@@ -2222,7 +2340,7 @@ async function renderAdminAudit() {
               </tr>
             </thead>
             <tbody>
-              ${logs.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">No audit logs yet</td></tr>' : logs.map(log => `
+              ${pagedLogs.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">No audit logs yet</td></tr>' : pagedLogs.map(log => `
                 <tr>
                   <td style="white-space:nowrap;font-size:0.85rem">${new Date(log.created_at).toLocaleString()}</td>
                   <td><strong>${log.user_name}</strong></td>
@@ -2235,6 +2353,7 @@ async function renderAdminAudit() {
             </tbody>
           </table>
         </div>
+        ${paginationHTML}
       </div>
     </div>
   `;
