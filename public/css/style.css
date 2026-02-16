@@ -274,6 +274,13 @@ body {
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
+/* ============ STATS GRID ============ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
 /* ============ STAT CARDS ============ */
 .stat-card {
   background: #fff;

@@ -71,8 +71,9 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
   try {
     const {
       teacher_id, classroom_id,
-      overall_rating, clarity_rating, engagement_rating,
+      clarity_rating, engagement_rating,
       fairness_rating, supportiveness_rating,
+      preparation_rating, workload_rating,
       feedback_text, tags
     } = req.body;
 
@@ -81,12 +82,15 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
       return res.status(400).json({ error: 'Teacher and classroom are required' });
     }
 
-    const ratings = [overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating];
+    const ratings = [clarity_rating, engagement_rating, fairness_rating, supportiveness_rating, preparation_rating, workload_rating];
     for (const r of ratings) {
       if (!r || r < 1 || r > 5) {
         return res.status(400).json({ error: 'All ratings must be between 1 and 5' });
       }
     }
+
+    // Auto-calculate overall rating as average of 6 criteria
+    const overall_rating = Math.round((clarity_rating + engagement_rating + fairness_rating + supportiveness_rating + preparation_rating + workload_rating) / 6);
 
     // Verify student is in the classroom
     const membership = db.prepare(
@@ -144,11 +148,13 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
       INSERT INTO reviews (
         teacher_id, classroom_id, student_id, school_id, term_id, feedback_period_id,
         overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating,
+        preparation_rating, workload_rating,
         feedback_text, tags, flagged_status, approved_status
-      ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `).run(
       teacher_id, classroom_id, req.user.id, activePeriod.term_id, activePeriod.id,
       overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating,
+      preparation_rating, workload_rating,
       sanitized, JSON.stringify(validatedTags), flaggedStatus
     );
 
@@ -222,17 +228,29 @@ router.put('/:id', authenticate, authorize('student'), (req, res) => {
     if (!period) return res.status(400).json({ error: 'Feedback period is closed. Cannot edit.' });
 
     const {
-      overall_rating, clarity_rating, engagement_rating,
+      clarity_rating, engagement_rating,
       fairness_rating, supportiveness_rating,
+      preparation_rating, workload_rating,
       feedback_text, tags
     } = req.body;
 
-    const ratings = [overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating];
+    const ratings = [clarity_rating, engagement_rating, fairness_rating, supportiveness_rating, preparation_rating, workload_rating];
     for (const r of ratings) {
       if (r !== undefined && (r < 1 || r > 5)) {
         return res.status(400).json({ error: 'Ratings must be between 1 and 5' });
       }
     }
+
+    // Get final rating values (use new if provided, otherwise keep existing)
+    const finalClarity = clarity_rating !== undefined ? clarity_rating : review.clarity_rating;
+    const finalEngagement = engagement_rating !== undefined ? engagement_rating : review.engagement_rating;
+    const finalFairness = fairness_rating !== undefined ? fairness_rating : review.fairness_rating;
+    const finalSupportiveness = supportiveness_rating !== undefined ? supportiveness_rating : review.supportiveness_rating;
+    const finalPreparation = preparation_rating !== undefined ? preparation_rating : review.preparation_rating;
+    const finalWorkload = workload_rating !== undefined ? workload_rating : review.workload_rating;
+
+    // Auto-calculate overall rating as average of 6 criteria
+    const overall_rating = Math.round((finalClarity + finalEngagement + finalFairness + finalSupportiveness + finalPreparation + finalWorkload) / 6);
 
     const sanitized = feedback_text !== undefined ? sanitizeInput(feedback_text) : review.feedback_text;
     const moderation = feedback_text !== undefined ? moderateText(feedback_text) : { flagged: false };
@@ -244,11 +262,13 @@ router.put('/:id', authenticate, authorize('student'), (req, res) => {
 
     db.prepare(`
       UPDATE reviews SET
-        overall_rating = COALESCE(?, overall_rating),
+        overall_rating = ?,
         clarity_rating = COALESCE(?, clarity_rating),
         engagement_rating = COALESCE(?, engagement_rating),
         fairness_rating = COALESCE(?, fairness_rating),
         supportiveness_rating = COALESCE(?, supportiveness_rating),
+        preparation_rating = COALESCE(?, preparation_rating),
+        workload_rating = COALESCE(?, workload_rating),
         feedback_text = ?,
         tags = ?,
         flagged_status = ?,
@@ -257,6 +277,7 @@ router.put('/:id', authenticate, authorize('student'), (req, res) => {
     `).run(
       overall_rating, clarity_rating, engagement_rating,
       fairness_rating, supportiveness_rating,
+      preparation_rating, workload_rating,
       sanitized, JSON.stringify(validatedTags),
       moderation.flagged ? 'flagged' : 'pending',
       req.params.id

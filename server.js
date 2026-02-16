@@ -59,9 +59,6 @@ app.use('/api/', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
-// Static files
-app.use(express.static(path.join(__dirname, 'public')));
-
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', classroomRoutes);
@@ -71,7 +68,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/teachers', teacherRoutes);
 
-// SPA fallback - serve app.html for /app routes
+// Specific page routes (BEFORE static middleware)
 app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.html'));
 });
@@ -80,10 +77,17 @@ app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
-// Root
-app.get('/', (req, res) => {
+app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Root - Landing page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
+// Static files (AFTER specific routes)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 404 handler
 app.use((req, res) => {

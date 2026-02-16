@@ -1,12 +1,13 @@
 const db = require('../database');
 
 function calculateFinalScore(review) {
-  return (
-    (review.clarity_rating * 0.25) +
-    (review.engagement_rating * 0.25) +
-    (review.fairness_rating * 0.25) +
-    (review.supportiveness_rating * 0.25)
-  );
+  const clarity = review.clarity_rating || 0;
+  const engagement = review.engagement_rating || 0;
+  const fairness = review.fairness_rating || 0;
+  const supportiveness = review.supportiveness_rating || 0;
+  const preparation = review.preparation_rating || 0;
+  const workload = review.workload_rating || 0;
+  return (clarity + engagement + fairness + supportiveness + preparation + workload) / 6;
 }
 
 function getTeacherScores(teacherId, options = {}) {
@@ -36,12 +37,9 @@ function getTeacherScores(teacherId, options = {}) {
       ROUND(AVG(r.engagement_rating), 2) as avg_engagement,
       ROUND(AVG(r.fairness_rating), 2) as avg_fairness,
       ROUND(AVG(r.supportiveness_rating), 2) as avg_supportiveness,
-      ROUND(
-        AVG(r.clarity_rating) * 0.25 +
-        AVG(r.engagement_rating) * 0.25 +
-        AVG(r.fairness_rating) * 0.25 +
-        AVG(r.supportiveness_rating) * 0.25
-      , 2) as final_score
+      ROUND(AVG(r.preparation_rating), 2) as avg_preparation,
+      ROUND(AVG(r.workload_rating), 2) as avg_workload,
+      ROUND(AVG(r.overall_rating), 2) as final_score
     FROM reviews r
     ${where}
   `).get(...params);
@@ -75,8 +73,7 @@ function getRatingDistribution(teacherId, options = {}) {
 function getTeacherTrend(teacherId, termId) {
   const periods = db.prepare(`
     SELECT fp.id, fp.name,
-      ROUND(AVG(r.clarity_rating) * 0.25 + AVG(r.engagement_rating) * 0.25 +
-            AVG(r.fairness_rating) * 0.25 + AVG(r.supportiveness_rating) * 0.25, 2) as score,
+      ROUND(AVG(r.overall_rating), 2) as score,
       COUNT(r.id) as review_count
     FROM feedback_periods fp
     LEFT JOIN reviews r ON r.feedback_period_id = fp.id
@@ -100,8 +97,7 @@ function getTeacherTrend(teacherId, termId) {
 function getDepartmentAverage(department, termId) {
   const result = db.prepare(`
     SELECT
-      ROUND(AVG(r.clarity_rating * 0.25 + r.engagement_rating * 0.25 +
-                r.fairness_rating * 0.25 + r.supportiveness_rating * 0.25), 2) as avg_score
+      ROUND(AVG(r.overall_rating), 2) as avg_score
     FROM reviews r
     JOIN teachers t ON r.teacher_id = t.id
     WHERE t.department = ? AND r.approved_status = 1

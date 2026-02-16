@@ -217,9 +217,9 @@ router.post('/terms', authenticate, authorize('admin'), (req, res) => {
       'INSERT INTO terms (name, start_date, end_date, school_id) VALUES (?, ?, ?, 1)'
     ).run(name, start_date, end_date);
 
-    // Auto-create 3 feedback periods
+    // Auto-create 2 feedback periods
     const termId = result.lastInsertRowid;
-    const periodNames = ['Beginning', 'Mid-Term', 'End'];
+    const periodNames = ['1st Half', '2nd Half'];
     periodNames.forEach(pName => {
       db.prepare(
         'INSERT INTO feedback_periods (term_id, name, active_status) VALUES (?, ?, 0)'
@@ -1078,27 +1078,30 @@ router.get('/stats', authenticate, authorize('admin', 'school_head'), (req, res)
       'SELECT ROUND(AVG(overall_rating), 2) as avg FROM reviews WHERE approved_status = 1'
     ).get().avg;
 
-    // Participation rate
-    const enrolledStudents = db.prepare(
-      'SELECT COUNT(DISTINCT student_id) as count FROM classroom_members'
-    ).get().count;
-    const reviewingStudents = db.prepare(
-      'SELECT COUNT(DISTINCT student_id) as count FROM reviews'
-    ).get().count;
+    // Rating distribution for charts
+    const ratingDist = db.prepare(
+      'SELECT overall_rating as rating, COUNT(*) as count FROM reviews WHERE approved_status = 1 GROUP BY overall_rating ORDER BY overall_rating'
+    ).all();
+    const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    ratingDist.forEach(r => { ratingDistribution[r.rating] = r.count; });
+
+    // Admin count
+    const totalAdmins = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get().count;
+    const totalSchoolHeads = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'school_head'").get().count;
 
     res.json({
       total_users: totalUsers,
       total_students: totalStudents,
       total_teachers: totalTeachers,
+      total_admins: totalAdmins,
+      total_school_heads: totalSchoolHeads,
       total_classrooms: totalClassrooms,
       total_reviews: totalReviews,
       pending_reviews: pendingReviews,
       flagged_reviews: flaggedReviews,
       approved_reviews: approvedReviews,
       average_rating: avgRating,
-      enrolled_students: enrolledStudents,
-      reviewing_students: reviewingStudents,
-      participation_rate: enrolledStudents > 0 ? Math.round((reviewingStudents / enrolledStudents) * 100) : 0
+      rating_distribution: ratingDistribution
     });
   } catch (err) {
     console.error('Stats error:', err);

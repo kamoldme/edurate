@@ -51,7 +51,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS feedback_periods (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     term_id INTEGER NOT NULL,
-    name TEXT NOT NULL CHECK(name IN ('Beginning', 'Mid-Term', 'End')),
+    name TEXT NOT NULL CHECK(name IN ('1st Half', '2nd Half')),
     start_date DATE,
     end_date DATE,
     active_status INTEGER DEFAULT 0,
@@ -211,6 +211,32 @@ try {
   if (!hasTeacherAvatar) {
     db.exec('ALTER TABLE teachers ADD COLUMN avatar_url TEXT');
     console.log('✅ Migration: Added avatar_url column to teachers table');
+  }
+} catch (err) {
+  // Column might already exist, ignore error
+}
+
+// Migration: Add preparation_rating column to reviews table if it doesn't exist
+try {
+  const reviewColumns = db.prepare("PRAGMA table_info(reviews)").all();
+  const hasPreparation = reviewColumns.some(col => col.name === 'preparation_rating');
+
+  if (!hasPreparation) {
+    db.exec('ALTER TABLE reviews ADD COLUMN preparation_rating INTEGER CHECK(preparation_rating BETWEEN 1 AND 5)');
+    console.log('✅ Migration: Added preparation_rating column to reviews table');
+  }
+} catch (err) {
+  // Column might already exist, ignore error
+}
+
+// Migration: Add workload_rating column to reviews table if it doesn't exist
+try {
+  const reviewColumns = db.prepare("PRAGMA table_info(reviews)").all();
+  const hasWorkload = reviewColumns.some(col => col.name === 'workload_rating');
+
+  if (!hasWorkload) {
+    db.exec('ALTER TABLE reviews ADD COLUMN workload_rating INTEGER CHECK(workload_rating BETWEEN 1 AND 5)');
+    console.log('✅ Migration: Added workload_rating column to reviews table');
   }
 } catch (err) {
   // Column might already exist, ignore error

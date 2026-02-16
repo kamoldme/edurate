@@ -250,6 +250,24 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.remove('active');
 }
 
+function confirmDialog(message, confirmText = 'Confirm', cancelText = 'Cancel') {
+  return new Promise((resolve) => {
+    openModal(`
+      <div class="modal-header">
+        <h2>Confirm Action</h2>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:1.1rem;margin-bottom:24px">${message}</p>
+        <div style="display:flex;gap:12px;justify-content:flex-end">
+          <button class="btn btn-outline" onclick="window.confirmDialogResolve(false);closeModal()">${cancelText}</button>
+          <button class="btn btn-primary" onclick="window.confirmDialogResolve(true);closeModal()">${confirmText}</button>
+        </div>
+      </div>
+    `);
+    window.confirmDialogResolve = resolve;
+  });
+}
+
 function avatarHTML(user, size = 'normal', clickable = false) {
   const sizeMap = { small: '32px', normal: '48px', large: '72px' };
   const fontSize = { small: '0.72rem', normal: '0.96rem', large: '1.2rem' };
@@ -273,6 +291,12 @@ function scoreColor(score) {
   if (score >= 4) return 'var(--success)';
   if (score >= 3) return 'var(--warning)';
   return 'var(--danger)';
+}
+
+// Format a score to always show 2 decimal places (e.g. 4 → "4.00", 3.5 → "3.50")
+function fmtScore(val) {
+  if (val === null || val === undefined) return 'N/A';
+  return Number(val).toFixed(2);
 }
 
 function logout() {
@@ -327,7 +351,7 @@ async function renderStudentHome() {
                 ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'small', true)}
                 <div style="flex:1">
                   <div class="class-subject" style="margin:0">${c.subject}</div>
-                  <div class="class-meta" style="margin:0;cursor:pointer" onclick="viewTeacherProfile(${c.teacher_id})">${c.teacher_name}</div>
+                  <div class="class-meta" style="margin:0${currentUser && (currentUser.role === 'admin' || currentUser.role === 'school_head') ? ';cursor:pointer' : ''}" ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'school_head') ? `onclick="viewTeacherProfile(${c.teacher_id})"` : ''}>${c.teacher_name}</div>
                   <div class="class-meta" style="margin:0">${c.grade_level}</div>
                 </div>
               </div>
@@ -424,7 +448,8 @@ async function joinClassroom() {
 }
 
 async function leaveClassroom(id, name) {
-  if (!confirm(`Leave "${name}"? You won't be able to review this teacher.`)) return;
+  const confirmed = await confirmDialog(`Leave "${name}"? You won't be able to review this teacher.`, 'Leave', 'Cancel');
+  if (!confirmed) return;
   try {
     await API.delete(`/classrooms/${id}/leave`);
     toast('Left classroom');
@@ -473,15 +498,17 @@ async function renderStudentReview() {
             </div>
           </div>
           <div class="card-body">
-            <form onsubmit="submitReview(event, ${t.teacher_id}, ${t.classroom_id})">
-              <div class="form-group" style="margin-bottom:24px;padding:16px;background:var(--gray-50);border-radius:8px">
-                <label style="font-size:1.1rem;font-weight:600;margin-bottom:12px;display:block">Overall Rating</label>
-                <div class="star-rating-input star-rating-large" data-name="overall_rating" data-form="review-${t.teacher_id}">
-                  ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn" data-value="${i}" onclick="setRating(this)">\u2606</button>`).join('')}
+            <form onsubmit="submitReview(event, ${t.teacher_id}, ${t.classroom_id})" data-teacher-id="${t.teacher_id}">
+              <div class="form-group" style="margin-bottom:24px;padding:20px;background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);border-radius:12px;border:2px solid #bae6fd">
+                <label style="font-size:1.1rem;font-weight:600;margin-bottom:12px;display:block;color:#0c4a6e">Overall Rating (Auto-calculated)</label>
+                <div style="display:flex;align-items:center;gap:16px">
+                  <div id="overall-stars-${t.teacher_id}" class="fractional-stars" style="font-size:2.5rem;display:flex;gap:4px"></div>
+                  <div id="overall-value-${t.teacher_id}" style="font-size:2rem;font-weight:700;color:#0369a1;min-width:60px">-</div>
                 </div>
+                <div style="margin-top:8px;color:#0369a1;font-size:0.85rem;font-style:italic">Rate all 6 criteria below to see your overall rating</div>
               </div>
               <div class="grid grid-2" style="margin-bottom:20px">
-                ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness'].map(cat => `
+                ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'].map(cat => `
                   <div class="form-group" style="margin-bottom:12px">
                     <label>${cat} Rating</label>
                     <div class="star-rating-input" data-name="${cat.toLowerCase()}_rating" data-form="review-${t.teacher_id}">
@@ -528,6 +555,71 @@ async function renderStudentReview() {
   }
 }
 
+function renderFractionalStars(containerId, rating) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const fullStars = Math.floor(rating);
+  const fractional = rating - fullStars;
+  const emptyStars = 5 - Math.ceil(rating);
+
+  let html = '';
+
+  // Full stars
+  for (let i = 0; i < fullStars; i++) {
+    html += '<span style="color:#fbbf24">★</span>';
+  }
+
+  // Fractional star
+  if (fractional > 0) {
+    const percentage = (fractional * 100).toFixed(0);
+    html += `<span style="position:relative;display:inline-block">
+      <span style="color:#e5e7eb">★</span>
+      <span style="position:absolute;left:0;top:0;overflow:hidden;width:${percentage}%;color:#fbbf24">★</span>
+    </span>`;
+  }
+
+  // Empty stars
+  for (let i = 0; i < emptyStars; i++) {
+    html += '<span style="color:#e5e7eb">★</span>';
+  }
+
+  container.innerHTML = html;
+}
+
+function updateOverallRating(form) {
+  const teacherId = form.dataset.teacherId;
+  if (!teacherId) return;
+
+  const clarity = parseInt(form.querySelector('[data-name="clarity_rating"]')?.dataset.value || 0);
+  const engagement = parseInt(form.querySelector('[data-name="engagement_rating"]')?.dataset.value || 0);
+  const fairness = parseInt(form.querySelector('[data-name="fairness_rating"]')?.dataset.value || 0);
+  const supportiveness = parseInt(form.querySelector('[data-name="supportiveness_rating"]')?.dataset.value || 0);
+  const preparation = parseInt(form.querySelector('[data-name="preparation_rating"]')?.dataset.value || 0);
+  const workload = parseInt(form.querySelector('[data-name="workload_rating"]')?.dataset.value || 0);
+
+  if (clarity && engagement && fairness && supportiveness && preparation && workload) {
+    const overall = (clarity + engagement + fairness + supportiveness + preparation + workload) / 6;
+    const rounded = Math.round(overall);
+
+    renderFractionalStars(`overall-stars-${teacherId}`, overall);
+
+    const valueEl = document.getElementById(`overall-value-${teacherId}`);
+    if (valueEl) {
+      valueEl.textContent = overall.toFixed(2);
+      valueEl.style.color = overall >= 4 ? '#059669' : overall >= 3 ? '#0369a1' : overall >= 2 ? '#d97706' : '#dc2626';
+    }
+  } else {
+    const starsEl = document.getElementById(`overall-stars-${teacherId}`);
+    const valueEl = document.getElementById(`overall-value-${teacherId}`);
+    if (starsEl) starsEl.innerHTML = '<span style="color:#e5e7eb">★★★★★</span>';
+    if (valueEl) {
+      valueEl.textContent = '-';
+      valueEl.style.color = '#0369a1';
+    }
+  }
+}
+
 function setRating(btn) {
   const container = btn.parentElement;
   const value = parseInt(btn.dataset.value);
@@ -536,6 +628,12 @@ function setRating(btn) {
     b.textContent = i < value ? '\u2605' : '\u2606';
     b.classList.toggle('active', i < value);
   });
+
+  // Update overall rating display
+  const form = btn.closest('form');
+  if (form) {
+    updateOverallRating(form);
+  }
 }
 
 async function submitReview(e, teacherId, classroomId) {
@@ -546,15 +644,19 @@ async function submitReview(e, teacherId, classroomId) {
     return parseInt(el?.dataset.value || 0);
   };
 
-  const overall = getRating('overall_rating');
   const clarity = getRating('clarity_rating');
   const engagement = getRating('engagement_rating');
   const fairness = getRating('fairness_rating');
   const supportiveness = getRating('supportiveness_rating');
+  const preparation = getRating('preparation_rating');
+  const workload = getRating('workload_rating');
 
-  if (!overall || !clarity || !engagement || !fairness || !supportiveness) {
+  if (!clarity || !engagement || !fairness || !supportiveness || !preparation || !workload) {
     return toast('Please rate all categories', 'error');
   }
+
+  // Auto-calculate overall rating as average of 6 criteria
+  const overall = Math.round((clarity + engagement + fairness + supportiveness + preparation + workload) / 6);
 
   const tagsContainer = document.getElementById(`tags-${teacherId}`);
   const selectedTags = [...tagsContainer.querySelectorAll('.tag.selected')].map(el => el.dataset.tag);
@@ -569,6 +671,8 @@ async function submitReview(e, teacherId, classroomId) {
       engagement_rating: engagement,
       fairness_rating: fairness,
       supportiveness_rating: supportiveness,
+      preparation_rating: preparation,
+      workload_rating: workload,
       feedback_text: feedbackText,
       tags: selectedTags
     });
@@ -588,14 +692,17 @@ async function renderStudentMyReviews() {
         ${reviews.length === 0
           ? '<div class="empty-state"><h3>No reviews yet</h3><p>Submit feedback during an active feedback period</p></div>'
           : reviews.map(r => `
-            <div class="review-card">
+            <div class="review-card" style="position:relative">
+              <div style="position:absolute;top:12px;right:12px;font-size:0.75rem;color:var(--gray-400)">
+                ${new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </div>
               <div class="review-header">
                 <div>
                   <strong>${r.teacher_name}</strong>
                   <span style="color:var(--gray-500);font-size:0.85rem"> &middot; ${r.classroom_subject} &middot; ${r.period_name} (${r.term_name})</span>
                   <div style="margin-top:8px;font-size:1.1rem;font-weight:700;color:${scoreColor(r.overall_rating)}">Overall Rating</div>
                 </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:20px">
                   ${starsHTML(r.overall_rating, 'large')}
                   ${badgeHTML(r.flagged_status)}
                 </div>
@@ -605,6 +712,8 @@ async function renderStudentMyReviews() {
                 <div class="rating-item"><span>Engagement</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.engagement_rating, 'small')}</span></div>
                 <div class="rating-item"><span>Fairness</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.fairness_rating, 'small')}</span></div>
                 <div class="rating-item"><span>Supportiveness</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.supportiveness_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Preparation</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.preparation_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Workload</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.workload_rating, 'small')}</span></div>
               </div>
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -658,7 +767,7 @@ async function viewTeacherProfile(teacherId) {
                 <div class="stat-label">Overall Rating</div>
                 <div class="stat-value" style="display:flex;align-items:center;gap:8px">
                   ${starsHTML(scores.avg_overall || 0, 'large')}
-                  <span style="font-size:1.5rem;font-weight:700">${scores.avg_overall?.toFixed(1) || 'N/A'}</span>
+                  <span style="font-size:1.5rem;font-weight:700">${fmtScore(scores.avg_overall)}</span>
                 </div>
               </div>
               <div class="stat-card">
@@ -674,7 +783,7 @@ async function viewTeacherProfile(teacherId) {
                   <span style="font-weight:500;text-transform:capitalize">${cat}</span>
                   <div style="display:flex;align-items:center;gap:8px">
                     ${starsHTML(scores[`avg_${cat}`] || 0)}
-                    <span style="font-weight:600">${scores[`avg_${cat}`]?.toFixed(1) || '-'}</span>
+                    <span style="font-weight:600">${fmtScore(scores[`avg_${cat}`])}</span>
                   </div>
                 </div>
               `).join('')}
@@ -722,8 +831,8 @@ async function renderTeacherHome() {
   el.innerHTML = `
     <div class="grid grid-4" style="margin-bottom:28px">
       <div class="stat-card">
-        <div class="stat-label">Final Score</div>
-        <div class="stat-value" style="color:${scoreColor(s.final_score || 0)}">${s.final_score || 'N/A'}</div>
+        <div class="stat-label">Overall Rating</div>
+        <div class="stat-value" style="color:${scoreColor(s.avg_overall || 0)}">${fmtScore(s.avg_overall)}</div>
         <div class="stat-change">${s.review_count} total reviews</div>
       </div>
       <div class="stat-card">
@@ -792,10 +901,10 @@ async function renderTeacherHome() {
             <p style="font-size:0.85rem;color:var(--gray-500)">Anonymous comparison with your department</p>
           </div>
           <div style="text-align:right">
-            <div style="font-size:1.5rem;font-weight:700">${data.department_average}</div>
-            <div style="font-size:0.85rem;color:${(s.final_score||0) >= data.department_average ? 'var(--success)' : 'var(--warning)'}">
-              Your score: ${s.final_score || 'N/A'}
-              ${(s.final_score||0) >= data.department_average ? ' (above avg)' : ' (below avg)'}
+            <div style="font-size:1.5rem;font-weight:700">${fmtScore(data.department_average)}</div>
+            <div style="font-size:0.85rem;color:${(s.avg_overall||0) >= data.department_average ? 'var(--success)' : 'var(--warning)'}">
+              Your score: ${fmtScore(s.avg_overall)}
+              ${(s.avg_overall||0) >= data.department_average ? ' (above avg)' : ' (below avg)'}
             </div>
           </div>
         </div>
@@ -898,7 +1007,8 @@ async function createClassroom(termId) {
 }
 
 async function regenerateCode(classroomId) {
-  if (!confirm('Generate a new join code? The old one will stop working.')) return;
+  const confirmed = await confirmDialog('Generate a new join code? The old one will stop working.', 'Generate', 'Cancel');
+  if (!confirmed) return;
   try {
     const data = await API.post(`/classrooms/${classroomId}/regenerate-code`);
     toast(`New join code: ${data.join_code}`);
@@ -949,6 +1059,8 @@ async function renderTeacherFeedback() {
     bySubject[key].avg_engagement = (reviews.reduce((sum, r) => sum + r.engagement_rating, 0) / reviews.length).toFixed(2);
     bySubject[key].avg_fairness = (reviews.reduce((sum, r) => sum + r.fairness_rating, 0) / reviews.length).toFixed(2);
     bySubject[key].avg_supportiveness = (reviews.reduce((sum, r) => sum + r.supportiveness_rating, 0) / reviews.length).toFixed(2);
+    bySubject[key].avg_preparation = (reviews.reduce((sum, r) => sum + (r.preparation_rating || 0), 0) / reviews.length).toFixed(2);
+    bySubject[key].avg_workload = (reviews.reduce((sum, r) => sum + (r.workload_rating || 0), 0) / reviews.length).toFixed(2);
   });
 
   el.innerHTML = `
@@ -975,6 +1087,8 @@ async function renderTeacherFeedback() {
                     <div class="rating-item"><span>Engagement</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)};display:flex;align-items:center;gap:8px">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
                     <div class="rating-item"><span>Fairness</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)};display:flex;align-items:center;gap:8px">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
                     <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;color:${scoreColor(s.avg_supportiveness)};display:flex;align-items:center;gap:8px">${s.avg_supportiveness} ${starsHTML(parseFloat(s.avg_supportiveness))}</span></div>
+                    <div class="rating-item"><span>Preparation</span><span style="font-weight:600;color:${scoreColor(s.avg_preparation)};display:flex;align-items:center;gap:8px">${s.avg_preparation} ${starsHTML(parseFloat(s.avg_preparation))}</span></div>
+                    <div class="rating-item"><span>Workload</span><span style="font-weight:600;color:${scoreColor(s.avg_workload)};display:flex;align-items:center;gap:8px">${s.avg_workload} ${starsHTML(parseFloat(s.avg_workload))}</span></div>
                   </div>
                 </div>
               `;
@@ -988,7 +1102,7 @@ async function renderTeacherFeedback() {
         <div class="card-body">
           <div style="text-align:center;padding:20px 0">
             <div style="font-size:3rem;font-weight:700;color:${scoreColor(data.overall_scores.avg_overall || 0)};margin-bottom:16px">
-              ${data.overall_scores.avg_overall || 'N/A'}
+              ${fmtScore(data.overall_scores.avg_overall)}
             </div>
             ${starsHTML(data.overall_scores.avg_overall || 0, 'large')}
             <div style="color:var(--gray-500);margin-top:16px;font-size:1rem">${data.overall_scores.review_count} total reviews</div>
@@ -996,19 +1110,27 @@ async function renderTeacherFeedback() {
           <div style="margin-top:24px">
             <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
               <span>Clarity</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_clarity || 0)}">${data.overall_scores.avg_clarity || 'N/A'} ${starsHTML(data.overall_scores.avg_clarity || 0)}</span>
+              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_clarity || 0)}">${fmtScore(data.overall_scores.avg_clarity)} ${starsHTML(data.overall_scores.avg_clarity || 0)}</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
               <span>Engagement</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_engagement || 0)}">${data.overall_scores.avg_engagement || 'N/A'} ${starsHTML(data.overall_scores.avg_engagement || 0)}</span>
+              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_engagement || 0)}">${fmtScore(data.overall_scores.avg_engagement)} ${starsHTML(data.overall_scores.avg_engagement || 0)}</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
               <span>Fairness</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_fairness || 0)}">${data.overall_scores.avg_fairness || 'N/A'} ${starsHTML(data.overall_scores.avg_fairness || 0)}</span>
+              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_fairness || 0)}">${fmtScore(data.overall_scores.avg_fairness)} ${starsHTML(data.overall_scores.avg_fairness || 0)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
+              <span>Supportiveness</span>
+              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_supportiveness || 0)}">${fmtScore(data.overall_scores.avg_supportiveness)} ${starsHTML(data.overall_scores.avg_supportiveness || 0)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
+              <span>Preparation</span>
+              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_preparation || 0)}">${fmtScore(data.overall_scores.avg_preparation)} ${starsHTML(data.overall_scores.avg_preparation || 0)}</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:12px 0">
-              <span>Supportiveness</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_supportiveness || 0)}">${data.overall_scores.avg_supportiveness || 'N/A'} ${starsHTML(data.overall_scores.avg_supportiveness || 0)}</span>
+              <span>Workload</span>
+              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_workload || 0)}">${fmtScore(data.overall_scores.avg_workload)} ${starsHTML(data.overall_scores.avg_workload || 0)}</span>
             </div>
           </div>
         </div>
@@ -1037,6 +1159,8 @@ async function renderTeacherFeedback() {
                 <div class="rating-item"><span>Engagement</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</span></div>
                 <div class="rating-item"><span>Fairness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</span></div>
                 <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Preparation</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.preparation_rating}/5 ${starsHTML(r.preparation_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Workload</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.workload_rating}/5 ${starsHTML(r.workload_rating, 'small')}</span></div>
               </div>
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -1106,10 +1230,10 @@ async function renderTeacherAnalytics() {
     chartInstances.radar = new Chart(ctx2, {
       type: 'radar',
       data: {
-        labels: ['Clarity', 'Engagement', 'Fairness', 'Supportiveness'],
+        labels: ['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'],
         datasets: [{
           label: 'Your Scores',
-          data: [s.avg_clarity, s.avg_engagement, s.avg_fairness, s.avg_supportiveness],
+          data: [s.avg_clarity, s.avg_engagement, s.avg_fairness, s.avg_supportiveness, s.avg_preparation, s.avg_workload],
           borderColor: '#3b82f6',
           backgroundColor: 'rgba(59,130,246,0.2)',
           pointBackgroundColor: '#3b82f6'
@@ -1137,7 +1261,7 @@ async function renderHeadHome() {
       <div class="stat-card"><div class="stat-label">Teachers</div><div class="stat-value">${stats.total_teachers}</div></div>
       <div class="stat-card"><div class="stat-label">Students</div><div class="stat-value">${stats.total_students}</div></div>
       <div class="stat-card"><div class="stat-label">Classrooms</div><div class="stat-value">${stats.total_classrooms}</div></div>
-      <div class="stat-card"><div class="stat-label">Avg Rating</div><div class="stat-value" style="color:${scoreColor(stats.average_rating || 0)}">${stats.average_rating || 'N/A'}</div></div>
+      <div class="stat-card"><div class="stat-label">Avg Rating</div><div class="stat-value" style="color:${scoreColor(stats.average_rating || 0)}">${fmtScore(stats.average_rating)}</div></div>
     </div>
 
     <div class="grid grid-2" style="margin-bottom:28px">
@@ -1147,11 +1271,11 @@ async function renderHeadHome() {
           <table>
             <thead><tr><th>Teacher</th><th>Department</th><th>Score</th><th>Reviews</th><th>Trend</th></tr></thead>
             <tbody>
-              ${data.teachers.sort((a, b) => (b.scores.final_score || 0) - (a.scores.final_score || 0)).map(t => `
+              ${data.teachers.sort((a, b) => (b.scores.avg_overall || 0) - (a.scores.avg_overall || 0)).map(t => `
                 <tr>
                   <td><strong>${t.full_name}</strong></td>
                   <td>${t.department || '-'}</td>
-                  <td style="font-weight:600;color:${scoreColor(t.scores.final_score || 0)}">${t.scores.final_score || 'N/A'}</td>
+                  <td style="font-weight:600;color:${scoreColor(t.scores.avg_overall || 0)}">${fmtScore(t.scores.avg_overall)}</td>
                   <td>${t.scores.review_count}</td>
                   <td>${t.trend ? trendArrow(t.trend.trend) : '-'}</td>
                 </tr>
@@ -1166,14 +1290,17 @@ async function renderHeadHome() {
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-body" style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <strong>Participation Rate</strong>
-          <p style="font-size:0.85rem;color:var(--gray-500)">${stats.reviewing_students} of ${stats.enrolled_students} enrolled students have submitted reviews</p>
+    <div class="grid grid-2" style="margin-top:28px">
+      <div class="card">
+        <div class="card-header"><h3>Users Breakdown</h3></div>
+        <div class="card-body" style="display:flex;justify-content:center;align-items:center;min-height:280px">
+          <canvas id="headUsersChart"></canvas>
         </div>
-        <div style="text-align:right">
-          <div style="font-size:2rem;font-weight:700;color:${stats.participation_rate >= 70 ? 'var(--success)' : 'var(--warning)'}">${stats.participation_rate}%</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Reviews by Rating</h3></div>
+        <div class="card-body" style="display:flex;justify-content:center;align-items:center;min-height:280px">
+          <canvas id="headReviewsChart"></canvas>
         </div>
       </div>
     </div>
@@ -1200,6 +1327,54 @@ async function renderHeadHome() {
       }
     });
   }
+
+  // Users breakdown doughnut chart
+  const headUsersCtx = document.getElementById('headUsersChart');
+  if (headUsersCtx) {
+    chartInstances.headUsers = new Chart(headUsersCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Students', 'Teachers', 'School Heads', 'Admins'],
+        datasets: [{
+          data: [stats.total_students, stats.total_teachers, stats.total_school_heads || 0, stats.total_admins || 0],
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } }
+        }
+      }
+    });
+  }
+
+  // Reviews by rating bar chart
+  const hrd = stats.rating_distribution || {};
+  const headReviewsCtx = document.getElementById('headReviewsChart');
+  if (headReviewsCtx) {
+    chartInstances.headReviews = new Chart(headReviewsCtx, {
+      type: 'bar',
+      data: {
+        labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+        datasets: [{
+          label: 'Reviews',
+          data: [hrd[1] || 0, hrd[2] || 0, hrd[3] || 0, hrd[4] || 0, hrd[5] || 0],
+          backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6'],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
 }
 
 async function renderHeadTeachers() {
@@ -1221,15 +1396,15 @@ async function renderHeadTeachers() {
                 <div style="font-weight:500">${t.subject}</div>
               </div>
               <div style="text-align:center">
-                <div style="font-size:0.8rem;color:var(--gray-500)">Score</div>
-                <div style="font-size:1.5rem;font-weight:700;color:${scoreColor(t.scores.final_score || 0)}">${t.scores.final_score || 'N/A'}</div>
+                <div style="font-size:0.8rem;color:var(--gray-500)">Overall Rating</div>
+                <div style="font-size:1.5rem;font-weight:700;color:${scoreColor(t.scores.avg_overall || 0)}">${fmtScore(t.scores.avg_overall)}</div>
               </div>
               <div style="text-align:right">
                 <div style="font-size:0.8rem;color:var(--gray-500)">Reviews</div>
                 <div style="font-weight:500">${t.scores.review_count}</div>
               </div>
             </div>
-            ${['avg_clarity', 'avg_engagement', 'avg_fairness', 'avg_supportiveness'].map(key => {
+            ${['avg_clarity', 'avg_engagement', 'avg_fairness', 'avg_supportiveness', 'avg_preparation', 'avg_workload'].map(key => {
               const label = key.replace('avg_', '');
               const val = t.scores[key] || 0;
               return `<div style="margin-bottom:8px">
@@ -1283,7 +1458,7 @@ async function renderHeadAnalytics() {
       <div class="card-body">
         <table>
           <thead>
-            <tr><th>Teacher</th><th>Clarity</th><th>Engagement</th><th>Fairness</th><th>Supportiveness</th><th>Final</th></tr>
+            <tr><th>Teacher</th><th>Clarity</th><th>Engagement</th><th>Fairness</th><th>Supportiveness</th><th>Preparation</th><th>Workload</th><th>Final</th></tr>
           </thead>
           <tbody>
             ${data.teachers.map(t => {
@@ -1291,9 +1466,9 @@ async function renderHeadAnalytics() {
               const cell = (val) => {
                 const bg = !val ? 'var(--gray-100)' : val >= 4 ? 'var(--success-bg)' : val >= 3 ? 'var(--warning-bg)' : 'var(--danger-bg)';
                 const color = !val ? 'var(--gray-400)' : val >= 4 ? '#047857' : val >= 3 ? '#92400e' : '#dc2626';
-                return `<td style="background:${bg};color:${color};font-weight:600;text-align:center">${val || '-'}</td>`;
+                return `<td style="background:${bg};color:${color};font-weight:600;text-align:center">${fmtScore(val)}</td>`;
               };
-              return `<tr><td><strong>${t.full_name}</strong></td>${cell(s.avg_clarity)}${cell(s.avg_engagement)}${cell(s.avg_fairness)}${cell(s.avg_supportiveness)}${cell(s.final_score)}</tr>`;
+              return `<tr><td><strong>${t.full_name}</strong></td>${cell(s.avg_clarity)}${cell(s.avg_engagement)}${cell(s.avg_fairness)}${cell(s.avg_supportiveness)}${cell(s.avg_preparation)}${cell(s.avg_workload)}${cell(s.avg_overall)}</tr>`;
             }).join('')}
           </tbody>
         </table>
@@ -1329,24 +1504,72 @@ async function renderAdminHome() {
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg Rating</div>
-        <div class="stat-value">${stats.average_rating || 'N/A'}</div>
+        <div class="stat-value">${fmtScore(stats.average_rating)}</div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <strong>Student Participation</strong>
-            <p style="font-size:0.85rem;color:var(--gray-500)">${stats.reviewing_students} of ${stats.enrolled_students} enrolled students submitted feedback</p>
-          </div>
-          <div style="font-size:2rem;font-weight:700;color:${stats.participation_rate >= 70 ? 'var(--success)' : 'var(--warning)'}">${stats.participation_rate}%</div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-header"><h3>Users Breakdown</h3></div>
+        <div class="card-body" style="display:flex;justify-content:center;align-items:center;min-height:280px">
+          <canvas id="adminUsersChart"></canvas>
         </div>
-        <div class="progress-bar" style="margin-top:12px">
-          <div class="progress-fill ${stats.participation_rate >= 70 ? 'green' : stats.participation_rate >= 40 ? 'yellow' : 'red'}" style="width:${stats.participation_rate}%"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Reviews by Rating</h3></div>
+        <div class="card-body" style="display:flex;justify-content:center;align-items:center;min-height:280px">
+          <canvas id="adminReviewsChart"></canvas>
         </div>
       </div>
     </div>
   `;
+
+  // Users breakdown doughnut chart
+  const usersCtx = document.getElementById('adminUsersChart');
+  if (usersCtx) {
+    chartInstances.adminUsers = new Chart(usersCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Students', 'Teachers', 'School Heads', 'Admins'],
+        datasets: [{
+          data: [stats.total_students, stats.total_teachers, stats.total_school_heads || 0, stats.total_admins || 0],
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } }
+        }
+      }
+    });
+  }
+
+  // Reviews by rating bar chart
+  const rd = stats.rating_distribution || {};
+  const reviewsCtx = document.getElementById('adminReviewsChart');
+  if (reviewsCtx) {
+    chartInstances.adminReviews = new Chart(reviewsCtx, {
+      type: 'bar',
+      data: {
+        labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+        datasets: [{
+          label: 'Reviews',
+          data: [rd[1] || 0, rd[2] || 0, rd[3] || 0, rd[4] || 0, rd[5] || 0],
+          backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6'],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
 }
 
 async function renderAdminUsers() {
@@ -1504,12 +1727,13 @@ async function saveUserEdit(userId) {
   } catch (err) { toast(err.message, 'error'); }
 }
 
-function resetPassword(userId, userName) {
+async function resetPassword(userId, userName) {
   const newPassword = prompt(`Enter new password for ${userName}:`);
   if (!newPassword) return;
   if (newPassword.length < 8) return toast('Password must be at least 8 characters', 'error');
 
-  if (!confirm(`Reset password for ${userName}?`)) return;
+  const confirmed = await confirmDialog(`Reset password for ${userName}?`, 'Reset', 'Cancel');
+  if (!confirmed) return;
 
   API.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
     .then(() => toast('Password reset successfully'))
@@ -1548,7 +1772,7 @@ async function renderAdminTerms() {
         </div>
         <div class="card-body">
           <h4 style="font-size:0.85rem;color:var(--gray-500);margin-bottom:12px">Feedback Periods</h4>
-          <div class="grid grid-3">
+          <div class="grid grid-2">
             ${term.periods.map(p => `
               <div style="padding:16px;border:2px solid ${p.active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px;text-align:center">
                 <div style="font-weight:600;margin-bottom:4px">${p.name}</div>
@@ -1589,7 +1813,7 @@ async function createTerm() {
   if (!name || !start_date || !end_date) return toast('Fill all fields', 'error');
   try {
     await API.post('/admin/terms', { name, start_date, end_date });
-    toast('Term created with 3 feedback periods');
+    toast('Term created with 2 feedback periods');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -1657,14 +1881,14 @@ async function updateTerm(termId) {
 }
 
 async function deleteTerm(termId, termName) {
-  const confirmed = confirm(
-    `⚠️ DELETE TERM: "${termName}"?\n\n` +
-    `This will permanently delete:\n` +
-    `• All feedback periods for this term\n` +
-    `• All student reviews from this term\n` +
-    `• All classrooms linked to this term\n\n` +
-    `This action CANNOT be undone!\n\n` +
-    `Type "DELETE" to confirm:`
+  const confirmed = await confirmDialog(
+    `⚠️ DELETE TERM: "${termName}"?<br><br>` +
+    `This will permanently delete:<br>` +
+    `• All feedback periods for this term<br>` +
+    `• All student reviews from this term<br>` +
+    `• All classrooms linked to this term<br><br>` +
+    `This action CANNOT be undone!`,
+    'Continue', 'Cancel'
   );
 
   if (!confirmed) return;
@@ -1705,10 +1929,11 @@ async function renderAdminClassrooms() {
                 <td>${c.teacher_name || '-'}</td>
                 <td>${c.grade_level}</td>
                 <td>${c.term_name}</td>
-                <td>${c.student_count || 0}</td>
+                <td><a href="#" onclick="event.preventDefault();viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')" style="color:var(--primary);font-weight:600">${c.student_count || 0}</a></td>
                 <td><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px">${c.join_code}</code></td>
                 <td><span class="badge ${c.active_status ? 'badge-active' : 'badge-inactive'}">${c.active_status ? 'Active' : 'Inactive'}</span></td>
                 <td>
+                  <button class="btn btn-sm btn-outline" onclick="viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Members</button>
                   <button class="btn btn-sm btn-outline" onclick='editClassroom(${JSON.stringify(c)})'>Edit</button>
                   <button class="btn btn-sm btn-danger" onclick="deleteClassroom(${c.id}, '${c.subject}')">Delete</button>
                 </td>
@@ -1841,12 +2066,44 @@ async function saveClassroomEdit(classroomId) {
 }
 
 async function deleteClassroom(classroomId, subject) {
-  if (!confirm(`Delete classroom "${subject}"? This will remove all student enrollments.`)) return;
+  const confirmed = await confirmDialog(`Delete classroom "${subject}"? This will remove all student enrollments.`, 'Delete', 'Cancel');
+  if (!confirmed) return;
   try {
     await API.delete(`/admin/classrooms/${classroomId}`);
     toast('Classroom deleted successfully');
     renderAdminClassrooms();
   } catch (err) { toast(err.message, 'error'); }
+}
+
+async function viewClassroomMembers(classroomId, subject) {
+  try {
+    const members = await API.get(`/classrooms/${classroomId}/members`);
+    openModal(`
+      <div class="modal-header"><h3>Members: ${subject}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-body">
+        ${members.length === 0
+          ? '<p style="color:var(--gray-500)">No students enrolled yet.</p>'
+          : `<table>
+              <thead><tr><th>Name</th><th>Email</th><th>Grade/Position</th><th>Joined</th></tr></thead>
+              <tbody>
+                ${members.map(m => `
+                  <tr>
+                    <td><strong>${m.full_name}</strong></td>
+                    <td>${m.email}</td>
+                    <td>${m.grade_or_position || '-'}</td>
+                    <td>${m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>`
+        }
+        <p style="margin-top:12px;color:var(--gray-500);font-size:0.85rem">${members.length} student(s) enrolled</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal()">Close</button>
+      </div>
+    `);
+  } catch (err) { toast('Failed to load members: ' + err.message, 'error'); }
 }
 
 async function renderAdminModerate() {
@@ -1876,6 +2133,8 @@ async function renderAdminModerate() {
               <div class="rating-item"><span>Engagement</span><span>${r.engagement_rating}/5</span></div>
               <div class="rating-item"><span>Fairness</span><span>${r.fairness_rating}/5</span></div>
               <div class="rating-item"><span>Supportiveness</span><span>${r.supportiveness_rating}/5</span></div>
+              <div class="rating-item"><span>Preparation</span><span>${r.preparation_rating}/5</span></div>
+              <div class="rating-item"><span>Workload</span><span>${r.workload_rating}/5</span></div>
             </div>
             ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : '<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic">No written feedback</p>'}
             ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -1886,7 +2145,7 @@ async function renderAdminModerate() {
             <div style="display:flex;gap:8px;margin-top:16px">
               <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">Approve</button>
               <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">Reject</button>
-              <button class="btn btn-outline" onclick="if(confirm('Permanently delete?'))deleteReview(${r.id})">Delete</button>
+              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">Delete</button>
             </div>
           </div>
         </div>
@@ -1919,12 +2178,15 @@ async function renderAdminFlagged() {
               <div class="rating-item"><span>Clarity</span><span>${r.clarity_rating}/5</span></div>
               <div class="rating-item"><span>Engagement</span><span>${r.engagement_rating}/5</span></div>
               <div class="rating-item"><span>Fairness</span><span>${r.fairness_rating}/5</span></div>
+              <div class="rating-item"><span>Supportiveness</span><span>${r.supportiveness_rating}/5</span></div>
+              <div class="rating-item"><span>Preparation</span><span>${r.preparation_rating}/5</span></div>
+              <div class="rating-item"><span>Workload</span><span>${r.workload_rating}/5</span></div>
             </div>
             ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger)">${r.feedback_text}</div>` : ''}
             <div style="display:flex;gap:8px;margin-top:16px">
               <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">Approve Anyway</button>
               <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">Reject</button>
-              <button class="btn btn-outline" onclick="if(confirm('Permanently delete?'))deleteReview(${r.id})">Delete</button>
+              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">Delete</button>
             </div>
           </div>
         </div>
@@ -1942,12 +2204,20 @@ async function moderateReview(id, action) {
 }
 
 async function bulkApproveAll(reviewIds) {
-  if (!confirm(`Approve all ${reviewIds.length} pending reviews at once?`)) return;
+  const confirmed = await confirmDialog(`Approve all ${reviewIds.length} pending reviews at once?`, 'Approve All', 'Cancel');
+  if (!confirmed) return;
   try {
     await API.post('/admin/reviews/bulk-approve', { review_ids: reviewIds });
     toast(`Successfully approved ${reviewIds.length} reviews!`, 'success');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
+}
+
+async function confirmDeleteReview(id) {
+  const confirmed = await confirmDialog('Permanently delete this review?', 'Delete', 'Cancel');
+  if (confirmed) {
+    await deleteReview(id);
+  }
 }
 
 async function deleteReview(id) {
@@ -2034,7 +2304,7 @@ async function renderAdminTeachers() {
                 <td><strong>${t.full_name}</strong></td>
                 <td>${t.subject || '-'}</td>
                 <td>${t.department || '-'}</td>
-                <td style="font-weight:600;color:${scoreColor(t.scores?.avg_overall || 0)}">${t.scores?.avg_overall || 'N/A'}</td>
+                <td style="font-weight:600;color:${scoreColor(t.scores?.avg_overall || 0)}">${fmtScore(t.scores?.avg_overall)}</td>
                 <td>${t.scores?.review_count || 0}</td>
                 <td>
                   <button class="btn btn-sm btn-outline" onclick='editTeacher(${JSON.stringify(t)})'>Edit</button>
@@ -2058,14 +2328,40 @@ async function viewTeacherFeedback(teacherId) {
     </div>
     <div class="modal-body">
       <div style="margin-bottom:20px;padding:16px;background:var(--gray-50);border-radius:var(--radius-md)">
-        <div style="display:flex;justify-content:space-around;text-align:center">
+        <div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:20px">
           <div>
-            <div style="font-size:2rem;font-weight:700;color:${scoreColor(data.scores.avg_overall || 0)}">${data.scores.avg_overall || 'N/A'}</div>
+            <div style="font-size:2rem;font-weight:700;color:${scoreColor(data.scores.avg_overall || 0)}">${fmtScore(data.scores.avg_overall)}</div>
             <div style="color:var(--gray-500);font-size:0.85rem">Overall Rating</div>
           </div>
           <div>
             <div style="font-size:2rem;font-weight:700">${data.scores.review_count}</div>
             <div style="color:var(--gray-500);font-size:0.85rem">Total Reviews</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_clarity || 0)}">${fmtScore(data.scores.avg_clarity)}</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">Clarity</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_engagement || 0)}">${fmtScore(data.scores.avg_engagement)}</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">Engagement</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_fairness || 0)}">${fmtScore(data.scores.avg_fairness)}</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">Fairness</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_supportiveness || 0)}">${fmtScore(data.scores.avg_supportiveness)}</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">Supportiveness</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_preparation || 0)}">${fmtScore(data.scores.avg_preparation)}</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">Preparation</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_workload || 0)}">${fmtScore(data.scores.avg_workload)}</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">Workload</div>
           </div>
         </div>
       </div>
@@ -2078,12 +2374,23 @@ async function viewTeacherFeedback(teacherId) {
                 <strong>${r.student_name}</strong>
                 <span style="color:var(--gray-500);font-size:0.85rem"> (${r.student_email})</span>
               </div>
-              ${starsHTML(r.overall_rating)}
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                <div style="font-weight:600;color:${scoreColor(r.overall_rating)}">Overall: ${r.overall_rating}/5</div>
+                ${starsHTML(r.overall_rating, 'small')}
+              </div>
             </div>
             <div style="font-size:0.85rem;color:var(--gray-500);margin-bottom:8px">
               ${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}
             </div>
-            ${r.feedback_text ? `<div style="padding:8px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.9rem">${r.feedback_text}</div>` : ''}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:8px;background:var(--gray-50);border-radius:var(--radius-sm)">
+              <div style="font-size:0.85rem"><strong>Clarity:</strong> ${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</div>
+              <div style="font-size:0.85rem"><strong>Engagement:</strong> ${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</div>
+              <div style="font-size:0.85rem"><strong>Fairness:</strong> ${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</div>
+              <div style="font-size:0.85rem"><strong>Supportiveness:</strong> ${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</div>
+              <div style="font-size:0.85rem"><strong>Preparation:</strong> ${r.preparation_rating}/5 ${starsHTML(r.preparation_rating, 'small')}</div>
+              <div style="font-size:0.85rem"><strong>Workload:</strong> ${r.workload_rating}/5 ${starsHTML(r.workload_rating, 'small')}</div>
+            </div>
+            ${r.feedback_text ? `<div style="padding:8px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.9rem;margin-top:8px">${r.feedback_text}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -2234,7 +2541,7 @@ async function renderAdminSupport() {
   };
 
   el.innerHTML = `
-    <div class="stats-grid" style="margin-bottom:20px">
+    <div class="stats-grid" style="margin-bottom:20px;gap:24px">
       <div class="stat-card">
         <div class="stat-label">Total Messages</div>
         <div class="stat-value">${stats.total}</div>
@@ -2420,9 +2727,8 @@ async function updateSupportMessage(id) {
 }
 
 async function deleteSupportMessage(id) {
-  if (!confirm('Are you sure you want to delete this support message? This action cannot be undone.')) {
-    return;
-  }
+  const confirmed = await confirmDialog('Are you sure you want to delete this support message? This action cannot be undone.', 'Delete', 'Cancel');
+  if (!confirmed) return;
 
   try {
     await API.delete(`/admin/support/messages/${id}`);

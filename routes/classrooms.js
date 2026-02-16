@@ -1,5 +1,4 @@
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
 const db = require('../database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logAuditEvent } = require('../utils/audit');
@@ -7,7 +6,8 @@ const { logAuditEvent } = require('../utils/audit');
 const router = express.Router();
 
 function generateJoinCode() {
-  return uuidv4().substring(0, 8).toUpperCase();
+  // Generate 8-digit numeric code
+  return String(Math.floor(10000000 + Math.random() * 90000000));
 }
 
 // GET /api/classrooms - list classrooms based on role
