@@ -235,10 +235,48 @@
       el.className = 'success-msg show';
     }
 
-    function startCountdown() {
-      let seconds = 600; // 10 minutes
+    // Persist registration state so refresh stays on step 2
+    function saveRegState() {
+      const state = {
+        formData,
+        codeSentAt: Date.now()
+      };
+      sessionStorage.setItem('edurate_reg', JSON.stringify(state));
+    }
+
+    function clearRegState() {
+      sessionStorage.removeItem('edurate_reg');
+    }
+
+    function showStep2() {
+      document.getElementById('step1').style.display = 'none';
+      document.getElementById('step2').style.display = 'block';
+      document.getElementById('emailDisplay').textContent = formData.email;
+      document.getElementById('dot1').className = 'step-dot done';
+      document.getElementById('dot2').className = 'step-dot active';
+      document.getElementById('line1').className = 'step-line active';
+    }
+
+    function showStep1() {
+      document.getElementById('step1').style.display = 'block';
+      document.getElementById('step2').style.display = 'none';
+      document.getElementById('dot1').className = 'step-dot active';
+      document.getElementById('dot2').className = 'step-dot';
+      document.getElementById('line1').className = 'step-line';
+    }
+
+    function startCountdown(remainingSeconds) {
+      let seconds = remainingSeconds || 600; // 10 minutes
       const el = document.getElementById('countdown');
       clearInterval(countdownInterval);
+      if (seconds <= 0) {
+        el.textContent = 'Expired';
+        document.getElementById('timer').innerHTML = 'Code has <strong style="color:#dc2626">expired</strong>. Please resend.';
+        return;
+      }
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
       countdownInterval = setInterval(() => {
         seconds--;
         const m = Math.floor(seconds / 60);
@@ -272,12 +310,31 @@
       clearMessages();
       clearInterval(countdownInterval);
       clearInterval(resendCooldown);
-      document.getElementById('step1').style.display = 'block';
-      document.getElementById('step2').style.display = 'none';
-      document.getElementById('dot1').className = 'step-dot active';
-      document.getElementById('dot2').className = 'step-dot';
-      document.getElementById('line1').className = 'step-line';
+      clearRegState();
+      showStep1();
     }
+
+    // Restore state on page load (refresh persistence)
+    (function restoreState() {
+      const saved = sessionStorage.getItem('edurate_reg');
+      if (!saved) return;
+      try {
+        const state = JSON.parse(saved);
+        if (!state.formData || !state.formData.email) { clearRegState(); return; }
+        const elapsed = Math.floor((Date.now() - state.codeSentAt) / 1000);
+        const remaining = 600 - elapsed;
+        if (remaining <= 0) { clearRegState(); return; } // code expired, start fresh
+        formData = state.formData;
+        // Restore form fields for potential resend
+        document.getElementById('full_name').value = formData.full_name || '';
+        document.getElementById('email').value = formData.email || '';
+        document.getElementById('password').value = formData.password || '';
+        document.getElementById('grade').value = formData.grade_or_position || '';
+        showStep2();
+        startCountdown(remaining);
+        enableResendAfter(0); // allow resend immediately on refresh
+      } catch { clearRegState(); }
+    })();
 
     // Step 1: Send verification code
     document.getElementById('step1Form').addEventListener('submit', async (e) => {
@@ -311,12 +368,8 @@
         }
 
         // Move to step 2
-        document.getElementById('step1').style.display = 'none';
-        document.getElementById('step2').style.display = 'block';
-        document.getElementById('emailDisplay').textContent = formData.email;
-        document.getElementById('dot1').className = 'step-dot done';
-        document.getElementById('dot2').className = 'step-dot active';
-        document.getElementById('line1').className = 'step-line active';
+        showStep2();
+        saveRegState();
         document.getElementById('code').value = '';
         document.getElementById('code').focus();
         startCountdown();
@@ -363,6 +416,7 @@
         }
 
         clearInterval(countdownInterval);
+        clearRegState();
         localStorage.setItem('edurate_token', data.token);
         localStorage.setItem('edurate_user', JSON.stringify(data.user));
         showSuccess('Account created! Redirecting...');
@@ -395,6 +449,7 @@
         }
 
         showSuccess('New code sent to your email');
+        saveRegState(); // update timestamp
         startCountdown();
         enableResendAfter(30);
         document.getElementById('code').value = '';

@@ -863,7 +863,9 @@ tbody tr:last-child td { border-bottom: none; }
   .content-area { padding: 16px 12px; }
   .top-bar { padding: 12px 16px; }
   .top-bar h2 { font-size: 1.05rem; }
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .review-card .review-ratings { grid-template-columns: 1fr; }
   .modal { max-width: 95vw; margin: 0 8px; }
   .modal-body { padding: 16px; }
@@ -872,8 +874,13 @@ tbody tr:last-child td { border-bottom: none; }
 
   /* Stat cards */
   .stat-card { padding: 16px; }
-  .stat-card .stat-value { font-size: 1.5rem; }
+  .stat-card .stat-value { font-size: 1.5rem; word-break: break-word; }
   .stat-card .stat-label { font-size: 0.72rem; }
+
+  /* Prevent horizontal overflow on main content */
+  .main-content { overflow-x: hidden; }
+  .content-area { overflow-x: hidden; }
+  .content-area > * { max-width: 100%; overflow-x: auto; }
 
   /* Cards */
   .card-header { padding: 16px; }
@@ -911,6 +918,9 @@ tbody tr:last-child td { border-bottom: none; }
   .content-area { padding: 12px 8px; }
   .top-bar { padding: 10px 12px; }
   .top-bar h2 { font-size: 0.95rem; }
+
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: 1fr; }
 
   .stat-card { padding: 12px; }
   .stat-card .stat-value { font-size: 1.3rem; }
@@ -1082,6 +1092,235 @@ tbody tr:last-child td { border-bottom: none; }
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
   .card, .stat-card, .review-card, .classroom-card {
     border-width: 0.5px;
+  }
+}
+
+/* ============ RESPONSIVE RATING GRID ============ */
+.rating-grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.feedback-rating-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.rating-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  min-width: 0;
+}
+
+.rating-item span {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ============ MOBILE PANEL FIXES (student, teacher, school head) ============ */
+@media (max-width: 768px) {
+  /* Review card headers - stack vertically */
+  .review-card .review-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+
+  /* Rating grids inside review cards and feedback - force single column */
+  .review-card .review-ratings {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Student dashboard: recent reviews row items */
+  .content-area [style*="justify-content:space-between"] {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Teacher feedback: rating items in subject cards */
+  .rating-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 4px;
+  }
+
+  .feedback-rating-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Classroom cards: button rows */
+  .classroom-card [style*="display:flex"][style*="gap:8px"] {
+    flex-wrap: wrap;
+  }
+
+  /* Teacher classrooms: join code + buttons row */
+  .classroom-card [style*="justify-content:space-between"] {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* School head analytics heatmap: make scrollable */
+  .content-area table {
+    min-width: 600px;
+  }
+
+  /* Top action bar: stack on mobile */
+  .content-area > div[style*="justify-content:space-between"][style*="margin-bottom"] {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch !important;
+  }
+
+  /* Active period info bar */
+  .card-body[style*="display:flex"][style*="justify-content:space-between"] {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Teacher home: department comparison bar */
+  .card-body[style*="display:flex"][style*="justify-content:space-between"][style*="text-align:right"] {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Rating grids: single column on phones */
+  .rating-grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+
+  .feedback-rating-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Force inline grids to single column on phones */
+  .content-area [style*="grid-template-columns:1fr 1fr"],
+  .content-area [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .content-area [style*="grid-template-columns:repeat(2"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Review card: overall rating display */
+  .review-card [style*="display:flex"][style*="align-items:center"][style*="gap:10px"] {
+    flex-wrap: wrap;
+  }
+
+  /* Stars containers: prevent overflow */
+  .stars, .stars-large {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  /* Inline flex rows in cards: allow wrapping */
+  .card-body [style*="display:flex"][style*="justify-content:space-between"] {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Student review form: overall rating section */
+  .card-body [style*="display:flex"][style*="align-items:center"][style*="gap:16px"] {
+    flex-wrap: wrap;
+  }
+
+  /* Student review form: star rating large display */
+  .fractional-stars {
+    font-size: 2rem !important;
+  }
+
+  /* Teacher feedback: score + stars combined items */
+  .content-area [style*="font-weight:600"][style*="display:flex"][style*="gap:8px"] {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  /* Head teacher cards: subject/rating/reviews row */
+  .card-body > [style*="display:flex"][style*="justify-content:space-between"][style*="margin-bottom:16px"] {
+    flex-direction: column;
+    gap: 8px;
+    text-align: left !important;
+  }
+  .card-body > [style*="display:flex"][style*="justify-content:space-between"][style*="margin-bottom:16px"] > div {
+    text-align: left !important;
+  }
+
+  /* School head home: teacher rankings table */
+  .content-area .table-container table,
+  .content-area .card table {
+    min-width: 500px;
+  }
+
+  /* Fix filter buttons row wrapping */
+  .content-area > div > [style*="display:flex"][style*="gap:8px"] {
+    flex-wrap: wrap;
+  }
+
+  /* Student classrooms: enrolled badge + leave button row */
+  .classroom-card [style*="border-top:1px solid"][style*="display:flex"] {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch !important;
+  }
+  .classroom-card [style*="border-top:1px solid"] .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Student write review: criteria grid force 1 col */
+  .grid-2[style*="margin-bottom:20px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Star rating inputs: bigger touch targets on small phones */
+  .star-rating-input {
+    justify-content: center;
+    gap: 6px !important;
+  }
+
+  /* Teacher analytics info bar */
+  .content-area > [style*="background:var(--primary-light)"] {
+    font-size: 0.85rem;
+  }
+  .content-area > [style*="background:var(--primary-light)"] span {
+    display: block;
+    margin-left: 0 !important;
+    margin-top: 4px;
+  }
+}
+
+@media (max-width: 375px) {
+  /* Extra small phones: even more compact */
+  .content-area [style*="grid-template-columns:repeat(auto-fill,minmax(160px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .content-area [style*="grid-template-columns:repeat(auto-fill,minmax(150px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Stars even smaller */
+  .stars-large .star { font-size: 1.2rem; }
+
+  /* Overall rating value in review form */
+  .content-area [style*="font-size:2rem"][style*="font-weight:700"] {
+    font-size: 1.5rem !important;
+  }
+
+  .content-area [style*="font-size:2.5rem"] {
+    font-size: 1.8rem !important;
+  }
+
+  .content-area [style*="font-size:3rem"] {
+    font-size: 2rem !important;
   }
 }
 

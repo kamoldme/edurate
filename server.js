@@ -1,9 +1,4 @@
 require('dotenv').config();
-console.log('EduRate starting...');
-console.log('Node version:', process.version);
-console.log('Platform:', process.platform, process.arch);
-console.log('RESEND_API_KEY set:', !!process.env.RESEND_API_KEY);
-console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('RESEND') || k.includes('SMTP') || k.includes('JWT')).join(', '));
 
 const express = require('express');
 const helmet = require('helmet');

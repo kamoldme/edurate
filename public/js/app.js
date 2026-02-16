@@ -249,7 +249,7 @@ function ratingText(val) {
 }
 
 function ratingGridHTML(r) {
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+  return `<div class="rating-grid-responsive">
     ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
       const v = r[c.k]; const val = v || 0;
       return `<div style="padding:8px 12px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
@@ -1157,7 +1157,7 @@ async function renderTeacherFeedback() {
                     </div>
                     ${starsHTML(parseFloat(s.avg_overall))}
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
+                  <div class="feedback-rating-grid">
                     <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Clarity${criteriaInfoIcon('Clarity')}</span><span style="font-weight:600;color:${scoreColor(s.avg_clarity)};display:flex;align-items:center;gap:8px">${s.avg_clarity} ${starsHTML(parseFloat(s.avg_clarity))}</span></div>
                     <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Engagement${criteriaInfoIcon('Engagement')}</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)};display:flex;align-items:center;gap:8px">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
                     <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Fairness${criteriaInfoIcon('Fairness')}</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)};display:flex;align-items:center;gap:8px">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
