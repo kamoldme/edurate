@@ -219,18 +219,21 @@ function navigateTo(view) {
 // ============ UTILITIES ============
 function starsHTML(rating, size = 'normal') {
   if (rating === null || rating === undefined) return '<span style="color:var(--gray-400)">-</span>';
-  const sizeClass = size === 'large' ? 'stars-large' : size === 'small' ? 'stars-small' : '';
   const numRating = parseFloat(rating);
+  if (isNaN(numRating) || numRating <= 0) return '<span style="color:var(--gray-400)">-</span>';
+  const sizeClass = size === 'large' ? 'stars-large' : size === 'small' ? 'stars-small' : '';
+  const starSize = size === 'large' ? 'font-size:1.4rem' : size === 'small' ? 'font-size:0.85rem' : 'font-size:1.1rem';
   const fullStars = Math.floor(numRating);
   const fractional = numRating - fullStars;
-  const emptyStars = 5 - Math.ceil(numRating);
-  const starSize = size === 'large' ? 'font-size:1.4rem' : size === 'small' ? 'font-size:0.85rem' : 'font-size:1.1rem';
+  const showPartial = fractional >= 0.05;
+  const filledCount = fullStars + (showPartial ? 1 : 0);
+  const emptyStars = 5 - filledCount;
 
   let html = `<div class="stars ${sizeClass}" style="display:inline-flex;align-items:center;gap:1px;${starSize}">`;
   for (let i = 0; i < fullStars; i++) {
     html += '<span style="color:#fbbf24">\u2605</span>';
   }
-  if (fractional > 0.05) {
+  if (showPartial) {
     const pct = (fractional * 100).toFixed(0);
     html += `<span style="position:relative;display:inline-block"><span style="color:#e5e7eb">\u2605</span><span style="position:absolute;left:0;top:0;overflow:hidden;width:${pct}%;color:#fbbf24">\u2605</span></span>`;
   }
@@ -856,18 +859,14 @@ async function viewTeacherProfile(teacherId) {
 
           <div>
             <h3>Recent Feedback</h3>
-            <div style="max-height:400px;overflow-y:auto">
+            <div style="max-height:300px;overflow-y:auto">
               ${data.reviews.slice(0, 10).map(r => `
-                <div style="padding:14px;margin-bottom:12px;background:var(--gray-50);border-radius:8px">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                    <div style="display:flex;align-items:center;gap:8px">
-                      <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
-                      ${starsHTML(r.overall_rating)}
-                    </div>
-                    <span style="font-size:0.78rem;color:var(--gray-400)">${new Date(r.created_at).toLocaleDateString()}</span>
+                <div style="padding:12px;margin-bottom:12px;background:var(--gray-50);border-radius:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    ${starsHTML(r.overall_rating)}
+                    <span style="font-size:0.85rem;color:var(--gray-500)">${new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
-                  ${ratingGridHTML(r)}
-                  ${r.feedback_text ? `<p style="margin:10px 0 0;color:var(--gray-700)">${r.feedback_text}</p>` : '<p style="margin:10px 0 0;color:var(--gray-400);font-style:italic">No written feedback</p>'}
+                  ${r.feedback_text ? `<p style="margin:0;color:var(--gray-700)">${r.feedback_text}</p>` : '<p style="margin:0;color:var(--gray-400);font-style:italic">No written feedback</p>'}
                   ${r.tags && r.tags !== '[]' ? `
                     <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
                       ${JSON.parse(r.tags).map(tag => `<span class="badge badge-pending">${tag}</span>`).join('')}
