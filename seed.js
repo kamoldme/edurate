@@ -24,22 +24,22 @@ const insertUser = db.prepare(`
 `);
 
 // Admin & School Head
-const adminId = insertUser.run('Sarah Admin', 'admin@edurate.edu', hash('Admin@123'), 'admin', 'System Administrator').lastInsertRowid;
-const headId = insertUser.run('Dr. Michael Roberts', 'head@edurate.edu', hash('Head@123'), 'school_head', 'School Head').lastInsertRowid;
+const adminId = insertUser.run('Sarah Admin', 'admin@edurate.school.edu', hash('Admin@123'), 'admin', 'System Administrator').lastInsertRowid;
+const headId = insertUser.run('Dr. Michael Roberts', 'head@edurate.school.edu', hash('Head@123'), 'school_head', 'School Head').lastInsertRowid;
 
 // Teachers (6 departments: English, Non-English, Humanities, Science, Math, Arts)
-const t1UserId = insertUser.run('Mr. James Smith', 'smith@edurate.edu', hash('Teacher@123'), 'teacher', 'Math Teacher').lastInsertRowid;
-const t2UserId = insertUser.run('Ms. Emily Chen', 'chen@edurate.edu', hash('Teacher@123'), 'teacher', 'English Teacher').lastInsertRowid;
-const t3UserId = insertUser.run('Dr. Sarah Martinez', 'martinez@edurate.edu', hash('Teacher@123'), 'teacher', 'Science Teacher').lastInsertRowid;
-const t4UserId = insertUser.run('Mr. David Kim', 'kim@edurate.edu', hash('Teacher@123'), 'teacher', 'History Teacher').lastInsertRowid;
-const t5UserId = insertUser.run('Ms. Aisha Karimova', 'karimova@edurate.edu', hash('Teacher@123'), 'teacher', 'Russian Teacher').lastInsertRowid;
-const t6UserId = insertUser.run('Prof. Robert Taylor', 'taylor@edurate.edu', hash('Teacher@123'), 'teacher', 'Arts Teacher').lastInsertRowid;
+const t1UserId = insertUser.run('Mr. James Smith', 'smith@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Math Teacher').lastInsertRowid;
+const t2UserId = insertUser.run('Ms. Emily Chen', 'chen@edurate.school.edu', hash('Teacher@123'), 'teacher', 'English Teacher').lastInsertRowid;
+const t3UserId = insertUser.run('Dr. Sarah Martinez', 'martinez@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Science Teacher').lastInsertRowid;
+const t4UserId = insertUser.run('Mr. David Kim', 'kim@edurate.school.edu', hash('Teacher@123'), 'teacher', 'History Teacher').lastInsertRowid;
+const t5UserId = insertUser.run('Ms. Aisha Karimova', 'karimova@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Russian Teacher').lastInsertRowid;
+const t6UserId = insertUser.run('Prof. Robert Taylor', 'taylor@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Arts Teacher').lastInsertRowid;
 
 // Students (4 students — enough to test with 3-4 per classroom)
-const aliceId = insertUser.run('Alice Johnson', 'alice@edurate.edu', hash('Student@123'), 'student', 'Grade 10').lastInsertRowid;
-const bobId = insertUser.run('Bob Williams', 'bob@edurate.edu', hash('Student@123'), 'student', 'Grade 10').lastInsertRowid;
-const carolId = insertUser.run('Carol Davis', 'carol@edurate.edu', hash('Student@123'), 'student', 'Grade 10').lastInsertRowid;
-const davidId = insertUser.run('David Brown', 'david@edurate.edu', hash('Student@123'), 'student', 'Grade 11').lastInsertRowid;
+const aliceId = insertUser.run('Alice Johnson', 'alice@edurate.school.edu', hash('Student@123'), 'student', 'Grade 10').lastInsertRowid;
+const bobId = insertUser.run('Bob Williams', 'bob@edurate.school.edu', hash('Student@123'), 'student', 'Grade 10').lastInsertRowid;
+const carolId = insertUser.run('Carol Davis', 'carol@edurate.school.edu', hash('Student@123'), 'student', 'Grade 10').lastInsertRowid;
+const davidId = insertUser.run('David Brown', 'david@edurate.school.edu', hash('Student@123'), 'student', 'Grade 11').lastInsertRowid;
 
 console.log('Users created (1 admin, 1 school head, 6 teachers, 4 students)');
 
@@ -368,18 +368,18 @@ classrooms.forEach(c => {
 console.log('');
 console.log('  Login Credentials:');
 console.log('  ──────────────────────────────────────────');
-console.log('  Admin:       admin@edurate.edu    / Admin@123');
-console.log('  School Head: head@edurate.edu     / Head@123');
-console.log('  Teacher 1:   smith@edurate.edu    / Teacher@123  (Math)');
-console.log('  Teacher 2:   chen@edurate.edu     / Teacher@123  (English)');
-console.log('  Teacher 3:   martinez@edurate.edu / Teacher@123  (Science)');
-console.log('  Teacher 4:   kim@edurate.edu      / Teacher@123  (Humanities)');
-console.log('  Teacher 5:   karimova@edurate.edu / Teacher@123  (Non-English)');
-console.log('  Teacher 6:   taylor@edurate.edu   / Teacher@123  (Arts)');
-console.log('  Student 1:   alice@edurate.edu    / Student@123');
-console.log('  Student 2:   bob@edurate.edu      / Student@123');
-console.log('  Student 3:   carol@edurate.edu    / Student@123');
-console.log('  Student 4:   david@edurate.edu    / Student@123');
+console.log('  Admin:       admin@edurate.school.edu    / Admin@123');
+console.log('  School Head: head@edurate.school.edu     / Head@123');
+console.log('  Teacher 1:   smith@edurate.school.edu    / Teacher@123  (Math)');
+console.log('  Teacher 2:   chen@edurate.school.edu     / Teacher@123  (English)');
+console.log('  Teacher 3:   martinez@edurate.school.edu / Teacher@123  (Science)');
+console.log('  Teacher 4:   kim@edurate.school.edu      / Teacher@123  (Humanities)');
+console.log('  Teacher 5:   karimova@edurate.school.edu / Teacher@123  (Non-English)');
+console.log('  Teacher 6:   taylor@edurate.school.edu   / Teacher@123  (Arts)');
+console.log('  Student 1:   alice@edurate.school.edu    / Student@123');
+console.log('  Student 2:   bob@edurate.school.edu      / Student@123');
+console.log('  Student 3:   carol@edurate.school.edu    / Student@123');
+console.log('  Student 4:   david@edurate.school.edu    / Student@123');
 console.log('  ──────────────────────────────────────────\n');
 
 process.exit(0);
