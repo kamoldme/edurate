@@ -37,6 +37,9 @@ const teacherRoutes = require('./routes/teachers');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy when behind reverse proxy (Railway, Heroku, etc.)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -64,13 +67,15 @@ const apiLimiter = rateLimit({
   max: 200,
   message: { error: 'Too many requests. Please try again later.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  message: { error: 'Too many login attempts. Please try again later.' }
+  message: { error: 'Too many login attempts. Please try again later.' },
+  validate: { xForwardedForHeader: false }
 });
 
 app.use('/api/', apiLimiter);

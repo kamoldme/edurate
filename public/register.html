@@ -59,6 +59,43 @@
     .links a { color: #2563eb; text-decoration: none; font-weight: 500; }
     .links a:hover { text-decoration: underline; }
     .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+
+    /* Tablet */
+    @media (max-width: 768px) {
+      body { padding: 16px; }
+      .card { padding: 28px 24px; }
+      .btn { min-height: 48px; }
+      .form-group input, .form-group select { min-height: 48px; font-size: 16px !important; }
+    }
+
+    /* Mobile phones */
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .register-container { max-width: 100%; }
+      .card { padding: 24px 18px; border-radius: 14px; }
+      .card h2 { font-size: 1.2rem; }
+      .card p.subtitle { font-size: 0.82rem; margin-bottom: 20px; }
+      .logo h1 { font-size: 2rem; }
+      .logo p { font-size: 0.82rem; }
+      .links { font-size: 0.8rem; }
+      .form-group { margin-bottom: 14px; }
+      .hint { font-size: 0.7rem; }
+    }
+
+    /* Small phones */
+    @media (max-width: 375px) {
+      .card { padding: 20px 16px; }
+      .logo h1 { font-size: 1.75rem; }
+      .form-group input, .form-group select { padding: 10px 14px; }
+    }
+
+    /* Safe area for notched phones */
+    @supports (padding: env(safe-area-inset-bottom)) {
+      body {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+        padding-top: calc(20px + env(safe-area-inset-top));
+      }
+    }
   </style>
 </head>
 <body>

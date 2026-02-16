@@ -837,22 +837,258 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* ============ RESPONSIVE ============ */
-@media (min-width: 768px) {
-  .modal { max-width: 700px; }
-}
 
+/* Tablet landscape */
 @media (max-width: 1024px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .content-area { padding: 24px 20px; }
+  .top-bar { padding: 14px 20px; }
 }
 
+/* Tablet portrait / small tablet */
 @media (max-width: 768px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main-content { margin-left: 0; }
   .mobile-toggle { display: block; }
-  .content-area { padding: 20px 16px; }
+  .content-area { padding: 16px 12px; }
   .top-bar { padding: 12px 16px; }
+  .top-bar h2 { font-size: 1.05rem; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .review-card .review-ratings { grid-template-columns: 1fr; }
+  .modal { max-width: 95vw; margin: 0 8px; }
+  .modal-body { padding: 16px; }
+  .modal-header { padding: 16px; }
+  .modal-footer { padding: 12px 16px; }
+
+  /* Stat cards */
+  .stat-card { padding: 16px; }
+  .stat-card .stat-value { font-size: 1.5rem; }
+  .stat-card .stat-label { font-size: 0.72rem; }
+
+  /* Cards */
+  .card-header { padding: 16px; }
+  .card-body { padding: 16px; }
+
+  /* Tables scroll horizontally */
+  .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 600px; }
+  thead th { padding: 10px 12px; font-size: 0.7rem; }
+  tbody td { padding: 10px 12px; font-size: 0.8rem; }
+
+  /* Buttons */
+  .btn { padding: 8px 16px; font-size: 0.8rem; }
+  .btn-sm { padding: 5px 10px; font-size: 0.72rem; }
+  .btn-lg { padding: 12px 20px; font-size: 0.9rem; }
+
+  /* Stars */
+  .stars-large .star { font-size: 1.6rem; }
+  .star-rating-large .star-btn { font-size: 2.2rem; }
+
+  /* Classroom cards */
+  .classroom-card { padding: 16px; }
+  .classroom-card .class-subject { font-size: 0.95rem; }
+
+  /* Toast */
+  .toast-container { left: 12px; right: 12px; top: 12px; }
+  .toast { max-width: 100%; }
+
+  /* Chart containers */
+  .chart-container { height: 220px; }
+}
+
+/* Mobile phones */
+@media (max-width: 480px) {
+  .content-area { padding: 12px 8px; }
+  .top-bar { padding: 10px 12px; }
+  .top-bar h2 { font-size: 0.95rem; }
+
+  .stat-card { padding: 12px; }
+  .stat-card .stat-value { font-size: 1.3rem; }
+
+  .card-header { padding: 12px; }
+  .card-header h3 { font-size: 0.9rem; }
+  .card-body { padding: 12px; }
+
+  .grid { gap: 12px; }
+
+  /* Review cards compact */
+  .review-card { padding: 12px; margin-bottom: 10px; }
+  .review-card .review-text { padding: 10px 12px; font-size: 0.82rem; }
+
+  /* Tags */
+  .tag { padding: 4px 10px; font-size: 0.72rem; }
+  .tag-container { gap: 6px; }
+
+  /* Forms */
+  .form-control { padding: 8px 12px; font-size: 0.85rem; }
+
+  /* Modal full width */
+  .modal { max-width: 100vw; border-radius: 12px 12px 0 0; margin: 0; }
+  .modal-overlay { align-items: flex-end; }
+
+  /* Stars smaller on mobile */
+  .stars .star { font-size: 1rem; }
+  .stars { gap: 2px; margin: 0 4px; }
+  .star-rating-input .star-btn { font-size: 1.5rem; }
+  .star-rating-large .star-btn { font-size: 2rem; }
+
+  /* Progress bars */
+  .progress-bar { height: 6px; }
+
+  /* Badges */
+  .badge { font-size: 0.62rem; padding: 2px 8px; }
+
+  /* Sidebar - full width when open */
+  .sidebar { width: 100%; }
+
+  /* Hide long text */
+  .user-details .email { display: none; }
+}
+
+/* Mobile sidebar overlay */
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 99;
+    display: none;
+  }
+  .sidebar-backdrop.active { display: block; }
+}
+
+/* ============ SMALL MOBILE (iPhone SE, Galaxy S8, etc. ≤375px) ============ */
+@media (max-width: 375px) {
+  .content-area { padding: 10px 6px; }
+  .top-bar { padding: 8px 10px; }
+  .top-bar h2 { font-size: 0.88rem; }
+
+  .stat-card { padding: 10px; }
+  .stat-card .stat-value { font-size: 1.15rem; }
+  .stat-card .stat-label { font-size: 0.68rem; }
+
+  .card-header { padding: 10px; }
+  .card-header h3 { font-size: 0.85rem; }
+  .card-body { padding: 10px; }
+
+  .grid { gap: 10px; }
+  .stats-grid { gap: 8px; }
+
+  .review-card { padding: 10px; }
+  .review-card .review-text { padding: 8px 10px; font-size: 0.78rem; }
+
+  .btn { padding: 7px 12px; font-size: 0.75rem; }
+  .btn-sm { padding: 4px 8px; font-size: 0.68rem; }
+
+  .form-control { padding: 7px 10px; font-size: 0.82rem; }
+
+  .stars .star { font-size: 0.9rem; }
+  .star-rating-input .star-btn { font-size: 1.3rem; }
+  .star-rating-large .star-btn { font-size: 1.6rem; }
+
+  .tag { padding: 3px 8px; font-size: 0.68rem; }
+  .badge { font-size: 0.58rem; padding: 2px 6px; }
+
+  .sidebar-header { padding: 16px 12px; }
+  .sidebar-header h1 { font-size: 1.25rem; }
+  .sidebar-nav { padding: 10px 8px; }
+  .nav-item { padding: 8px 10px; font-size: 0.8rem; gap: 8px; }
+  .nav-item svg { width: 18px; height: 18px; }
+
+  .chart-container { height: 180px; }
+  .modal-body { padding: 12px; }
+  .modal-header { padding: 12px; }
+  .modal-footer { padding: 10px 12px; }
+}
+
+/* ============ TOUCH OPTIMIZATION (all mobile) ============ */
+@media (max-width: 768px) {
+  /* Ensure minimum 44px touch targets (Apple HIG / Material Design) */
+  .btn { min-height: 44px; }
+  .nav-item { min-height: 44px; }
+  .tag { min-height: 36px; }
+  .form-control { min-height: 44px; }
+  .star-rating-input .star-btn { min-width: 44px; min-height: 44px; }
+
+  /* Prevent zoom on input focus (iOS Safari) */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Smooth scrolling */
+  .content-area { -webkit-overflow-scrolling: touch; }
+  .sidebar-nav { -webkit-overflow-scrolling: touch; }
+
+  /* Prevent text selection on UI elements */
+  .nav-item, .btn, .tag, .badge { -webkit-user-select: none; user-select: none; }
+
+  /* Full-width buttons on mobile for easier tapping */
+  .top-bar-actions .btn { padding: 8px 12px; }
+
+  /* Better mobile table handling */
+  .table-container { margin: 0 -12px; padding: 0 12px; }
+}
+
+/* ============ LANDSCAPE MOBILE ============ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sidebar { width: 200px; }
+  .sidebar-header { padding: 12px; }
+  .sidebar-header h1 { font-size: 1.2rem; }
+  .sidebar-nav { padding: 8px; }
+  .nav-item { padding: 6px 10px; min-height: 36px; font-size: 0.8rem; }
+  .sidebar-footer { padding: 8px; }
+  .user-avatar { width: 28px; height: 28px; font-size: 0.6rem; }
+
+  .top-bar { padding: 8px 16px; position: relative; }
+  .content-area { padding: 12px 16px; }
+  .stat-card { padding: 12px; }
+  .stat-card .stat-value { font-size: 1.2rem; }
+  .modal { max-height: 95vh; }
+  .modal-overlay { align-items: center; }
+  .modal { border-radius: var(--radius-lg); }
+}
+
+/* ============ SAFE AREA FOR NOTCHED PHONES (iPhone X+, Android punch-hole) ============ */
+@supports (padding: env(safe-area-inset-bottom)) {
+  @media (max-width: 768px) {
+    .sidebar-footer { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+    .modal { padding-bottom: env(safe-area-inset-bottom); }
+    .toast-container {
+      top: calc(12px + env(safe-area-inset-top));
+      right: calc(12px + env(safe-area-inset-right));
+      left: calc(12px + env(safe-area-inset-left));
+    }
+    .top-bar {
+      padding-top: calc(12px + env(safe-area-inset-top));
+    }
+    .sidebar {
+      padding-top: env(safe-area-inset-top);
+    }
+    .content-area {
+      padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* ============ HIGH-DPI DISPLAY ADJUSTMENTS ============ */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .card, .stat-card, .review-card, .classroom-card {
+    border-width: 0.5px;
+  }
+}
+
+/* ============ DARK MODE PREFERENCE (respects system setting) ============ */
+@media (prefers-color-scheme: dark) {
+  /* Placeholder: add dark mode variables here if needed */
+}
+
+/* ============ REDUCED MOTION (accessibility) ============ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .sidebar { transition: none; }
+  .modal { transition: none; }
+  .toast { animation: none; }
 }

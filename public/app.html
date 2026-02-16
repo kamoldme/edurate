@@ -38,7 +38,7 @@
     <main class="main-content">
       <header class="top-bar">
         <div style="display:flex;align-items:center;gap:12px;">
-          <button class="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
+          <button class="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarBackdrop').classList.toggle('active')">&#9776;</button>
           <h2 id="pageTitle">Dashboard</h2>
         </div>
         <div class="top-bar-actions" id="topBarActions"></div>
@@ -48,6 +48,9 @@
       </div>
     </main>
   </div>
+
+  <!-- Sidebar backdrop (mobile) -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('active');"></div>
 
   <!-- Toast container -->
   <div class="toast-container" id="toastContainer"></div>

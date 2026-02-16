@@ -189,14 +189,66 @@
       border-top: 1px solid rgba(255,255,255,0.1);
     }
 
+    /* Tablet */
     @media (max-width: 768px) {
       .hero h2 { font-size: 2.5rem; }
       .hero p { font-size: 1rem; }
       .hero-buttons { flex-direction: column; align-items: center; }
-      .hero-buttons .btn { width: 100%; max-width: 280px; }
+      .hero-buttons .btn { width: 100%; max-width: 280px; min-height: 48px; display: flex; align-items: center; justify-content: center; }
       .features { grid-template-columns: 1fr; }
       .nav-links { gap: 8px; }
-      .btn { padding: 8px 16px; font-size: 0.85rem; }
+      .btn { padding: 8px 16px; font-size: 0.85rem; min-height: 44px; }
+      .container { padding: 0 16px; }
+      main { padding: 24px 0; }
+      .hero { margin-bottom: 40px; }
+      .hero-logo img { width: 72px; height: 72px; }
+      .feature { padding: 20px; }
+    }
+
+    /* Mobile phones */
+    @media (max-width: 480px) {
+      nav { padding: 16px 0; }
+      .logo h1 { font-size: 1.25rem; }
+      .logo img { width: 28px; height: 28px; }
+      .hero h2 { font-size: 2rem; letter-spacing: -1px; }
+      .hero p { font-size: 0.9rem; margin-bottom: 24px; }
+      .hero-logo img { width: 60px; height: 60px; }
+      .hero-buttons .btn { padding: 14px 24px; font-size: 0.95rem; max-width: 100%; }
+      .container { padding: 0 12px; }
+      .feature { padding: 16px; }
+      .feature h3 { font-size: 1rem; }
+      .feature p { font-size: 0.85rem; }
+      .feature-icon { font-size: 1.6rem; }
+      footer { padding: 16px; font-size: 0.78rem; }
+    }
+
+    /* Small phones (iPhone SE, Galaxy S8) */
+    @media (max-width: 375px) {
+      .hero h2 { font-size: 1.75rem; }
+      .hero p { font-size: 0.85rem; }
+      .logo h1 { font-size: 1.15rem; }
+      .btn { padding: 7px 12px; font-size: 0.8rem; }
+      .hero-buttons .btn { padding: 12px 20px; font-size: 0.9rem; }
+    }
+
+    /* Landscape mobile */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .hero { margin-bottom: 24px; }
+      .hero-logo img { width: 48px; height: 48px; }
+      .hero h2 { font-size: 2rem; margin-bottom: 8px; }
+      .hero p { margin-bottom: 16px; }
+      main { padding: 16px 0; }
+      .features { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    }
+
+    /* Safe area for notched phones */
+    @supports (padding: env(safe-area-inset-top)) {
+      body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    }
+
+    /* Prevent iOS zoom on input focus */
+    @media (max-width: 768px) {
+      input, select, textarea { font-size: 16px !important; }
     }
   </style>
 </head>
