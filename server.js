@@ -1,3 +1,4 @@
+require('dotenv').config();
 console.log('EduRate starting...');
 console.log('Node version:', process.version);
 console.log('Platform:', process.platform, process.arch);
