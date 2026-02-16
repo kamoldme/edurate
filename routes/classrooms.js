@@ -235,4 +235,44 @@ router.get('/:id/members', authenticate, authorize('teacher', 'admin', 'school_h
   }
 });
 
+// DELETE /api/classrooms/:id/members/:studentId - remove student from classroom (teacher/admin)
+router.delete('/:id/members/:studentId', authenticate, authorize('teacher', 'admin'), (req, res) => {
+  try {
+    const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
+    if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    if (req.user.role === 'teacher') {
+      const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(req.user.id);
+      if (!teacher || classroom.teacher_id !== teacher.id) {
+        return res.status(403).json({ error: 'Not your classroom' });
+      }
+    }
+
+    const result = db.prepare(
+      'DELETE FROM classroom_members WHERE classroom_id = ? AND student_id = ?'
+    ).run(req.params.id, req.params.studentId);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Student is not a member of this classroom' });
+    }
+
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'member_remove',
+      actionDescription: `Removed student ${req.params.studentId} from classroom ${classroom.subject}`,
+      targetType: 'classroom_member',
+      targetId: req.params.id,
+      metadata: { classroom_id: req.params.id, student_id: req.params.studentId },
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Student removed from classroom' });
+  } catch (err) {
+    console.error('Remove member error:', err);
+    res.status(500).json({ error: 'Failed to remove student' });
+  }
+});
+
 module.exports = router;

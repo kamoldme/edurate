@@ -32,14 +32,14 @@ function getTeacherScores(teacherId, options = {}) {
   const result = db.prepare(`
     SELECT
       COUNT(*) as review_count,
-      ROUND(AVG(r.overall_rating), 2) as avg_overall,
       ROUND(AVG(r.clarity_rating), 2) as avg_clarity,
       ROUND(AVG(r.engagement_rating), 2) as avg_engagement,
       ROUND(AVG(r.fairness_rating), 2) as avg_fairness,
       ROUND(AVG(r.supportiveness_rating), 2) as avg_supportiveness,
       ROUND(AVG(r.preparation_rating), 2) as avg_preparation,
       ROUND(AVG(r.workload_rating), 2) as avg_workload,
-      ROUND(AVG(r.overall_rating), 2) as final_score
+      ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) + AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as avg_overall,
+      ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) + AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as final_score
     FROM reviews r
     ${where}
   `).get(...params);
@@ -73,7 +73,7 @@ function getRatingDistribution(teacherId, options = {}) {
 function getTeacherTrend(teacherId, termId) {
   const periods = db.prepare(`
     SELECT fp.id, fp.name,
-      ROUND(AVG(r.overall_rating), 2) as score,
+      ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) + AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as score,
       COUNT(r.id) as review_count
     FROM feedback_periods fp
     LEFT JOIN reviews r ON r.feedback_period_id = fp.id
@@ -97,7 +97,7 @@ function getTeacherTrend(teacherId, termId) {
 function getDepartmentAverage(department, termId) {
   const result = db.prepare(`
     SELECT
-      ROUND(AVG(r.overall_rating), 2) as avg_score
+      ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) + AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as avg_score
     FROM reviews r
     JOIN teachers t ON r.teacher_id = t.id
     WHERE t.department = ? AND r.approved_status = 1

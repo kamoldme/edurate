@@ -147,6 +147,12 @@ function navigateTo(view) {
     el.classList.toggle('active', el.dataset.view === view);
   });
 
+  // Close mobile sidebar on navigation
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (sidebar) sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('active');
+
   const content = document.getElementById('contentArea');
   content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
@@ -214,9 +220,22 @@ function navigateTo(view) {
 function starsHTML(rating, size = 'normal') {
   if (rating === null || rating === undefined) return '<span style="color:var(--gray-400)">-</span>';
   const sizeClass = size === 'large' ? 'stars-large' : size === 'small' ? 'stars-small' : '';
-  let html = `<div class="stars ${sizeClass}">`;
-  for (let i = 1; i <= 5; i++) {
-    html += `<span class="star ${i <= Math.round(rating) ? 'filled' : ''}">${i <= Math.round(rating) ? '\u2605' : '\u2606'}</span>`;
+  const numRating = parseFloat(rating);
+  const fullStars = Math.floor(numRating);
+  const fractional = numRating - fullStars;
+  const emptyStars = 5 - Math.ceil(numRating);
+  const starSize = size === 'large' ? 'font-size:1.4rem' : size === 'small' ? 'font-size:0.85rem' : 'font-size:1.1rem';
+
+  let html = `<div class="stars ${sizeClass}" style="display:inline-flex;align-items:center;gap:1px;${starSize}">`;
+  for (let i = 0; i < fullStars; i++) {
+    html += '<span style="color:#fbbf24">\u2605</span>';
+  }
+  if (fractional > 0.05) {
+    const pct = (fractional * 100).toFixed(0);
+    html += `<span style="position:relative;display:inline-block"><span style="color:#e5e7eb">\u2605</span><span style="position:absolute;left:0;top:0;overflow:hidden;width:${pct}%;color:#fbbf24">\u2605</span></span>`;
+  }
+  for (let i = 0; i < emptyStars; i++) {
+    html += '<span style="color:#e5e7eb">\u2605</span>';
   }
   html += '</div>';
   return html;
@@ -513,10 +532,17 @@ async function renderStudentReview() {
                 <div style="margin-top:8px;color:#0369a1;font-size:0.85rem;font-style:italic">Rate all 6 criteria below to see your overall rating</div>
               </div>
               <div class="grid grid-2" style="margin-bottom:20px">
-                ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'].map(cat => `
+                ${[
+                  {name:'Clarity', tip:'How clearly does the teacher explain concepts and lessons?'},
+                  {name:'Engagement', tip:'How well does the teacher keep students interested and involved?'},
+                  {name:'Fairness', tip:'How fair is the teacher in grading, rules, and treating students?'},
+                  {name:'Supportiveness', tip:'How approachable and helpful is the teacher when you need support?'},
+                  {name:'Preparation', tip:'How well-prepared is the teacher for each class session?'},
+                  {name:'Workload', tip:'How reasonable and manageable is the workload assigned?'}
+                ].map(cat => `
                   <div class="form-group" style="margin-bottom:12px">
-                    <label>${cat} Rating</label>
-                    <div class="star-rating-input" data-name="${cat.toLowerCase()}_rating" data-form="review-${t.teacher_id}">
+                    <label style="display:flex;align-items:center;gap:6px">${cat.name} Rating <span class="info-tooltip" title="${cat.tip}" style="cursor:help;color:var(--primary);font-size:0.85rem;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--primary);font-weight:700;font-style:normal;line-height:1">i</span></label>
+                    <div class="star-rating-input" data-name="${cat.name.toLowerCase()}_rating" data-form="review-${t.teacher_id}">
                       ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn" data-value="${i}" onclick="setRating(this)">\u2606</button>`).join('')}
                     </div>
                   </div>
@@ -783,7 +809,7 @@ async function viewTeacherProfile(teacherId) {
 
             <div style="margin-top:20px">
               <h4>Category Ratings</h4>
-              ${['clarity', 'engagement', 'fairness', 'supportiveness'].map(cat => `
+              ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
                   <span style="font-weight:500;text-transform:capitalize">${cat}</span>
                   <div style="display:flex;align-items:center;gap:8px">
@@ -860,12 +886,12 @@ async function renderTeacherHome() {
       <div class="card">
         <div class="card-header"><h3>Rating Breakdown</h3></div>
         <div class="card-body">
-          ${['clarity', 'engagement', 'fairness', 'supportiveness'].map(cat => `
+          ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
               <span style="font-weight:500;text-transform:capitalize">${cat}</span>
               <div style="display:flex;align-items:center;gap:8px">
                 ${starsHTML(s[`avg_${cat}`] || 0)}
-                <span style="font-weight:600;color:${scoreColor(s[`avg_${cat}`] || 0)}">${s[`avg_${cat}`] || '-'}</span>
+                <span style="font-weight:600;color:${scoreColor(s[`avg_${cat}`] || 0)}">${fmtScore(s[`avg_${cat}`])}</span>
               </div>
             </div>
           `).join('')}
@@ -2085,22 +2111,23 @@ async function viewClassroomMembers(classroomId, subject) {
     const members = await API.get(`/classrooms/${classroomId}/members`);
     openModal(`
       <div class="modal-header"><h3>Members: ${subject}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
-      <div class="modal-body">
+      <div class="modal-body" style="min-width:0">
         ${members.length === 0
           ? '<p style="color:var(--gray-500)">No students enrolled yet.</p>'
-          : `<table>
-              <thead><tr><th>Name</th><th>Email</th><th>Grade/Position</th><th>Joined</th></tr></thead>
+          : `<div style="overflow-x:auto"><table style="width:100%">
+              <thead><tr><th>Name</th><th>Email</th><th>Grade/Position</th><th>Joined</th><th style="width:80px">Action</th></tr></thead>
               <tbody>
                 ${members.map(m => `
-                  <tr>
+                  <tr id="member-row-${m.student_id}">
                     <td><strong>${m.full_name}</strong></td>
                     <td>${m.email}</td>
                     <td>${m.grade_or_position || '-'}</td>
                     <td>${m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '-'}</td>
+                    <td><button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem" onclick="removeStudentFromClassroom(${classroomId}, ${m.student_id}, '${m.full_name.replace(/'/g, "\\'")}', '${subject.replace(/'/g, "\\'")}')">Remove</button></td>
                   </tr>
                 `).join('')}
               </tbody>
-            </table>`
+            </table></div>`
         }
         <p style="margin-top:12px;color:var(--gray-500);font-size:0.85rem">${members.length} student(s) enrolled</p>
       </div>
@@ -2109,6 +2136,16 @@ async function viewClassroomMembers(classroomId, subject) {
       </div>
     `);
   } catch (err) { toast('Failed to load members: ' + err.message, 'error'); }
+}
+
+async function removeStudentFromClassroom(classroomId, studentId, studentName, subject) {
+  const confirmed = await confirmDialog(`Remove <strong>${studentName}</strong> from <strong>${subject}</strong>?`, 'Remove', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.delete(`/classrooms/${classroomId}/members/${studentId}`);
+    toast(`${studentName} removed from classroom`);
+    viewClassroomMembers(classroomId, subject);
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 async function renderAdminModerate() {
@@ -2130,18 +2167,25 @@ async function renderAdminModerate() {
                 <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}</span></div>
                 <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
               </div>
-              ${badgeHTML(r.flagged_status)}
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                ${badgeHTML(r.flagged_status)}
+                <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+              </div>
             </div>
-            <div class="review-ratings" style="margin-bottom:12px">
-              <div class="rating-item"><span>Overall</span> ${starsHTML(r.overall_rating)}</div>
-              <div class="rating-item"><span>Clarity</span><span>${r.clarity_rating}/5</span></div>
-              <div class="rating-item"><span>Engagement</span><span>${r.engagement_rating}/5</span></div>
-              <div class="rating-item"><span>Fairness</span><span>${r.fairness_rating}/5</span></div>
-              <div class="rating-item"><span>Supportiveness</span><span>${r.supportiveness_rating}/5</span></div>
-              <div class="rating-item"><span>Preparation</span><span>${ratingText(r.preparation_rating)}</span></div>
-              <div class="rating-item"><span>Workload</span><span>${ratingText(r.workload_rating)}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+              <div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
+                <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
+              </div>
+              ${[{k:'clarity_rating',l:'Clarity'},{k:'engagement_rating',l:'Engagement'},{k:'fairness_rating',l:'Fairness'},{k:'supportiveness_rating',l:'Support'},{k:'preparation_rating',l:'Preparation'},{k:'workload_rating',l:'Workload'}].map(c => {
+                const v = r[c.k]; const val = v || 0;
+                return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:0.85rem;color:var(--gray-600)">${c.l}</span>
+                  <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
+                </div>`;
+              }).join('')}
             </div>
-            ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : '<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic">No written feedback</p>'}
+            ${r.feedback_text ? `<div class="review-text" style="margin-bottom:12px">${r.feedback_text}</div>` : '<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic;margin-bottom:12px">No written feedback</p>'}
             ${JSON.parse(r.tags || '[]').length > 0 ? `
               <div class="review-tags" style="margin-bottom:16px">
                 ${JSON.parse(r.tags).map(t => `<span class="tag">${t}</span>`).join('')}
@@ -2176,18 +2220,25 @@ async function renderAdminFlagged() {
                 <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} &middot; ${r.period_name}</span></div>
                 <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
               </div>
-              <span class="badge badge-flagged">Flagged</span>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                <span class="badge badge-flagged">Flagged</span>
+                <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+              </div>
             </div>
-            <div class="review-ratings" style="margin-bottom:12px">
-              <div class="rating-item"><span>Overall</span>${starsHTML(r.overall_rating)}</div>
-              <div class="rating-item"><span>Clarity</span><span>${r.clarity_rating}/5</span></div>
-              <div class="rating-item"><span>Engagement</span><span>${r.engagement_rating}/5</span></div>
-              <div class="rating-item"><span>Fairness</span><span>${r.fairness_rating}/5</span></div>
-              <div class="rating-item"><span>Supportiveness</span><span>${r.supportiveness_rating}/5</span></div>
-              <div class="rating-item"><span>Preparation</span><span>${ratingText(r.preparation_rating)}</span></div>
-              <div class="rating-item"><span>Workload</span><span>${ratingText(r.workload_rating)}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+              <div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
+                <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
+              </div>
+              ${[{k:'clarity_rating',l:'Clarity'},{k:'engagement_rating',l:'Engagement'},{k:'fairness_rating',l:'Fairness'},{k:'supportiveness_rating',l:'Support'},{k:'preparation_rating',l:'Preparation'},{k:'workload_rating',l:'Workload'}].map(c => {
+                const v = r[c.k]; const val = v || 0;
+                return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:0.85rem;color:var(--gray-600)">${c.l}</span>
+                  <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
+                </div>`;
+              }).join('')}
             </div>
-            ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger)">${r.feedback_text}</div>` : ''}
+            ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger);margin-bottom:12px">${r.feedback_text}</div>` : ''}
             <div style="display:flex;gap:8px;margin-top:16px">
               <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">Approve Anyway</button>
               <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">Reject</button>

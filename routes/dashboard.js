@@ -94,7 +94,8 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
     // All reviews for this teacher (approved + pending for visibility)
     const recentReviews = db.prepare(`
       SELECT r.overall_rating, r.clarity_rating, r.engagement_rating,
-        r.fairness_rating, r.supportiveness_rating, r.feedback_text, r.tags,
+        r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
+        r.feedback_text, r.tags,
         r.created_at, r.flagged_status, r.approved_status,
         fp.name as period_name, c.subject as classroom_subject,
         c.grade_level
@@ -259,7 +260,8 @@ router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 'a
 
     const reviews = db.prepare(`
       SELECT r.overall_rating, r.clarity_rating, r.engagement_rating,
-        r.fairness_rating, r.supportiveness_rating, r.feedback_text, r.tags,
+        r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
+        r.feedback_text, r.tags,
         r.created_at, fp.name as period_name, c.subject as classroom_subject
       FROM reviews r
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
