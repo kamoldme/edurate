@@ -2,6 +2,8 @@ require('dotenv').config();
 console.log('EduRate starting...');
 console.log('Node version:', process.version);
 console.log('Platform:', process.platform, process.arch);
+console.log('SMTP_USER set:', !!process.env.SMTP_USER);
+console.log('SMTP_PASS set:', !!process.env.SMTP_PASS);
 
 const express = require('express');
 const helmet = require('helmet');
