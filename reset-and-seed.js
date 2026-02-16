@@ -36,12 +36,12 @@ console.log('');
 console.log('👨‍🏫 Creating new teachers...');
 
 const newTeachers = [
-  { name: 'Dr. Sarah Martinez', email: 'sarah.martinez@edurate.school.edu', department: 'Science', subject: 'Biology' },
-  { name: 'Prof. Michael Chen', email: 'michael.chen@edurate.school.edu', department: 'Math', subject: 'Calculus' },
-  { name: 'Ms. Jennifer Lopez', email: 'jennifer.lopez@edurate.school.edu', department: 'English', subject: 'Literature' },
-  { name: 'Mr. David Kim', email: 'david.kim@edurate.school.edu', department: 'Humanities', subject: 'World History' },
-  { name: 'Ms. Aisha Karimova', email: 'aisha.karimova@edurate.school.edu', department: 'Non-English', subject: 'Russian Language' },
-  { name: 'Prof. Robert Taylor', email: 'robert.taylor@edurate.school.edu', department: 'Arts', subject: 'Visual Arts' }
+  { name: 'Dr. Sarah Martinez', email: 'martinez@edurate.edu', department: 'Science', subject: 'Biology' },
+  { name: 'Prof. Michael Chen', email: 'chen@edurate.edu', department: 'Math', subject: 'Calculus' },
+  { name: 'Ms. Jennifer Lopez', email: 'lopez@edurate.edu', department: 'English', subject: 'Literature' },
+  { name: 'Mr. David Kim', email: 'kim@edurate.edu', department: 'Humanities', subject: 'World History' },
+  { name: 'Ms. Aisha Karimova', email: 'karimova@edurate.edu', department: 'Non-English', subject: 'Russian Language' },
+  { name: 'Prof. Robert Taylor', email: 'taylor@edurate.edu', department: 'Arts', subject: 'Visual Arts' }
 ];
 
 const password = 'Teacher@123';

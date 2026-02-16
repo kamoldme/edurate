@@ -121,19 +121,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n  EduRate Server running at http://localhost:${PORT}\n`);
-  console.log('  Test Accounts:');
-  console.log('  ─────────────────────────────────────────────────');
-  console.log('  Admin:       admin@edurate.school.edu     / Admin@123');
-  console.log('  School Head: head@edurate.school.edu      / Head@123');
-  console.log('  Teacher 1:   j.smith@edurate.school.edu   / Teacher@123');
-  console.log('  Teacher 2:   e.chen@edurate.school.edu    / Teacher@123');
-  console.log('  Student 1:   alice@edurate.school.edu     / Student@123');
-  console.log('  Student 2:   bob@edurate.school.edu       / Student@123');
-  console.log('  Student 3:   carol@edurate.school.edu     / Student@123');
-  console.log('  Student 4:   david@edurate.school.edu     / Student@123');
-  console.log('  Student 5:   emma@edurate.school.edu      / Student@123');
-  console.log('  Student 6:   frank@edurate.school.edu     / Student@123');
-  console.log('  ─────────────────────────────────────────────────\n');
+// Health check endpoint
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n  EduRate Server running on port ${PORT}\n`);
 });

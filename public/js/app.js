@@ -212,6 +212,7 @@ function navigateTo(view) {
 
 // ============ UTILITIES ============
 function starsHTML(rating, size = 'normal') {
+  if (rating === null || rating === undefined) return '<span style="color:var(--gray-400)">-</span>';
   const sizeClass = size === 'large' ? 'stars-large' : size === 'small' ? 'stars-small' : '';
   let html = `<div class="stars ${sizeClass}">`;
   for (let i = 1; i <= 5; i++) {
@@ -219,6 +220,10 @@ function starsHTML(rating, size = 'normal') {
   }
   html += '</div>';
   return html;
+}
+
+function ratingText(val) {
+  return (val !== null && val !== undefined) ? `${val}/5` : '-';
 }
 
 function badgeHTML(status) {
@@ -1159,8 +1164,8 @@ async function renderTeacherFeedback() {
                 <div class="rating-item"><span>Engagement</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</span></div>
                 <div class="rating-item"><span>Fairness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</span></div>
                 <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Preparation</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.preparation_rating}/5 ${starsHTML(r.preparation_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Workload</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.workload_rating}/5 ${starsHTML(r.workload_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Preparation</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${ratingText(r.preparation_rating)} ${starsHTML(r.preparation_rating, 'small')}</span></div>
+                <div class="rating-item"><span>Workload</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${ratingText(r.workload_rating)} ${starsHTML(r.workload_rating, 'small')}</span></div>
               </div>
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -2133,8 +2138,8 @@ async function renderAdminModerate() {
               <div class="rating-item"><span>Engagement</span><span>${r.engagement_rating}/5</span></div>
               <div class="rating-item"><span>Fairness</span><span>${r.fairness_rating}/5</span></div>
               <div class="rating-item"><span>Supportiveness</span><span>${r.supportiveness_rating}/5</span></div>
-              <div class="rating-item"><span>Preparation</span><span>${r.preparation_rating}/5</span></div>
-              <div class="rating-item"><span>Workload</span><span>${r.workload_rating}/5</span></div>
+              <div class="rating-item"><span>Preparation</span><span>${ratingText(r.preparation_rating)}</span></div>
+              <div class="rating-item"><span>Workload</span><span>${ratingText(r.workload_rating)}</span></div>
             </div>
             ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : '<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic">No written feedback</p>'}
             ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -2179,8 +2184,8 @@ async function renderAdminFlagged() {
               <div class="rating-item"><span>Engagement</span><span>${r.engagement_rating}/5</span></div>
               <div class="rating-item"><span>Fairness</span><span>${r.fairness_rating}/5</span></div>
               <div class="rating-item"><span>Supportiveness</span><span>${r.supportiveness_rating}/5</span></div>
-              <div class="rating-item"><span>Preparation</span><span>${r.preparation_rating}/5</span></div>
-              <div class="rating-item"><span>Workload</span><span>${r.workload_rating}/5</span></div>
+              <div class="rating-item"><span>Preparation</span><span>${ratingText(r.preparation_rating)}</span></div>
+              <div class="rating-item"><span>Workload</span><span>${ratingText(r.workload_rating)}</span></div>
             </div>
             ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger)">${r.feedback_text}</div>` : ''}
             <div style="display:flex;gap:8px;margin-top:16px">
@@ -2387,8 +2392,8 @@ async function viewTeacherFeedback(teacherId) {
               <div style="font-size:0.85rem"><strong>Engagement:</strong> ${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</div>
               <div style="font-size:0.85rem"><strong>Fairness:</strong> ${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</div>
               <div style="font-size:0.85rem"><strong>Supportiveness:</strong> ${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</div>
-              <div style="font-size:0.85rem"><strong>Preparation:</strong> ${r.preparation_rating}/5 ${starsHTML(r.preparation_rating, 'small')}</div>
-              <div style="font-size:0.85rem"><strong>Workload:</strong> ${r.workload_rating}/5 ${starsHTML(r.workload_rating, 'small')}</div>
+              <div style="font-size:0.85rem"><strong>Preparation:</strong> ${ratingText(r.preparation_rating)} ${starsHTML(r.preparation_rating, 'small')}</div>
+              <div style="font-size:0.85rem"><strong>Workload:</strong> ${ratingText(r.workload_rating)} ${starsHTML(r.workload_rating, 'small')}</div>
             </div>
             ${r.feedback_text ? `<div style="padding:8px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.9rem;margin-top:8px">${r.feedback_text}</div>` : ''}
           </div>
