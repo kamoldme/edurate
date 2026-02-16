@@ -716,6 +716,7 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--gray-50);
   border-radius: 8px;
   margin-bottom: 12px;
+  margin-top: 12px;
 }
 
 .review-tags {
