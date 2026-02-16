@@ -1,6 +1,10 @@
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend;
+function getResend() {
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
+  return resend;
+}
 
 async function sendVerificationCode(email, code) {
   const html = `
@@ -23,7 +27,7 @@ async function sendVerificationCode(email, code) {
     </div>
   `;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: 'EduRate <noreply@edurate.top>',
     to: email,
     subject: `${code} - Your EduRate Verification Code`,
