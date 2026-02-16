@@ -245,6 +245,18 @@ function ratingText(val) {
   return (val !== null && val !== undefined) ? `${val}/5` : '-';
 }
 
+function ratingGridHTML(r) {
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+    ${[{k:'clarity_rating',l:'Clarity'},{k:'engagement_rating',l:'Engagement'},{k:'fairness_rating',l:'Fairness'},{k:'supportiveness_rating',l:'Support'},{k:'preparation_rating',l:'Preparation'},{k:'workload_rating',l:'Workload'}].map(c => {
+      const v = r[c.k]; const val = v || 0;
+      return `<div style="padding:8px 12px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.82rem;color:var(--gray-600)">${c.l}</span>
+        <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function badgeHTML(status) {
   const map = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected', flagged: 'badge-flagged' };
   return `<span class="badge ${map[status] || 'badge-pending'}">${status}</span>`;
@@ -749,28 +761,23 @@ async function renderStudentMyReviews() {
         ${reviews.length === 0
           ? '<div class="empty-state"><h3>No reviews yet</h3><p>Submit feedback during an active feedback period</p></div>'
           : reviews.map(r => `
-            <div class="review-card" style="position:relative">
-              <div style="position:absolute;top:12px;right:12px;font-size:0.75rem;color:var(--gray-400)">
-                ${new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </div>
+            <div class="review-card">
               <div class="review-header">
                 <div>
                   <strong>${r.teacher_name}</strong>
                   <span style="color:var(--gray-500);font-size:0.85rem"> &middot; ${r.classroom_subject} &middot; ${r.period_name} (${r.term_name})</span>
-                  <div style="margin-top:8px;font-size:1.1rem;font-weight:700;color:${scoreColor(r.overall_rating)}">Overall Rating</div>
+                  <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+                    <span style="font-size:1.3rem;font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
+                    ${starsHTML(r.overall_rating, 'large')}
+                  </div>
                 </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:20px">
-                  ${starsHTML(r.overall_rating, 'large')}
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
                   ${badgeHTML(r.flagged_status)}
+                  <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
                 </div>
               </div>
-              <div class="review-ratings" style="gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
-                <div class="rating-item"><span>Clarity</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.clarity_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Engagement</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.engagement_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Fairness</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.fairness_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Supportiveness</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.supportiveness_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Preparation</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.preparation_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Workload</span><span style="display:flex;align-items:center;gap:6px">${starsHTML(r.workload_rating, 'small')}</span></div>
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
+                ${ratingGridHTML(r)}
               </div>
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
@@ -849,14 +856,18 @@ async function viewTeacherProfile(teacherId) {
 
           <div>
             <h3>Recent Feedback</h3>
-            <div style="max-height:300px;overflow-y:auto">
+            <div style="max-height:400px;overflow-y:auto">
               ${data.reviews.slice(0, 10).map(r => `
-                <div style="padding:12px;margin-bottom:12px;background:var(--gray-50);border-radius:8px">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                    ${starsHTML(r.overall_rating)}
-                    <span style="font-size:0.85rem;color:var(--gray-500)">${new Date(r.created_at).toLocaleDateString()}</span>
+                <div style="padding:14px;margin-bottom:12px;background:var(--gray-50);border-radius:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
+                      ${starsHTML(r.overall_rating)}
+                    </div>
+                    <span style="font-size:0.78rem;color:var(--gray-400)">${new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
-                  ${r.feedback_text ? `<p style="margin:0;color:var(--gray-700)">${r.feedback_text}</p>` : '<p style="margin:0;color:var(--gray-400);font-style:italic">No written feedback</p>'}
+                  ${ratingGridHTML(r)}
+                  ${r.feedback_text ? `<p style="margin:10px 0 0;color:var(--gray-700)">${r.feedback_text}</p>` : '<p style="margin:10px 0 0;color:var(--gray-400);font-style:italic">No written feedback</p>'}
                   ${r.tags && r.tags !== '[]' ? `
                     <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
                       ${JSON.parse(r.tags).map(tag => `<span class="badge badge-pending">${tag}</span>`).join('')}
@@ -1207,17 +1218,15 @@ async function renderTeacherFeedback() {
               <div class="review-header">
                 <div>
                   <span style="color:var(--gray-500);font-size:0.85rem">${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}</span>
-                  <div style="margin-top:8px;font-size:1.1rem;font-weight:700;color:${scoreColor(r.overall_rating)}">Overall Rating</div>
+                  <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+                    <span style="font-size:1.3rem;font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
+                    ${starsHTML(r.overall_rating, 'large')}
+                  </div>
                 </div>
-                ${starsHTML(r.overall_rating, 'large')}
+                <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
               </div>
-              <div class="review-ratings" style="gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
-                <div class="rating-item"><span>Clarity</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Engagement</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Fairness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Preparation</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${ratingText(r.preparation_rating)} ${starsHTML(r.preparation_rating, 'small')}</span></div>
-                <div class="rating-item"><span>Workload</span><span style="font-weight:600;display:flex;align-items:center;gap:6px">${ratingText(r.workload_rating)} ${starsHTML(r.workload_rating, 'small')}</span></div>
+              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
+                ${ratingGridHTML(r)}
               </div>
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
