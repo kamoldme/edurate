@@ -1,3 +1,7 @@
+console.log('EduRate starting...');
+console.log('Node version:', process.version);
+console.log('Platform:', process.platform, process.arch);
+
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -6,7 +10,9 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 // Initialize database (creates tables on import)
+console.log('Loading database...');
 const db = require('./database');
+console.log('Database loaded.');
 
 // Auto-seed if database has no users (fresh deploy)
 try {
