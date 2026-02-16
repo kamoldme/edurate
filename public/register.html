@@ -59,6 +59,43 @@
     .links a { color: #2563eb; text-decoration: none; font-weight: 500; }
     .links a:hover { text-decoration: underline; }
     .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+    .code-input {
+      text-align: center;
+      font-size: 1.8rem !important;
+      font-weight: 700;
+      letter-spacing: 8px;
+      padding: 16px !important;
+    }
+    .timer { text-align: center; color: #64748b; font-size: 0.85rem; margin-bottom: 16px; }
+    .timer strong { color: #2563eb; }
+    .resend-link {
+      text-align: center; margin-top: 12px; font-size: 0.85rem;
+    }
+    .resend-link a {
+      color: #2563eb; text-decoration: none; font-weight: 500; cursor: pointer;
+    }
+    .resend-link a:hover { text-decoration: underline; }
+    .resend-link a.disabled { color: #94a3b8; pointer-events: none; }
+    .step-indicator {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-bottom: 24px;
+    }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 0.8rem; font-weight: 600;
+      background: #e2e8f0; color: #94a3b8; transition: all 0.3s;
+    }
+    .step-dot.active { background: #2563eb; color: #fff; }
+    .step-dot.done { background: #16a34a; color: #fff; }
+    .step-line { width: 40px; height: 2px; background: #e2e8f0; transition: background 0.3s; }
+    .step-line.active { background: #2563eb; }
+    .back-btn {
+      background: none; border: none; color: #64748b; font-size: 0.85rem;
+      cursor: pointer; padding: 0; font-family: inherit; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .back-btn:hover { color: #2563eb; }
+    #step2 { display: none; }
 
     /* Tablet */
     @media (max-width: 768px) {
@@ -66,6 +103,7 @@
       .card { padding: 28px 24px; }
       .btn { min-height: 48px; }
       .form-group input, .form-group select { min-height: 48px; font-size: 16px !important; }
+      .code-input { font-size: 1.5rem !important; }
     }
 
     /* Mobile phones */
@@ -80,6 +118,7 @@
       .links { font-size: 0.8rem; }
       .form-group { margin-bottom: 14px; }
       .hint { font-size: 0.7rem; }
+      .code-input { letter-spacing: 6px; font-size: 1.3rem !important; }
     }
 
     /* Small phones */
@@ -108,37 +147,64 @@
       <p>Student Registration</p>
     </div>
     <div class="card">
-      <h2>Create your account</h2>
-      <p class="subtitle">Only students can self-register using a school email</p>
+      <div class="step-indicator">
+        <div class="step-dot active" id="dot1">1</div>
+        <div class="step-line" id="line1"></div>
+        <div class="step-dot" id="dot2">2</div>
+      </div>
+
       <div id="error" class="error-msg"></div>
       <div id="success" class="success-msg"></div>
-      <form id="registerForm">
-        <div class="form-group">
-          <label for="full_name">Full Name</label>
-          <input type="text" id="full_name" placeholder="Your full name" required>
+
+      <!-- Step 1: Account Details -->
+      <div id="step1">
+        <h2>Create your account</h2>
+        <p class="subtitle">Enter your details to get started</p>
+        <form id="step1Form">
+          <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" placeholder="Your full name" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8">
+            <p class="hint">Must include uppercase, lowercase, and a number</p>
+          </div>
+          <div class="form-group">
+            <label for="grade">Grade / Class</label>
+            <select id="grade" required>
+              <option value="">Select your grade</option>
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </div>
+          <button type="submit" class="btn" id="sendCodeBtn">Send Verification Code</button>
+        </form>
+      </div>
+
+      <!-- Step 2: Verification Code -->
+      <div id="step2">
+        <button type="button" class="back-btn" onclick="goBack()">&larr; Back</button>
+        <h2>Verify your email</h2>
+        <p class="subtitle">We sent a 6-digit code to <strong id="emailDisplay"></strong></p>
+        <div class="timer" id="timer">Code expires in <strong id="countdown">10:00</strong></div>
+        <form id="step2Form">
+          <div class="form-group">
+            <input type="text" id="code" class="code-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required>
+          </div>
+          <button type="submit" class="btn" id="verifyBtn">Verify & Create Account</button>
+        </form>
+        <div class="resend-link">
+          <a id="resendLink" class="disabled" onclick="resendCode()">Resend code</a>
         </div>
-        <div class="form-group">
-          <label for="email">School Email</label>
-          <input type="email" id="email" placeholder="you@edurate.school.edu" required>
-          <p class="hint">Must be a @edurate.school.edu email</p>
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8">
-          <p class="hint">Must include uppercase, lowercase, and a number</p>
-        </div>
-        <div class="form-group">
-          <label for="grade">Grade / Class</label>
-          <select id="grade" required>
-            <option value="">Select your grade</option>
-            <option value="Grade 9">Grade 9</option>
-            <option value="Grade 10">Grade 10</option>
-            <option value="Grade 11">Grade 11</option>
-            <option value="Grade 12">Grade 12</option>
-          </select>
-        </div>
-        <button type="submit" class="btn" id="registerBtn">Create Account</button>
-      </form>
+      </div>
+
       <div class="links">
         Already have an account? <a href="/login">Sign in</a> | <a href="/">Back to Home</a>
       </div>
@@ -146,51 +212,199 @@
   </div>
 
   <script>
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    let formData = {};
+    let countdownInterval = null;
+    let resendCooldown = null;
+
+    function clearMessages() {
+      document.getElementById('error').className = 'error-msg';
+      document.getElementById('success').className = 'success-msg';
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.className = 'error-msg show';
+    }
+
+    function showSuccess(msg) {
+      const el = document.getElementById('success');
+      el.textContent = msg;
+      el.className = 'success-msg show';
+    }
+
+    function startCountdown() {
+      let seconds = 600; // 10 minutes
+      const el = document.getElementById('countdown');
+      clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        seconds--;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        if (seconds <= 0) {
+          clearInterval(countdownInterval);
+          el.textContent = 'Expired';
+          document.getElementById('timer').innerHTML = 'Code has <strong style="color:#dc2626">expired</strong>. Please resend.';
+        }
+      }, 1000);
+    }
+
+    function enableResendAfter(seconds) {
+      const link = document.getElementById('resendLink');
+      link.className = 'disabled';
+      link.textContent = `Resend code (${seconds}s)`;
+      clearInterval(resendCooldown);
+      resendCooldown = setInterval(() => {
+        seconds--;
+        link.textContent = `Resend code (${seconds}s)`;
+        if (seconds <= 0) {
+          clearInterval(resendCooldown);
+          link.className = '';
+          link.textContent = 'Resend code';
+        }
+      }, 1000);
+    }
+
+    function goBack() {
+      clearMessages();
+      clearInterval(countdownInterval);
+      clearInterval(resendCooldown);
+      document.getElementById('step1').style.display = '';
+      document.getElementById('step2').style.display = 'none';
+      document.getElementById('dot1').className = 'step-dot active';
+      document.getElementById('dot2').className = 'step-dot';
+      document.getElementById('line1').className = 'step-line';
+    }
+
+    // Step 1: Send verification code
+    document.getElementById('step1Form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = document.getElementById('registerBtn');
-      const errorEl = document.getElementById('error');
-      const successEl = document.getElementById('success');
-      errorEl.className = 'error-msg';
-      successEl.className = 'success-msg';
+      clearMessages();
+      const btn = document.getElementById('sendCodeBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending code...';
+
+      formData = {
+        full_name: document.getElementById('full_name').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        grade_or_position: document.getElementById('grade').value
+      };
+
+      try {
+        const res = await fetch('/api/auth/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.error);
+          btn.disabled = false;
+          btn.textContent = 'Send Verification Code';
+          return;
+        }
+
+        // Move to step 2
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = '';
+        document.getElementById('emailDisplay').textContent = formData.email;
+        document.getElementById('dot1').className = 'step-dot done';
+        document.getElementById('dot2').className = 'step-dot active';
+        document.getElementById('line1').className = 'step-line active';
+        document.getElementById('code').value = '';
+        document.getElementById('code').focus();
+        startCountdown();
+        enableResendAfter(30);
+        btn.disabled = false;
+        btn.textContent = 'Send Verification Code';
+      } catch (err) {
+        showError('Connection error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Send Verification Code';
+      }
+    });
+
+    // Step 2: Verify code and register
+    document.getElementById('step2Form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessages();
+      const btn = document.getElementById('verifyBtn');
+      const code = document.getElementById('code').value.trim();
+
+      if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+        showError('Please enter a valid 6-digit code');
+        return;
+      }
 
       btn.disabled = true;
-      btn.textContent = 'Creating account...';
+      btn.textContent = 'Verifying...';
 
       try {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            full_name: document.getElementById('full_name').value,
-            email: document.getElementById('email').value,
-            password: document.getElementById('password').value,
-            grade_or_position: document.getElementById('grade').value
-          })
+          body: JSON.stringify({ ...formData, code })
         });
 
         const data = await res.json();
 
         if (!res.ok) {
-          errorEl.textContent = data.error;
-          errorEl.className = 'error-msg show';
+          showError(data.error);
           btn.disabled = false;
-          btn.textContent = 'Create Account';
+          btn.textContent = 'Verify & Create Account';
           return;
         }
 
+        clearInterval(countdownInterval);
         localStorage.setItem('edurate_token', data.token);
         localStorage.setItem('edurate_user', JSON.stringify(data.user));
-        successEl.textContent = 'Account created! Redirecting...';
-        successEl.className = 'success-msg show';
+        showSuccess('Account created! Redirecting...');
         setTimeout(() => { window.location.href = '/app'; }, 1000);
       } catch (err) {
-        errorEl.textContent = 'Connection error. Please try again.';
-        errorEl.className = 'error-msg show';
+        showError('Connection error. Please try again.');
         btn.disabled = false;
-        btn.textContent = 'Create Account';
+        btn.textContent = 'Verify & Create Account';
       }
+    });
+
+    // Resend code
+    async function resendCode() {
+      const link = document.getElementById('resendLink');
+      if (link.className.includes('disabled')) return;
+      clearMessages();
+
+      try {
+        const res = await fetch('/api/auth/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.error);
+          return;
+        }
+
+        showSuccess('New code sent to your email');
+        startCountdown();
+        enableResendAfter(30);
+        document.getElementById('code').value = '';
+        document.getElementById('code').focus();
+      } catch (err) {
+        showError('Failed to resend code. Please try again.');
+      }
+    }
+
+    // Auto-format: only allow digits in code input
+    document.getElementById('code').addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '').slice(0, 6);
     });
   </script>
 </body>

@@ -3,24 +3,26 @@ const bcrypt = require('bcryptjs');
 const db = require('../database');
 const { generateToken, authenticate } = require('../middleware/auth');
 const { sanitizeInput } = require('../utils/moderation');
+const { sendVerificationCode } = require('../utils/email');
 
 const router = express.Router();
 
-const SCHOOL_EMAIL_DOMAIN = 'edurate.school.edu';
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
-// POST /api/auth/register
-router.post('/register', (req, res) => {
+// POST /api/auth/send-code - send verification code to email
+router.post('/send-code', async (req, res) => {
   try {
-    const { full_name, email, password, grade_or_position } = req.body;
+    const { email, full_name, password, grade_or_position } = req.body;
 
-    if (!full_name || !email || !password) {
+    if (!email || !full_name || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
-    // Validate email domain
-    const emailDomain = email.split('@')[1];
-    if (emailDomain !== SCHOOL_EMAIL_DOMAIN) {
-      return res.status(400).json({ error: `Only @${SCHOOL_EMAIL_DOMAIN} emails are allowed` });
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
     }
 
     // Validate password strength
@@ -37,17 +39,77 @@ router.post('/register', (req, res) => {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
+    // Rate limit: max 3 codes per email per 15 minutes
+    const recentCodes = db.prepare(
+      "SELECT COUNT(*) as count FROM verification_codes WHERE email = ? AND created_at > datetime('now', '-15 minutes')"
+    ).get(email.toLowerCase());
+    if (recentCodes.count >= 3) {
+      return res.status(429).json({ error: 'Too many attempts. Please wait before requesting a new code.' });
+    }
+
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    // Invalidate previous codes for this email
+    db.prepare("UPDATE verification_codes SET used = 1 WHERE email = ? AND used = 0").run(email.toLowerCase());
+
+    // Store new code
+    db.prepare(
+      'INSERT INTO verification_codes (email, code, expires_at) VALUES (?, ?, ?)'
+    ).run(email.toLowerCase(), code, expiresAt);
+
+    // Send email
+    await sendVerificationCode(email, code);
+
+    res.json({ message: 'Verification code sent to your email' });
+  } catch (err) {
+    console.error('Send code error:', err);
+    res.status(500).json({ error: 'Failed to send verification code. Please try again.' });
+  }
+});
+
+// POST /api/auth/register
+router.post('/register', (req, res) => {
+  try {
+    const { full_name, email, password, grade_or_position, code } = req.body;
+
+    if (!full_name || !email || !password || !code) {
+      return res.status(400).json({ error: 'Name, email, password, and verification code are required' });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain uppercase, lowercase, and a number' });
+    }
+
+    // Check existing user
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+    if (existing) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    // Verify code
+    const storedCode = db.prepare(
+      "SELECT * FROM verification_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime('now') ORDER BY created_at DESC LIMIT 1"
+    ).get(email.toLowerCase(), code);
+
+    if (!storedCode) {
+      return res.status(400).json({ error: 'Invalid or expired verification code' });
+    }
+
+    // Mark code as used
+    db.prepare('UPDATE verification_codes SET used = 1 WHERE id = ?').run(storedCode.id);
+
     const hashedPassword = bcrypt.hashSync(password, 12);
     const sanitizedName = sanitizeInput(full_name);
 
-    // Only students can self-register
     const result = db.prepare(`
       INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, verified_status)
-      VALUES (?, ?, ?, 'student', ?, 1, 0)
+      VALUES (?, ?, ?, 'student', ?, 1, 1)
     `).run(sanitizedName, email.toLowerCase(), hashedPassword, grade_or_position || null);
-
-    // In production, send verification email. For demo, auto-verify.
-    db.prepare('UPDATE users SET verified_status = 1 WHERE id = ?').run(result.lastInsertRowid);
 
     const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, avatar_url FROM users WHERE id = ?')
       .get(result.lastInsertRowid);
@@ -56,7 +118,7 @@ router.post('/register', (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: false, // set true in production with HTTPS
+      secure: false,
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });

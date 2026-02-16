@@ -175,6 +175,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages(user_id);
   CREATE INDEX IF NOT EXISTS idx_support_messages_status ON support_messages(status);
   CREATE INDEX IF NOT EXISTS idx_support_messages_created ON support_messages(created_at);
+
+  CREATE TABLE IF NOT EXISTS verification_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    code TEXT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_verification_codes_email ON verification_codes(email);
 `);
 
 // Migration: Add feedback_visible column to terms table if it doesn't exist

@@ -250,10 +250,10 @@ function ratingText(val) {
 
 function ratingGridHTML(r) {
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
-    ${[{k:'clarity_rating',l:'Clarity'},{k:'engagement_rating',l:'Engagement'},{k:'fairness_rating',l:'Fairness'},{k:'supportiveness_rating',l:'Support'},{k:'preparation_rating',l:'Preparation'},{k:'workload_rating',l:'Workload'}].map(c => {
+    ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
       const v = r[c.k]; const val = v || 0;
       return `<div style="padding:8px 12px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.82rem;color:var(--gray-600)">${c.l}</span>
+        <span style="font-size:0.82rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
         <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
       </div>`;
     }).join('')}
@@ -315,6 +315,10 @@ const CRITERIA_INFO = [
   {name:'Preparation', desc:'How well-prepared is the teacher for each class? Consider whether lessons are organized, materials are ready, and the teacher has a clear plan \u2014 or whether class time often feels improvised or wasted.'},
   {name:'Workload', desc:'How reasonable is the amount of work assigned? Think about whether homework, projects, and readings are manageable alongside your other classes, and whether the effort required matches what you\'re expected to learn.'}
 ];
+
+function criteriaInfoIcon(name) {
+  return `<span class="criteria-info-btn" onclick="showCriteriaInfo('${name}')" style="cursor:pointer;color:var(--primary);font-size:0.75rem;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--primary);font-weight:700;font-style:normal;line-height:1;transition:all 0.15s;flex-shrink:0;margin-left:4px">i</span>`;
+}
 
 function showCriteriaInfo(name) {
   const info = CRITERIA_INFO.find(c => c.name === name);
@@ -582,7 +586,7 @@ async function renderStudentReview() {
               <div class="grid grid-2" style="margin-bottom:20px">
                 ${CRITERIA_INFO.map(cat => `
                   <div class="form-group" style="margin-bottom:12px">
-                    <label style="display:flex;align-items:center;gap:6px">${cat.name} Rating <span class="criteria-info-btn" onclick="showCriteriaInfo('${cat.name}')" style="cursor:pointer;color:var(--primary);font-size:0.75rem;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--primary);font-weight:700;font-style:normal;line-height:1;transition:all 0.15s;flex-shrink:0">i</span></label>
+                    <label style="display:flex;align-items:center;gap:6px">${cat.name} Rating ${criteriaInfoIcon(cat.name)}</label>
                     <div class="star-rating-input" data-name="${cat.name.toLowerCase()}_rating" data-form="review-${t.teacher_id}">
                       ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn" data-value="${i}" onclick="setRating(this)">\u2606</button>`).join('')}
                     </div>
@@ -845,15 +849,17 @@ async function viewTeacherProfile(teacherId) {
 
             <div style="margin-top:20px">
               <h4>Category Ratings</h4>
-              ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => `
+              ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => {
+                const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
+                return `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-                  <span style="font-weight:500;text-transform:capitalize">${cat}</span>
+                  <span style="font-weight:500;display:flex;align-items:center;gap:4px">${capName}${criteriaInfoIcon(capName)}</span>
                   <div style="display:flex;align-items:center;gap:8px">
                     ${starsHTML(scores[`avg_${cat}`] || 0)}
                     <span style="font-weight:600">${fmtScore(scores[`avg_${cat}`])}</span>
                   </div>
-                </div>
-              `).join('')}
+                </div>`;
+              }).join('')}
             </div>
           </div>
 
@@ -922,15 +928,17 @@ async function renderTeacherHome() {
       <div class="card">
         <div class="card-header"><h3>Rating Breakdown</h3></div>
         <div class="card-body">
-          ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => `
+          ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => {
+            const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
+            return `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-              <span style="font-weight:500;text-transform:capitalize">${cat}</span>
+              <span style="font-weight:500;display:flex;align-items:center;gap:4px">${capName}${criteriaInfoIcon(capName)}</span>
               <div style="display:flex;align-items:center;gap:8px">
                 ${starsHTML(s[`avg_${cat}`] || 0)}
                 <span style="font-weight:600;color:${scoreColor(s[`avg_${cat}`] || 0)}">${fmtScore(s[`avg_${cat}`])}</span>
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>
       <div class="card">
@@ -1150,12 +1158,12 @@ async function renderTeacherFeedback() {
                     ${starsHTML(parseFloat(s.avg_overall))}
                   </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
-                    <div class="rating-item"><span>Clarity</span><span style="font-weight:600;color:${scoreColor(s.avg_clarity)};display:flex;align-items:center;gap:8px">${s.avg_clarity} ${starsHTML(parseFloat(s.avg_clarity))}</span></div>
-                    <div class="rating-item"><span>Engagement</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)};display:flex;align-items:center;gap:8px">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
-                    <div class="rating-item"><span>Fairness</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)};display:flex;align-items:center;gap:8px">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
-                    <div class="rating-item"><span>Supportiveness</span><span style="font-weight:600;color:${scoreColor(s.avg_supportiveness)};display:flex;align-items:center;gap:8px">${s.avg_supportiveness} ${starsHTML(parseFloat(s.avg_supportiveness))}</span></div>
-                    <div class="rating-item"><span>Preparation</span><span style="font-weight:600;color:${scoreColor(s.avg_preparation)};display:flex;align-items:center;gap:8px">${s.avg_preparation} ${starsHTML(parseFloat(s.avg_preparation))}</span></div>
-                    <div class="rating-item"><span>Workload</span><span style="font-weight:600;color:${scoreColor(s.avg_workload)};display:flex;align-items:center;gap:8px">${s.avg_workload} ${starsHTML(parseFloat(s.avg_workload))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Clarity${criteriaInfoIcon('Clarity')}</span><span style="font-weight:600;color:${scoreColor(s.avg_clarity)};display:flex;align-items:center;gap:8px">${s.avg_clarity} ${starsHTML(parseFloat(s.avg_clarity))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Engagement${criteriaInfoIcon('Engagement')}</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)};display:flex;align-items:center;gap:8px">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Fairness${criteriaInfoIcon('Fairness')}</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)};display:flex;align-items:center;gap:8px">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Supportiveness${criteriaInfoIcon('Supportiveness')}</span><span style="font-weight:600;color:${scoreColor(s.avg_supportiveness)};display:flex;align-items:center;gap:8px">${s.avg_supportiveness} ${starsHTML(parseFloat(s.avg_supportiveness))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Preparation${criteriaInfoIcon('Preparation')}</span><span style="font-weight:600;color:${scoreColor(s.avg_preparation)};display:flex;align-items:center;gap:8px">${s.avg_preparation} ${starsHTML(parseFloat(s.avg_preparation))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Workload${criteriaInfoIcon('Workload')}</span><span style="font-weight:600;color:${scoreColor(s.avg_workload)};display:flex;align-items:center;gap:8px">${s.avg_workload} ${starsHTML(parseFloat(s.avg_workload))}</span></div>
                   </div>
                 </div>
               `;
@@ -1175,30 +1183,15 @@ async function renderTeacherFeedback() {
             <div style="color:var(--gray-500);margin-top:16px;font-size:1rem">${data.overall_scores.review_count} total reviews</div>
           </div>
           <div style="margin-top:24px">
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
-              <span>Clarity</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_clarity || 0)}">${fmtScore(data.overall_scores.avg_clarity)} ${starsHTML(data.overall_scores.avg_clarity || 0)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
-              <span>Engagement</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_engagement || 0)}">${fmtScore(data.overall_scores.avg_engagement)} ${starsHTML(data.overall_scores.avg_engagement || 0)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
-              <span>Fairness</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_fairness || 0)}">${fmtScore(data.overall_scores.avg_fairness)} ${starsHTML(data.overall_scores.avg_fairness || 0)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
-              <span>Supportiveness</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_supportiveness || 0)}">${fmtScore(data.overall_scores.avg_supportiveness)} ${starsHTML(data.overall_scores.avg_supportiveness || 0)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)">
-              <span>Preparation</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_preparation || 0)}">${fmtScore(data.overall_scores.avg_preparation)} ${starsHTML(data.overall_scores.avg_preparation || 0)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0">
-              <span>Workload</span>
-              <span style="font-weight:600;color:${scoreColor(data.overall_scores.avg_workload || 0)}">${fmtScore(data.overall_scores.avg_workload)} ${starsHTML(data.overall_scores.avg_workload || 0)}</span>
-            </div>
+            ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'].map((name, i, arr) => {
+              const key = 'avg_' + name.toLowerCase();
+              const val = data.overall_scores[key] || 0;
+              const border = i < arr.length - 1 ? 'border-bottom:1px solid var(--gray-100)' : '';
+              return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;${border}">
+                <span style="display:flex;align-items:center;gap:4px">${name}${criteriaInfoIcon(name)}</span>
+                <span style="font-weight:600;color:${scoreColor(val)}">${fmtScore(data.overall_scores[key])} ${starsHTML(val)}</span>
+              </div>`;
+            }).join('')}
           </div>
         </div>
       </div>
@@ -1471,10 +1464,11 @@ async function renderHeadTeachers() {
             </div>
             ${['avg_clarity', 'avg_engagement', 'avg_fairness', 'avg_supportiveness', 'avg_preparation', 'avg_workload'].map(key => {
               const label = key.replace('avg_', '');
+              const capName = label.charAt(0).toUpperCase() + label.slice(1);
               const val = t.scores[key] || 0;
               return `<div style="margin-bottom:8px">
-                <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px">
-                  <span style="text-transform:capitalize">${label}</span><span style="font-weight:600">${val}/5</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;margin-bottom:3px">
+                  <span style="display:flex;align-items:center;gap:3px">${capName}${criteriaInfoIcon(capName)}</span><span style="font-weight:600">${val}/5</span>
                 </div>
                 <div class="progress-bar"><div class="progress-fill blue" style="width:${(val/5)*100}%"></div></div>
               </div>`;
@@ -1523,7 +1517,7 @@ async function renderHeadAnalytics() {
       <div class="card-body">
         <table>
           <thead>
-            <tr><th>Teacher</th><th>Clarity</th><th>Engagement</th><th>Fairness</th><th>Supportiveness</th><th>Preparation</th><th>Workload</th><th>Final</th></tr>
+            <tr><th>Teacher</th><th><span style="display:flex;align-items:center;gap:3px">Clarity${criteriaInfoIcon('Clarity')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Engagement${criteriaInfoIcon('Engagement')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Fairness${criteriaInfoIcon('Fairness')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Supportiveness${criteriaInfoIcon('Supportiveness')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Preparation${criteriaInfoIcon('Preparation')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Workload${criteriaInfoIcon('Workload')}</span></th><th>Final</th></tr>
           </thead>
           <tbody>
             ${data.teachers.map(t => {
@@ -2211,10 +2205,10 @@ async function renderAdminModerate() {
                 <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
                 <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
               </div>
-              ${[{k:'clarity_rating',l:'Clarity'},{k:'engagement_rating',l:'Engagement'},{k:'fairness_rating',l:'Fairness'},{k:'supportiveness_rating',l:'Support'},{k:'preparation_rating',l:'Preparation'},{k:'workload_rating',l:'Workload'}].map(c => {
+              ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
                 const v = r[c.k]; const val = v || 0;
                 return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                  <span style="font-size:0.85rem;color:var(--gray-600)">${c.l}</span>
+                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
                   <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
                 </div>`;
               }).join('')}
@@ -2264,10 +2258,10 @@ async function renderAdminFlagged() {
                 <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
                 <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
               </div>
-              ${[{k:'clarity_rating',l:'Clarity'},{k:'engagement_rating',l:'Engagement'},{k:'fairness_rating',l:'Fairness'},{k:'supportiveness_rating',l:'Support'},{k:'preparation_rating',l:'Preparation'},{k:'workload_rating',l:'Workload'}].map(c => {
+              ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
                 const v = r[c.k]; const val = v || 0;
                 return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                  <span style="font-size:0.85rem;color:var(--gray-600)">${c.l}</span>
+                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
                   <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
                 </div>`;
               }).join('')}
@@ -2429,30 +2423,14 @@ async function viewTeacherFeedback(teacherId) {
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
-          <div style="text-align:center">
-            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_clarity || 0)}">${fmtScore(data.scores.avg_clarity)}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Clarity</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_engagement || 0)}">${fmtScore(data.scores.avg_engagement)}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Engagement</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_fairness || 0)}">${fmtScore(data.scores.avg_fairness)}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Fairness</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_supportiveness || 0)}">${fmtScore(data.scores.avg_supportiveness)}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Supportiveness</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_preparation || 0)}">${fmtScore(data.scores.avg_preparation)}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Preparation</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(data.scores.avg_workload || 0)}">${fmtScore(data.scores.avg_workload)}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Workload</div>
-          </div>
+          ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'].map(name => {
+            const key = 'avg_' + name.toLowerCase();
+            const val = data.scores[key] || 0;
+            return `<div style="text-align:center">
+              <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(val)}">${fmtScore(data.scores[key])}</div>
+              <div style="color:var(--gray-500);font-size:0.85rem;display:flex;align-items:center;justify-content:center;gap:3px">${name}${criteriaInfoIcon(name)}</div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
 
@@ -2473,12 +2451,12 @@ async function viewTeacherFeedback(teacherId) {
               ${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:8px;background:var(--gray-50);border-radius:var(--radius-sm)">
-              <div style="font-size:0.85rem"><strong>Clarity:</strong> ${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</div>
-              <div style="font-size:0.85rem"><strong>Engagement:</strong> ${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</div>
-              <div style="font-size:0.85rem"><strong>Fairness:</strong> ${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</div>
-              <div style="font-size:0.85rem"><strong>Supportiveness:</strong> ${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</div>
-              <div style="font-size:0.85rem"><strong>Preparation:</strong> ${ratingText(r.preparation_rating)} ${starsHTML(r.preparation_rating, 'small')}</div>
-              <div style="font-size:0.85rem"><strong>Workload:</strong> ${ratingText(r.workload_rating)} ${starsHTML(r.workload_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Clarity</strong>${criteriaInfoIcon('Clarity')}: ${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Engagement</strong>${criteriaInfoIcon('Engagement')}: ${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Fairness</strong>${criteriaInfoIcon('Fairness')}: ${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Supportiveness</strong>${criteriaInfoIcon('Supportiveness')}: ${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Preparation</strong>${criteriaInfoIcon('Preparation')}: ${ratingText(r.preparation_rating)} ${starsHTML(r.preparation_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Workload</strong>${criteriaInfoIcon('Workload')}: ${ratingText(r.workload_rating)} ${starsHTML(r.workload_rating, 'small')}</div>
             </div>
             ${r.feedback_text ? `<div style="padding:8px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.9rem;margin-top:8px">${r.feedback_text}</div>` : ''}
           </div>
