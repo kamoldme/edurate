@@ -1,12 +1,6 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendVerificationCode(email, code) {
   const html = `
@@ -29,12 +23,16 @@ async function sendVerificationCode(email, code) {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: `"EduRate" <${process.env.SMTP_USER}>`,
+  const { error } = await resend.emails.send({
+    from: 'EduRate <noreply@edurate.top>',
     to: email,
     subject: `${code} - Your EduRate Verification Code`,
     html
   });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 module.exports = { sendVerificationCode };
