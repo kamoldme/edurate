@@ -292,6 +292,39 @@ function confirmDialog(message, confirmText = 'Confirm', cancelText = 'Cancel') 
   });
 }
 
+const CRITERIA_INFO = [
+  {name:'Clarity', desc:'How clearly does the teacher explain topics? Consider whether instructions, lessons, and expectations are easy to understand, and whether the teacher uses examples that help make concepts click.'},
+  {name:'Engagement', desc:'How well does the teacher keep the class interesting and involved? Think about whether lessons feel interactive, whether the teacher encourages questions and discussion, and whether you stay focused during class.'},
+  {name:'Fairness', desc:'How fair is the teacher in grading, enforcing rules, and treating all students? Consider whether grades reflect your actual work, whether rules are applied equally, and whether every student gets the same respect.'},
+  {name:'Supportiveness', desc:'How approachable and helpful is the teacher when you need assistance? Think about whether the teacher is willing to re-explain things, offers extra help, and creates a safe environment where it\'s okay to make mistakes.'},
+  {name:'Preparation', desc:'How well-prepared is the teacher for each class? Consider whether lessons are organized, materials are ready, and the teacher has a clear plan \u2014 or whether class time often feels improvised or wasted.'},
+  {name:'Workload', desc:'How reasonable is the amount of work assigned? Think about whether homework, projects, and readings are manageable alongside your other classes, and whether the effort required matches what you\'re expected to learn.'}
+];
+
+function showCriteriaInfo(name) {
+  const info = CRITERIA_INFO.find(c => c.name === name);
+  if (!info) return;
+
+  // Remove any existing popup
+  const existing = document.getElementById('criteriaInfoPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'criteriaInfoPopup';
+  popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);animation:fadeIn 0.15s ease';
+  popup.onclick = (e) => { if (e.target === popup) popup.remove(); };
+  popup.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:24px;max-width:400px;width:90%;box-shadow:0 20px 40px rgba(0,0,0,0.2);animation:scaleIn 0.15s ease">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="margin:0;font-size:1.1rem;color:var(--primary)">${info.name}</h3>
+        <button onclick="document.getElementById('criteriaInfoPopup').remove()" style="background:none;border:none;font-size:1.4rem;color:var(--gray-400);cursor:pointer;padding:0;line-height:1">&times;</button>
+      </div>
+      <p style="margin:0;color:var(--gray-700);font-size:0.92rem;line-height:1.65">${info.desc}</p>
+    </div>
+  `;
+  document.body.appendChild(popup);
+}
+
 function avatarHTML(user, size = 'normal', clickable = false) {
   const sizeMap = { small: '32px', normal: '48px', large: '72px' };
   const fontSize = { small: '0.72rem', normal: '0.96rem', large: '1.2rem' };
@@ -532,16 +565,9 @@ async function renderStudentReview() {
                 <div style="margin-top:8px;color:#0369a1;font-size:0.85rem;font-style:italic">Rate all 6 criteria below to see your overall rating</div>
               </div>
               <div class="grid grid-2" style="margin-bottom:20px">
-                ${[
-                  {name:'Clarity', tip:'How clearly does the teacher explain concepts and lessons?'},
-                  {name:'Engagement', tip:'How well does the teacher keep students interested and involved?'},
-                  {name:'Fairness', tip:'How fair is the teacher in grading, rules, and treating students?'},
-                  {name:'Supportiveness', tip:'How approachable and helpful is the teacher when you need support?'},
-                  {name:'Preparation', tip:'How well-prepared is the teacher for each class session?'},
-                  {name:'Workload', tip:'How reasonable and manageable is the workload assigned?'}
-                ].map(cat => `
+                ${CRITERIA_INFO.map(cat => `
                   <div class="form-group" style="margin-bottom:12px">
-                    <label style="display:flex;align-items:center;gap:6px">${cat.name} Rating <span class="info-tooltip" title="${cat.tip}" style="cursor:help;color:var(--primary);font-size:0.85rem;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--primary);font-weight:700;font-style:normal;line-height:1">i</span></label>
+                    <label style="display:flex;align-items:center;gap:6px">${cat.name} Rating <span class="criteria-info-btn" onclick="showCriteriaInfo('${cat.name}')" style="cursor:pointer;color:var(--primary);font-size:0.75rem;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--primary);font-weight:700;font-style:normal;line-height:1;transition:all 0.15s;flex-shrink:0">i</span></label>
                     <div class="star-rating-input" data-name="${cat.name.toLowerCase()}_rating" data-form="review-${t.teacher_id}">
                       ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn" data-value="${i}" onclick="setRating(this)">\u2606</button>`).join('')}
                     </div>
