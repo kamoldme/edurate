@@ -443,7 +443,7 @@ async function renderStudentHome() {
               <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
                 <div>
                   <strong>${r.teacher_name}</strong>
-                  <div style="font-size:0.8rem;color:var(--gray-500)">${r.classroom_subject} &middot; ${r.period_name}</div>
+                  <div style="font-size:0.8rem;color:var(--gray-500)">${r.classroom_subject} &middot; ${r.term_name} &middot; ${r.period_name}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   ${starsHTML(r.overall_rating)}
@@ -772,7 +772,7 @@ async function renderStudentMyReviews() {
               <div class="review-header">
                 <div>
                   <strong>${r.teacher_name}</strong>
-                  <span style="color:var(--gray-500);font-size:0.85rem"> &middot; ${r.classroom_subject} &middot; ${r.period_name} (${r.term_name})</span>
+                  <span style="color:var(--gray-500);font-size:0.85rem"> &middot; ${r.classroom_subject} &middot; ${r.term_name} &middot; ${r.period_name}</span>
                   <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
                     <span style="font-size:1.3rem;font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
                     ${starsHTML(r.overall_rating, 'large')}
@@ -870,7 +870,7 @@ async function viewTeacherProfile(teacherId) {
                 <div style="padding:12px;margin-bottom:12px;background:var(--gray-50);border-radius:8px">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                     ${starsHTML(r.overall_rating)}
-                    <span style="font-size:0.85rem;color:var(--gray-500)">${new Date(r.created_at).toLocaleDateString()}</span>
+                    <span style="font-size:0.85rem;color:var(--gray-500)">${r.term_name ? r.term_name + ' &middot; ' : ''}${r.period_name ? r.period_name + ' &middot; ' : ''}${new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
                   ${r.feedback_text ? `<p style="margin:0;color:var(--gray-700)">${r.feedback_text}</p>` : '<p style="margin:0;color:var(--gray-400);font-style:italic">No written feedback</p>'}
                   ${r.tags && r.tags !== '[]' ? `
@@ -1209,7 +1209,7 @@ async function renderTeacherFeedback() {
             <div class="review-card">
               <div class="review-header">
                 <div>
-                  <span style="color:var(--gray-500);font-size:0.85rem">${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}</span>
+                  <span style="color:var(--gray-500);font-size:0.85rem">${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}</span>
                   <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
                     <span style="font-size:1.3rem;font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
                     ${starsHTML(r.overall_rating, 'large')}
@@ -2192,7 +2192,7 @@ async function renderAdminModerate() {
           <div class="card-body">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
               <div>
-                <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}</span></div>
+                <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
                 <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
@@ -2245,7 +2245,7 @@ async function renderAdminFlagged() {
           <div class="card-body">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
               <div>
-                <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} &middot; ${r.period_name}</span></div>
+                <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
                 <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
@@ -2448,7 +2448,7 @@ async function viewTeacherFeedback(teacherId) {
               </div>
             </div>
             <div style="font-size:0.85rem;color:var(--gray-500);margin-bottom:8px">
-              ${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}
+              ${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:8px;background:var(--gray-50);border-radius:var(--radius-sm)">
               <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Clarity</strong>${criteriaInfoIcon('Clarity')}: ${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</div>

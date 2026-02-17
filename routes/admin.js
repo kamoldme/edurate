@@ -426,12 +426,13 @@ router.get('/reviews/flagged', authenticate, authorize('admin'), (req, res) => {
   try {
     const reviews = db.prepare(`
       SELECT r.*, te.full_name as teacher_name, c.subject as classroom_subject,
-        fp.name as period_name,
+        fp.name as period_name, t.name as term_name,
         u.full_name as student_name, u.email as student_email, u.grade_or_position as student_grade
       FROM reviews r
       JOIN teachers te ON r.teacher_id = te.id
       JOIN classrooms c ON r.classroom_id = c.id
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
+      JOIN terms t ON r.term_id = t.id
       JOIN users u ON r.student_id = u.id
       WHERE r.flagged_status = 'flagged'
       ORDER BY r.created_at ASC

@@ -18,7 +18,7 @@ router.get('/:id/profile', authenticate, authorize('admin', 'school_head'), (req
     const reviews = db.prepare(`
       SELECT r.id, r.overall_rating, r.clarity_rating, r.engagement_rating,
         r.fairness_rating, r.supportiveness_rating, r.feedback_text,
-        r.tags, r.created_at, fp.name as period_name
+        r.tags, r.created_at, fp.name as period_name, t.name as term_name
       FROM reviews r
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
       JOIN terms t ON fp.term_id = t.id

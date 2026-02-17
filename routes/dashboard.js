@@ -28,11 +28,12 @@ router.get('/student', authenticate, authorize('student'), (req, res) => {
 
     const myReviews = db.prepare(`
       SELECT r.id, r.teacher_id, r.classroom_id, r.overall_rating, r.flagged_status, r.approved_status,
-        te.full_name as teacher_name, c.subject as classroom_subject, fp.name as period_name
+        te.full_name as teacher_name, c.subject as classroom_subject, fp.name as period_name, t.name as term_name
       FROM reviews r
       JOIN teachers te ON r.teacher_id = te.id
       JOIN classrooms c ON r.classroom_id = c.id
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
+      JOIN terms t ON r.term_id = t.id
       WHERE r.student_id = ?
       ORDER BY r.created_at DESC
     `).all(req.user.id);
@@ -97,10 +98,11 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
         r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
         r.feedback_text, r.tags,
         r.created_at, r.flagged_status, r.approved_status,
-        fp.name as period_name, c.subject as classroom_subject,
+        fp.name as period_name, t.name as term_name, c.subject as classroom_subject,
         c.grade_level
       FROM reviews r
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
+      JOIN terms t ON r.term_id = t.id
       JOIN classrooms c ON r.classroom_id = c.id
       WHERE r.teacher_id = ?
       ORDER BY r.created_at DESC
@@ -262,9 +264,10 @@ router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 'a
       SELECT r.overall_rating, r.clarity_rating, r.engagement_rating,
         r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
         r.feedback_text, r.tags,
-        r.created_at, fp.name as period_name, c.subject as classroom_subject
+        r.created_at, fp.name as period_name, t.name as term_name, c.subject as classroom_subject
       FROM reviews r
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
+      JOIN terms t ON r.term_id = t.id
       JOIN classrooms c ON r.classroom_id = c.id
       WHERE r.teacher_id = ? AND r.approved_status = 1
       ORDER BY r.created_at DESC
