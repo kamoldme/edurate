@@ -252,9 +252,9 @@ function ratingGridHTML(r) {
   return `<div class="rating-grid-responsive">
     ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
       const v = r[c.k]; const val = v || 0;
-      return `<div style="padding:8px 12px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.82rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
-        <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
+      return `<div class="rating-grid-item">
+        <span class="rating-grid-label">${c.l}${criteriaInfoIcon(c.n)}</span>
+        <span class="rating-grid-value" style="color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
       </div>`;
     }).join('')}
   </div>`;

@@ -1123,6 +1123,30 @@ tbody tr:last-child td { border-bottom: none; }
   overflow: hidden;
 }
 
+/* Rating grid items (My Reviews, Feedback, Moderation) */
+.rating-grid-item {
+  padding: 8px 12px;
+  background: var(--gray-50);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.rating-grid-label {
+  font-size: 0.82rem;
+  color: var(--gray-600);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.rating-grid-value {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* ============ MOBILE PANEL FIXES (student, teacher, school head) ============ */
 @media (max-width: 768px) {
   /* Review card headers - stack vertically */
