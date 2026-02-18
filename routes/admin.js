@@ -1,25 +1,54 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../database');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, authorize, authorizeOrg, ROLE_HIERARCHY } = require('../middleware/auth');
 const { sanitizeInput } = require('../utils/moderation');
 const { logAuditEvent, getAuditLogs, getAuditStats } = require('../utils/audit');
 
 const router = express.Router();
 
+// Helper: build org filter clause for queries
+function orgFilter(req, alias, paramsList) {
+  if (req.user.role === 'super_admin' && !req.orgId) {
+    return ''; // super_admin sees all when no org selected
+  }
+  if (req.orgId) {
+    paramsList.push(req.orgId);
+    return ` AND ${alias}.org_id = ?`;
+  }
+  return '';
+}
+
 // ============ USER MANAGEMENT ============
 
 // GET /api/admin/users
-router.get('/users', authenticate, authorize('admin'), (req, res) => {
+router.get('/users', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { role, search } = req.query;
-    let query = 'SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, suspended, created_at FROM users WHERE 1=1';
     const params = [];
+    let query = 'SELECT id, full_name, email, role, grade_or_position, school_id, org_id, verified_status, suspended, created_at FROM users WHERE 1=1';
 
-    if (role) { query += ' AND role = ?'; params.push(role); }
-    if (search) { query += ' AND (full_name LIKE ? OR email LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+    // Org scoping
+    if (req.user.role === 'org_admin') {
+      // org_admin sees users in their org (via user_organizations) + unassigned students
+      query = `SELECT DISTINCT u.id, u.full_name, u.email, u.role, u.grade_or_position, u.school_id, u.org_id, u.verified_status, u.suspended, u.created_at
+        FROM users u
+        LEFT JOIN user_organizations uo ON u.id = uo.user_id AND uo.org_id = ?
+        WHERE (uo.org_id = ? OR u.org_id = ?)`;
+      params.push(req.orgId, req.orgId, req.orgId);
+    } else if (req.orgId) {
+      // super_admin filtering by specific org
+      query = `SELECT DISTINCT u.id, u.full_name, u.email, u.role, u.grade_or_position, u.school_id, u.org_id, u.verified_status, u.suspended, u.created_at
+        FROM users u
+        LEFT JOIN user_organizations uo ON u.id = uo.user_id AND uo.org_id = ?
+        WHERE (uo.org_id = ? OR u.org_id = ?)`;
+      params.push(req.orgId, req.orgId, req.orgId);
+    }
 
-    query += ' ORDER BY created_at DESC';
+    if (role) { query += ' AND u.role = ?'; params.push(role); }
+    if (search) { query += ' AND (u.full_name LIKE ? OR u.email LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+
+    query += ' ORDER BY u.created_at DESC';
     const users = db.prepare(query).all(...params);
     res.json(users);
   } catch (err) {
@@ -29,7 +58,7 @@ router.get('/users', authenticate, authorize('admin'), (req, res) => {
 });
 
 // POST /api/admin/users - create user (any role)
-router.post('/users', authenticate, authorize('admin'), (req, res) => {
+router.post('/users', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { full_name, email, password, role, grade_or_position, subject, department, experience_years, bio } = req.body;
 
@@ -37,29 +66,60 @@ router.post('/users', authenticate, authorize('admin'), (req, res) => {
       return res.status(400).json({ error: 'Name, email, password, and role are required' });
     }
 
-    if (!['student', 'teacher', 'school_head', 'admin'].includes(role)) {
+    const validRoles = ['student', 'teacher', 'school_head', 'org_admin', 'super_admin'];
+    if (!validRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    // Hierarchy enforcement: org_admin cannot create super_admin or org_admin
+    if (req.user.role === 'org_admin' && ['super_admin', 'org_admin'].includes(role)) {
+      return res.status(403).json({ error: 'You cannot create users with this role' });
+    }
+
+    // Only super_admin can create super_admin
+    if (role === 'super_admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Only platform administrators can create super admin accounts' });
     }
 
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
     if (existing) return res.status(409).json({ error: 'Email already exists' });
 
+    // Determine org_id for the new user
+    const userOrgId = role === 'super_admin' ? null : (req.orgId || null);
+
     const hashedPassword = bcrypt.hashSync(password, 12);
     const result = db.prepare(`
-      INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, verified_status)
-      VALUES (?, ?, ?, ?, ?, 1, 1)
-    `).run(sanitizeInput(full_name), email.toLowerCase(), hashedPassword, role, grade_or_position || null);
+      INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, org_id, verified_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+    `).run(sanitizeInput(full_name), email.toLowerCase(), hashedPassword, role, grade_or_position || null, userOrgId || 1, userOrgId);
 
     // If teacher, create teacher profile
     if (role === 'teacher') {
       db.prepare(`
-        INSERT INTO teachers (user_id, full_name, subject, department, experience_years, bio, school_id)
-        VALUES (?, ?, ?, ?, ?, ?, 1)
-      `).run(result.lastInsertRowid, sanitizeInput(full_name), subject || null, department || null, experience_years || 0, bio || null);
+        INSERT INTO teachers (user_id, full_name, subject, department, experience_years, bio, school_id, org_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(result.lastInsertRowid, sanitizeInput(full_name), subject || null, department || null, experience_years || 0, bio || null, userOrgId || 1, userOrgId);
     }
 
-    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, verified_status, created_at FROM users WHERE id = ?')
+    // Add to user_organizations if org is set
+    if (userOrgId && role !== 'super_admin') {
+      const roleInOrg = role === 'student' ? 'student' : role;
+      db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org) VALUES (?, ?, ?)')
+        .run(result.lastInsertRowid, userOrgId, roleInOrg);
+    }
+
+    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, org_id, verified_status, created_at FROM users WHERE id = ?')
       .get(result.lastInsertRowid);
+
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'user_create',
+      actionDescription: `Created ${role} account for ${full_name} (${email.toLowerCase()})`,
+      targetType: 'user', targetId: result.lastInsertRowid,
+      metadata: { email: email.toLowerCase(), role, org_id: userOrgId },
+      ipAddress: req.ip,
+      orgId: req.orgId
+    });
 
     res.status(201).json(user);
   } catch (err) {
@@ -69,12 +129,29 @@ router.post('/users', authenticate, authorize('admin'), (req, res) => {
 });
 
 // PUT /api/admin/users/:id - edit user profile
-router.put('/users/:id', authenticate, authorize('admin'), (req, res) => {
+router.put('/users/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    // org_admin can only edit users in their org
+    if (req.user.role === 'org_admin') {
+      const inOrg = db.prepare('SELECT id FROM user_organizations WHERE user_id = ? AND org_id = ?').get(user.id, req.orgId);
+      if (!inOrg && user.org_id !== req.orgId) {
+        return res.status(403).json({ error: 'User is not in your organization' });
+      }
+      // Cannot edit super_admin or org_admin users
+      if (['super_admin', 'org_admin'].includes(user.role)) {
+        return res.status(403).json({ error: 'You cannot edit users with this role' });
+      }
+    }
+
     const { full_name, email, grade_or_position, role } = req.body;
+
+    // Hierarchy enforcement on role changes
+    if (role && req.user.role === 'org_admin' && ['super_admin', 'org_admin'].includes(role)) {
+      return res.status(403).json({ error: 'You cannot assign this role' });
+    }
 
     // Check email uniqueness if changing
     if (email && email.toLowerCase() !== user.email) {
@@ -113,10 +190,11 @@ router.put('/users/:id', authenticate, authorize('admin'), (req, res) => {
       targetType: 'user',
       targetId: user.id,
       metadata: { changes: req.body },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
-    const updated = db.prepare('SELECT id, full_name, email, role, grade_or_position, verified_status, suspended FROM users WHERE id = ?')
+    const updated = db.prepare('SELECT id, full_name, email, role, grade_or_position, org_id, verified_status, suspended FROM users WHERE id = ?')
       .get(req.params.id);
     res.json(updated);
   } catch (err) {
@@ -126,10 +204,20 @@ router.put('/users/:id', authenticate, authorize('admin'), (req, res) => {
 });
 
 // POST /api/admin/users/:id/reset-password - admin resets user password
-router.post('/users/:id/reset-password', authenticate, authorize('admin'), (req, res) => {
+router.post('/users/:id/reset-password', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // org_admin ownership check
+    if (req.user.role === 'org_admin') {
+      if (user.org_id !== req.orgId && !db.prepare('SELECT id FROM user_organizations WHERE user_id = ? AND org_id = ?').get(user.id, req.orgId)) {
+        return res.status(403).json({ error: 'User is not in your organization' });
+      }
+      if (['super_admin', 'org_admin'].includes(user.role)) {
+        return res.status(403).json({ error: 'You cannot reset password for users with this role' });
+      }
+    }
 
     const { new_password } = req.body;
     if (!new_password || new_password.length < 8) {
@@ -147,7 +235,8 @@ router.post('/users/:id/reset-password', authenticate, authorize('admin'), (req,
       actionDescription: `Reset password for ${user.full_name} (${user.email})`,
       targetType: 'user',
       targetId: user.id,
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json({ message: 'Password reset successfully' });
@@ -158,15 +247,24 @@ router.post('/users/:id/reset-password', authenticate, authorize('admin'), (req,
 });
 
 // PUT /api/admin/users/:id/suspend
-router.put('/users/:id/suspend', authenticate, authorize('admin'), (req, res) => {
+router.put('/users/:id/suspend', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    // org_admin ownership check
+    if (req.user.role === 'org_admin') {
+      if (user.org_id !== req.orgId && !db.prepare('SELECT id FROM user_organizations WHERE user_id = ? AND org_id = ?').get(user.id, req.orgId)) {
+        return res.status(403).json({ error: 'User is not in your organization' });
+      }
+      if (['super_admin', 'org_admin'].includes(user.role)) {
+        return res.status(403).json({ error: 'You cannot suspend users with this role' });
+      }
+    }
+
     const newStatus = user.suspended ? 0 : 1;
     db.prepare('UPDATE users SET suspended = ? WHERE id = ?').run(newStatus, req.params.id);
 
-    // Log audit event
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,
@@ -176,7 +274,8 @@ router.put('/users/:id/suspend', authenticate, authorize('admin'), (req, res) =>
       targetType: 'user',
       targetId: user.id,
       metadata: { user_email: user.email, user_role: user.role },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json({ message: newStatus ? 'User suspended' : 'User unsuspended', suspended: newStatus });
@@ -189,9 +288,22 @@ router.put('/users/:id/suspend', authenticate, authorize('admin'), (req, res) =>
 // ============ TERM MANAGEMENT ============
 
 // GET /api/admin/terms
-router.get('/terms', authenticate, authorize('admin', 'school_head', 'teacher'), (req, res) => {
+router.get('/terms', authenticate, authorize('super_admin', 'org_admin', 'school_head', 'teacher'), authorizeOrg, (req, res) => {
   try {
-    const terms = db.prepare('SELECT * FROM terms WHERE school_id = 1 ORDER BY start_date DESC').all();
+    const params = [];
+    let query = 'SELECT * FROM terms WHERE 1=1';
+
+    if (req.orgId) {
+      query += ' AND org_id = ?';
+      params.push(req.orgId);
+    } else if (req.user.role !== 'super_admin') {
+      // Non-super_admin must have org context
+      query += ' AND org_id = ?';
+      params.push(req.user.org_id);
+    }
+
+    query += ' ORDER BY start_date DESC';
+    const terms = db.prepare(query).all(...params);
 
     const termsWithPeriods = terms.map(term => {
       const periods = db.prepare('SELECT * FROM feedback_periods WHERE term_id = ? ORDER BY id').all(term.id);
@@ -206,16 +318,21 @@ router.get('/terms', authenticate, authorize('admin', 'school_head', 'teacher'),
 });
 
 // POST /api/admin/terms
-router.post('/terms', authenticate, authorize('admin'), (req, res) => {
+router.post('/terms', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { name, start_date, end_date } = req.body;
     if (!name || !start_date || !end_date) {
       return res.status(400).json({ error: 'Name, start date, and end date are required' });
     }
 
+    const termOrgId = req.orgId || null;
+    if (!termOrgId && req.user.role === 'org_admin') {
+      return res.status(400).json({ error: 'Organization context required' });
+    }
+
     const result = db.prepare(
-      'INSERT INTO terms (name, start_date, end_date, school_id) VALUES (?, ?, ?, 1)'
-    ).run(name, start_date, end_date);
+      'INSERT INTO terms (name, start_date, end_date, school_id, org_id) VALUES (?, ?, ?, ?, ?)'
+    ).run(name, start_date, end_date, termOrgId || 1, termOrgId);
 
     // Auto-create 2 feedback periods
     const termId = result.lastInsertRowid;
@@ -229,7 +346,6 @@ router.post('/terms', authenticate, authorize('admin'), (req, res) => {
     const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(termId);
     const periods = db.prepare('SELECT * FROM feedback_periods WHERE term_id = ?').all(termId);
 
-    // Log audit event
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,
@@ -238,8 +354,9 @@ router.post('/terms', authenticate, authorize('admin'), (req, res) => {
       actionDescription: `Created term: ${name} (${start_date} to ${end_date})`,
       targetType: 'term',
       targetId: termId,
-      metadata: { name, start_date, end_date },
-      ipAddress: req.ip
+      metadata: { name, start_date, end_date, org_id: termOrgId },
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.status(201).json({ ...term, periods });
@@ -250,15 +367,20 @@ router.post('/terms', authenticate, authorize('admin'), (req, res) => {
 });
 
 // PUT /api/admin/terms/:id
-router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
+router.put('/terms/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { name, start_date, end_date, active_status, feedback_visible } = req.body;
     const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(req.params.id);
     if (!term) return res.status(404).json({ error: 'Term not found' });
 
-    // If activating, deactivate others
+    // org_admin can only modify terms in their org
+    if (req.user.role === 'org_admin' && term.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Term does not belong to your organization' });
+    }
+
+    // If activating, deactivate others in same org
     if (active_status === 1) {
-      db.prepare('UPDATE terms SET active_status = 0 WHERE school_id = 1').run();
+      db.prepare('UPDATE terms SET active_status = 0 WHERE org_id = ?').run(term.org_id);
     }
 
     db.prepare(`
@@ -273,7 +395,6 @@ router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
 
     const updated = db.prepare('SELECT * FROM terms WHERE id = ?').get(req.params.id);
 
-    // Log audit event
     const changes = [];
     if (name) changes.push(`name to "${name}"`);
     if (start_date) changes.push(`start date to ${start_date}`);
@@ -290,7 +411,8 @@ router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
       targetType: 'term',
       targetId: term.id,
       metadata: { name, start_date, end_date, active_status, feedback_visible },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json(updated);
@@ -301,12 +423,15 @@ router.put('/terms/:id', authenticate, authorize('admin'), (req, res) => {
 });
 
 // DELETE /api/admin/terms/:id
-router.delete('/terms/:id', authenticate, authorize('admin'), (req, res) => {
+router.delete('/terms/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(req.params.id);
     if (!term) return res.status(404).json({ error: 'Term not found' });
 
-    // Delete term (cascade will handle feedback_periods and related data)
+    if (req.user.role === 'org_admin' && term.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Term does not belong to your organization' });
+    }
+
     db.prepare('DELETE FROM terms WHERE id = ?').run(req.params.id);
 
     logAuditEvent({
@@ -318,7 +443,8 @@ router.delete('/terms/:id', authenticate, authorize('admin'), (req, res) => {
       targetType: 'term',
       targetId: term.id,
       metadata: { term_name: term.name },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json({ message: 'Term and all associated data deleted successfully' });
@@ -331,19 +457,31 @@ router.delete('/terms/:id', authenticate, authorize('admin'), (req, res) => {
 // ============ FEEDBACK PERIOD MANAGEMENT ============
 
 // GET /api/admin/feedback-periods
-router.get('/feedback-periods', authenticate, authorize('admin', 'teacher', 'school_head'), (req, res) => {
+router.get('/feedback-periods', authenticate, authorize('super_admin', 'org_admin', 'teacher', 'school_head'), authorizeOrg, (req, res) => {
   try {
     const { term_id } = req.query;
+    const params = [];
     let query = `
       SELECT fp.*, t.name as term_name
       FROM feedback_periods fp
       JOIN terms t ON fp.term_id = t.id
+      WHERE 1=1
     `;
-    const params = [];
+
     if (term_id) {
-      query += ' WHERE fp.term_id = ?';
+      query += ' AND fp.term_id = ?';
       params.push(term_id);
     }
+
+    // Org scoping via terms
+    if (req.orgId) {
+      query += ' AND t.org_id = ?';
+      params.push(req.orgId);
+    } else if (req.user.role !== 'super_admin' && req.user.org_id) {
+      query += ' AND t.org_id = ?';
+      params.push(req.user.org_id);
+    }
+
     query += ' ORDER BY fp.term_id, fp.id';
 
     res.json(db.prepare(query).all(...params));
@@ -354,11 +492,18 @@ router.get('/feedback-periods', authenticate, authorize('admin', 'teacher', 'sch
 });
 
 // PUT /api/admin/feedback-periods/:id
-router.put('/feedback-periods/:id', authenticate, authorize('admin'), (req, res) => {
+router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { active_status, start_date, end_date } = req.body;
-    const period = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(req.params.id);
+    const period = db.prepare(`
+      SELECT fp.*, t.org_id FROM feedback_periods fp JOIN terms t ON fp.term_id = t.id WHERE fp.id = ?
+    `).get(req.params.id);
     if (!period) return res.status(404).json({ error: 'Feedback period not found' });
+
+    // org_admin ownership check via term's org
+    if (req.user.role === 'org_admin' && period.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Period does not belong to your organization' });
+    }
 
     // If activating, deactivate all others in same term
     if (active_status === 1) {
@@ -375,7 +520,6 @@ router.put('/feedback-periods/:id', authenticate, authorize('admin'), (req, res)
 
     const updated = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(req.params.id);
 
-    // Log audit event
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,
@@ -385,7 +529,8 @@ router.put('/feedback-periods/:id', authenticate, authorize('admin'), (req, res)
       targetType: 'feedback_period',
       targetId: period.id,
       metadata: { active_status, start_date, end_date },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json(updated);
@@ -397,10 +542,23 @@ router.put('/feedback-periods/:id', authenticate, authorize('admin'), (req, res)
 
 // ============ REVIEW MODERATION ============
 
-// GET /api/admin/reviews/pending
-router.get('/reviews/pending', authenticate, authorize('admin'), (req, res) => {
-  try {
-    const reviews = db.prepare(`
+// Helper to build review query with org scoping
+function reviewQuery(statusFilter, req) {
+  const params = [];
+  let where = '';
+
+  if (statusFilter) {
+    where = `WHERE r.flagged_status = '${statusFilter}'`;
+  }
+
+  // Org scoping
+  if (req.orgId) {
+    where += (where ? ' AND' : 'WHERE') + ' r.org_id = ?';
+    params.push(req.orgId);
+  }
+
+  return {
+    sql: `
       SELECT r.*, te.full_name as teacher_name, c.subject as classroom_subject,
         c.grade_level, fp.name as period_name, t.name as term_name,
         u.full_name as student_name, u.email as student_email, u.grade_or_position as student_grade
@@ -410,11 +568,18 @@ router.get('/reviews/pending', authenticate, authorize('admin'), (req, res) => {
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
       JOIN terms t ON r.term_id = t.id
       JOIN users u ON r.student_id = u.id
-      WHERE r.flagged_status = 'pending'
-      ORDER BY r.created_at ASC
-    `).all();
+      ${where}
+      ORDER BY r.created_at ${statusFilter ? 'ASC' : 'DESC'}
+    `,
+    params
+  };
+}
 
-    res.json(reviews);
+// GET /api/admin/reviews/pending
+router.get('/reviews/pending', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+  try {
+    const { sql, params } = reviewQuery('pending', req);
+    res.json(db.prepare(sql).all(...params));
   } catch (err) {
     console.error('Pending reviews error:', err);
     res.status(500).json({ error: 'Failed to fetch pending reviews' });
@@ -422,23 +587,10 @@ router.get('/reviews/pending', authenticate, authorize('admin'), (req, res) => {
 });
 
 // GET /api/admin/reviews/flagged
-router.get('/reviews/flagged', authenticate, authorize('admin'), (req, res) => {
+router.get('/reviews/flagged', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const reviews = db.prepare(`
-      SELECT r.*, te.full_name as teacher_name, c.subject as classroom_subject,
-        fp.name as period_name, t.name as term_name,
-        u.full_name as student_name, u.email as student_email, u.grade_or_position as student_grade
-      FROM reviews r
-      JOIN teachers te ON r.teacher_id = te.id
-      JOIN classrooms c ON r.classroom_id = c.id
-      JOIN feedback_periods fp ON r.feedback_period_id = fp.id
-      JOIN terms t ON r.term_id = t.id
-      JOIN users u ON r.student_id = u.id
-      WHERE r.flagged_status = 'flagged'
-      ORDER BY r.created_at ASC
-    `).all();
-
-    res.json(reviews);
+    const { sql, params } = reviewQuery('flagged', req);
+    res.json(db.prepare(sql).all(...params));
   } catch (err) {
     console.error('Flagged reviews error:', err);
     res.status(500).json({ error: 'Failed to fetch flagged reviews' });
@@ -446,38 +598,37 @@ router.get('/reviews/flagged', authenticate, authorize('admin'), (req, res) => {
 });
 
 // GET /api/admin/reviews/all
-router.get('/reviews/all', authenticate, authorize('admin'), (req, res) => {
+router.get('/reviews/all', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const reviews = db.prepare(`
-      SELECT r.*, te.full_name as teacher_name, c.subject as classroom_subject,
-        fp.name as period_name, t.name as term_name,
-        u.full_name as student_name, u.email as student_email, u.grade_or_position as student_grade
-      FROM reviews r
-      JOIN teachers te ON r.teacher_id = te.id
-      JOIN classrooms c ON r.classroom_id = c.id
-      JOIN feedback_periods fp ON r.feedback_period_id = fp.id
-      JOIN terms t ON r.term_id = t.id
-      JOIN users u ON r.student_id = u.id
-      ORDER BY r.created_at DESC
-    `).all();
-
-    res.json(reviews);
+    const { sql, params } = reviewQuery(null, req);
+    res.json(db.prepare(sql).all(...params));
   } catch (err) {
     console.error('All reviews error:', err);
     res.status(500).json({ error: 'Failed to fetch reviews' });
   }
 });
 
+// Helper for review ownership check
+function checkReviewOrg(reviewId, req) {
+  const review = db.prepare(`
+    SELECT r.*, r.org_id as review_org_id, te.full_name as teacher_name, u.full_name as student_name
+    FROM reviews r
+    JOIN teachers te ON r.teacher_id = te.id
+    JOIN users u ON r.student_id = u.id
+    WHERE r.id = ?
+  `).get(reviewId);
+
+  if (review && req.user.role === 'org_admin' && review.review_org_id !== req.orgId) {
+    return { error: true, review };
+  }
+  return { error: false, review };
+}
+
 // PUT /api/admin/reviews/:id/approve
-router.put('/reviews/:id/approve', authenticate, authorize('admin'), (req, res) => {
+router.put('/reviews/:id/approve', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const review = db.prepare(`
-      SELECT r.*, te.full_name as teacher_name, u.full_name as student_name
-      FROM reviews r
-      JOIN teachers te ON r.teacher_id = te.id
-      JOIN users u ON r.student_id = u.id
-      WHERE r.id = ?
-    `).get(req.params.id);
+    const { error, review } = checkReviewOrg(req.params.id, req);
+    if (error) return res.status(403).json({ error: 'Review does not belong to your organization' });
 
     db.prepare("UPDATE reviews SET flagged_status = 'approved', approved_status = 1 WHERE id = ?")
       .run(req.params.id);
@@ -492,7 +643,8 @@ router.put('/reviews/:id/approve', authenticate, authorize('admin'), (req, res) 
         targetType: 'review',
         targetId: review.id,
         metadata: { teacher_id: review.teacher_id, student_id: review.student_id, rating: review.overall_rating },
-        ipAddress: req.ip
+        ipAddress: req.ip,
+        orgId: req.orgId
       });
     }
 
@@ -504,15 +656,10 @@ router.put('/reviews/:id/approve', authenticate, authorize('admin'), (req, res) 
 });
 
 // PUT /api/admin/reviews/:id/reject
-router.put('/reviews/:id/reject', authenticate, authorize('admin'), (req, res) => {
+router.put('/reviews/:id/reject', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const review = db.prepare(`
-      SELECT r.*, te.full_name as teacher_name, u.full_name as student_name
-      FROM reviews r
-      JOIN teachers te ON r.teacher_id = te.id
-      JOIN users u ON r.student_id = u.id
-      WHERE r.id = ?
-    `).get(req.params.id);
+    const { error, review } = checkReviewOrg(req.params.id, req);
+    if (error) return res.status(403).json({ error: 'Review does not belong to your organization' });
 
     db.prepare("UPDATE reviews SET flagged_status = 'rejected', approved_status = 0 WHERE id = ?")
       .run(req.params.id);
@@ -527,7 +674,8 @@ router.put('/reviews/:id/reject', authenticate, authorize('admin'), (req, res) =
         targetType: 'review',
         targetId: review.id,
         metadata: { teacher_id: review.teacher_id, student_id: review.student_id, rating: review.overall_rating },
-        ipAddress: req.ip
+        ipAddress: req.ip,
+        orgId: req.orgId
       });
     }
 
@@ -539,15 +687,10 @@ router.put('/reviews/:id/reject', authenticate, authorize('admin'), (req, res) =
 });
 
 // DELETE /api/admin/reviews/:id
-router.delete('/reviews/:id', authenticate, authorize('admin'), (req, res) => {
+router.delete('/reviews/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const review = db.prepare(`
-      SELECT r.*, te.full_name as teacher_name, u.full_name as student_name
-      FROM reviews r
-      JOIN teachers te ON r.teacher_id = te.id
-      JOIN users u ON r.student_id = u.id
-      WHERE r.id = ?
-    `).get(req.params.id);
+    const { error, review } = checkReviewOrg(req.params.id, req);
+    if (error) return res.status(403).json({ error: 'Review does not belong to your organization' });
 
     db.prepare('DELETE FROM reviews WHERE id = ?').run(req.params.id);
 
@@ -561,7 +704,8 @@ router.delete('/reviews/:id', authenticate, authorize('admin'), (req, res) => {
         targetType: 'review',
         targetId: review.id,
         metadata: { teacher_id: review.teacher_id, student_id: review.student_id, rating: review.overall_rating },
-        ipAddress: req.ip
+        ipAddress: req.ip,
+        orgId: req.orgId
       });
     }
 
@@ -573,32 +717,44 @@ router.delete('/reviews/:id', authenticate, authorize('admin'), (req, res) => {
 });
 
 // POST /api/admin/reviews/bulk-approve - bulk approve pending reviews
-router.post('/reviews/bulk-approve', authenticate, authorize('admin'), (req, res) => {
+router.post('/reviews/bulk-approve', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { review_ids } = req.body;
     if (!review_ids || !Array.isArray(review_ids) || review_ids.length === 0) {
       return res.status(400).json({ error: 'review_ids array is required' });
     }
 
-    const placeholders = review_ids.map(() => '?').join(',');
-    db.prepare(`
-      UPDATE reviews
-      SET flagged_status = 'approved', approved_status = 1
-      WHERE id IN (${placeholders})
-    `).run(...review_ids);
+    // Org scoping: only approve reviews in the admin's org
+    let ids = review_ids;
+    if (req.user.role === 'org_admin' && req.orgId) {
+      const orgReviews = db.prepare(
+        `SELECT id FROM reviews WHERE id IN (${review_ids.map(() => '?').join(',')}) AND org_id = ?`
+      ).all(...review_ids, req.orgId);
+      ids = orgReviews.map(r => r.id);
+    }
+
+    if (ids.length > 0) {
+      const placeholders = ids.map(() => '?').join(',');
+      db.prepare(`
+        UPDATE reviews
+        SET flagged_status = 'approved', approved_status = 1
+        WHERE id IN (${placeholders})
+      `).run(...ids);
+    }
 
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,
       userName: req.user.full_name,
       actionType: 'review_bulk_approve',
-      actionDescription: `Bulk approved ${review_ids.length} reviews`,
+      actionDescription: `Bulk approved ${ids.length} reviews`,
       targetType: 'review',
-      metadata: { count: review_ids.length, review_ids },
-      ipAddress: req.ip
+      metadata: { count: ids.length, review_ids: ids },
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
-    res.json({ message: `Approved ${review_ids.length} reviews`, count: review_ids.length });
+    res.json({ message: `Approved ${ids.length} reviews`, count: ids.length });
   } catch (err) {
     console.error('Bulk approve error:', err);
     res.status(500).json({ error: 'Failed to bulk approve reviews' });
@@ -608,16 +764,28 @@ router.post('/reviews/bulk-approve', authenticate, authorize('admin'), (req, res
 // ============ CLASSROOM MANAGEMENT ============
 
 // GET /api/admin/classrooms - list all classrooms
-router.get('/classrooms', authenticate, authorize('admin', 'school_head'), (req, res) => {
+router.get('/classrooms', authenticate, authorize('super_admin', 'org_admin', 'school_head'), authorizeOrg, (req, res) => {
   try {
+    const params = [];
+    let where = 'WHERE 1=1';
+
+    if (req.orgId) {
+      where += ' AND c.org_id = ?';
+      params.push(req.orgId);
+    } else if (req.user.role !== 'super_admin' && req.user.org_id) {
+      where += ' AND c.org_id = ?';
+      params.push(req.user.org_id);
+    }
+
     const classrooms = db.prepare(`
       SELECT c.*, te.full_name as teacher_name, t.name as term_name,
         (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
       JOIN terms t ON c.term_id = t.id
+      ${where}
       ORDER BY c.created_at DESC
-    `).all();
+    `).all(...params);
 
     res.json(classrooms);
   } catch (err) {
@@ -627,10 +795,14 @@ router.get('/classrooms', authenticate, authorize('admin', 'school_head'), (req,
 });
 
 // PUT /api/admin/classrooms/:id - edit classroom
-router.put('/classrooms/:id', authenticate, authorize('admin'), (req, res) => {
+router.put('/classrooms/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    if (req.user.role === 'org_admin' && classroom.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Classroom does not belong to your organization' });
+    }
 
     const { subject, grade_level, teacher_id, term_id, active_status } = req.body;
 
@@ -653,7 +825,8 @@ router.put('/classrooms/:id', authenticate, authorize('admin'), (req, res) => {
       targetType: 'classroom',
       targetId: classroom.id,
       metadata: { changes: req.body },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     const updated = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
@@ -665,10 +838,14 @@ router.put('/classrooms/:id', authenticate, authorize('admin'), (req, res) => {
 });
 
 // DELETE /api/admin/classrooms/:id - delete classroom
-router.delete('/classrooms/:id', authenticate, authorize('admin'), (req, res) => {
+router.delete('/classrooms/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    if (req.user.role === 'org_admin' && classroom.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Classroom does not belong to your organization' });
+    }
 
     db.prepare('DELETE FROM classrooms WHERE id = ?').run(req.params.id);
 
@@ -680,7 +857,8 @@ router.delete('/classrooms/:id', authenticate, authorize('admin'), (req, res) =>
       actionDescription: `Deleted classroom ${classroom.subject} (${classroom.grade_level})`,
       targetType: 'classroom',
       targetId: classroom.id,
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json({ message: 'Classroom deleted successfully' });
@@ -691,13 +869,17 @@ router.delete('/classrooms/:id', authenticate, authorize('admin'), (req, res) =>
 });
 
 // POST /api/admin/classrooms/:id/add-student - add student to classroom
-router.post('/classrooms/:id/add-student', authenticate, authorize('admin'), (req, res) => {
+router.post('/classrooms/:id/add-student', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { student_id } = req.body;
     if (!student_id) return res.status(400).json({ error: 'student_id is required' });
 
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    if (req.user.role === 'org_admin' && classroom.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Classroom does not belong to your organization' });
+    }
 
     const student = db.prepare("SELECT * FROM users WHERE id = ? AND role = 'student'").get(student_id);
     if (!student) return res.status(404).json({ error: 'Student not found' });
@@ -709,6 +891,12 @@ router.post('/classrooms/:id/add-student', authenticate, authorize('admin'), (re
     db.prepare('INSERT INTO classroom_members (classroom_id, student_id) VALUES (?, ?)')
       .run(req.params.id, student_id);
 
+    // Auto-associate student with the classroom's org
+    if (classroom.org_id) {
+      db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org) VALUES (?, ?, ?)')
+        .run(student_id, classroom.org_id, 'student');
+    }
+
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,
@@ -718,7 +906,8 @@ router.post('/classrooms/:id/add-student', authenticate, authorize('admin'), (re
       targetType: 'classroom',
       targetId: classroom.id,
       metadata: { student_id, student_name: student.full_name },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json({ message: 'Student added to classroom' });
@@ -729,8 +918,13 @@ router.post('/classrooms/:id/add-student', authenticate, authorize('admin'), (re
 });
 
 // DELETE /api/admin/classrooms/:id/remove-student/:student_id - remove student
-router.delete('/classrooms/:id/remove-student/:student_id', authenticate, authorize('admin'), (req, res) => {
+router.delete('/classrooms/:id/remove-student/:student_id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
+    const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
+    if (classroom && req.user.role === 'org_admin' && classroom.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Classroom does not belong to your organization' });
+    }
+
     const result = db.prepare('DELETE FROM classroom_members WHERE classroom_id = ? AND student_id = ?')
       .run(req.params.id, req.params.student_id);
 
@@ -739,7 +933,6 @@ router.delete('/classrooms/:id/remove-student/:student_id', authenticate, author
     }
 
     const student = db.prepare('SELECT full_name FROM users WHERE id = ?').get(req.params.student_id);
-    const classroom = db.prepare('SELECT subject FROM classrooms WHERE id = ?').get(req.params.id);
 
     logAuditEvent({
       userId: req.user.id,
@@ -750,7 +943,8 @@ router.delete('/classrooms/:id/remove-student/:student_id', authenticate, author
       targetType: 'classroom',
       targetId: parseInt(req.params.id),
       metadata: { student_id: req.params.student_id },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json({ message: 'Student removed from classroom' });
@@ -762,8 +956,8 @@ router.delete('/classrooms/:id/remove-student/:student_id', authenticate, author
 
 // ============ STUDENT SUBMISSION TRACKING ============
 
-// GET /api/admin/submission-tracking - check which students submitted reviews
-router.get('/submission-tracking', authenticate, authorize('admin', 'school_head'), (req, res) => {
+// GET /api/admin/submission-tracking
+router.get('/submission-tracking', authenticate, authorize('super_admin', 'org_admin', 'school_head'), authorizeOrg, (req, res) => {
   try {
     const { classroom_id, feedback_period_id } = req.query;
 
@@ -771,17 +965,27 @@ router.get('/submission-tracking', authenticate, authorize('admin', 'school_head
       return res.status(400).json({ error: 'classroom_id and feedback_period_id are required' });
     }
 
-    // Get all students in the classroom
+    // Org ownership check
+    const classroom = db.prepare(`
+      SELECT c.*, te.full_name as teacher_name, t.name as term_name
+      FROM classrooms c
+      JOIN teachers te ON c.teacher_id = te.id
+      JOIN terms t ON c.term_id = t.id
+      WHERE c.id = ?
+    `).get(classroom_id);
+
+    if (classroom && req.user.role === 'org_admin' && classroom.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Classroom does not belong to your organization' });
+    }
+
     const students = db.prepare(`
-      SELECT u.id, u.full_name, u.email, u.grade_or_position,
-        cm.joined_at
+      SELECT u.id, u.full_name, u.email, u.grade_or_position, cm.joined_at
       FROM classroom_members cm
       JOIN users u ON cm.student_id = u.id
       WHERE cm.classroom_id = ?
       ORDER BY u.full_name
     `).all(classroom_id);
 
-    // Get submission status for each student
     const studentsWithStatus = students.map(student => {
       const review = db.prepare(`
         SELECT id, overall_rating, flagged_status, created_at
@@ -798,15 +1002,6 @@ router.get('/submission-tracking', authenticate, authorize('admin', 'school_head
         submitted_at: review?.created_at
       };
     });
-
-    // Get classroom and period info
-    const classroom = db.prepare(`
-      SELECT c.*, te.full_name as teacher_name, t.name as term_name
-      FROM classrooms c
-      JOIN teachers te ON c.teacher_id = te.id
-      JOIN terms t ON c.term_id = t.id
-      WHERE c.id = ?
-    `).get(classroom_id);
 
     const period = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(feedback_period_id);
 
@@ -830,13 +1025,24 @@ router.get('/submission-tracking', authenticate, authorize('admin', 'school_head
   }
 });
 
-// GET /api/admin/submission-overview - overview of all classrooms
-router.get('/submission-overview', authenticate, authorize('admin', 'school_head'), (req, res) => {
+// GET /api/admin/submission-overview
+router.get('/submission-overview', authenticate, authorize('super_admin', 'org_admin', 'school_head'), authorizeOrg, (req, res) => {
   try {
     const { feedback_period_id } = req.query;
 
     if (!feedback_period_id) {
       return res.status(400).json({ error: 'feedback_period_id is required' });
+    }
+
+    const params = [feedback_period_id];
+    let where = 'WHERE c.active_status = 1';
+
+    if (req.orgId) {
+      where += ' AND c.org_id = ?';
+      params.push(req.orgId);
+    } else if (req.user.role !== 'super_admin' && req.user.org_id) {
+      where += ' AND c.org_id = ?';
+      params.push(req.user.org_id);
     }
 
     const classrooms = db.prepare(`
@@ -846,9 +1052,9 @@ router.get('/submission-overview', authenticate, authorize('admin', 'school_head
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
       JOIN terms t ON c.term_id = t.id
-      WHERE c.active_status = 1
+      ${where}
       ORDER BY c.subject, c.grade_level
-    `).all(feedback_period_id);
+    `).all(...params);
 
     const classroomsWithRates = classrooms.map(c => ({
       ...c,
@@ -880,11 +1086,16 @@ router.get('/submission-overview', authenticate, authorize('admin', 'school_head
 
 // ============ TEACHER FEEDBACK VIEWING ============
 
-// GET /api/admin/teacher/:id/feedback - view all feedback for a specific teacher
-router.get('/teacher/:id/feedback', authenticate, authorize('admin', 'school_head'), (req, res) => {
+// GET /api/admin/teacher/:id/feedback
+router.get('/teacher/:id/feedback', authenticate, authorize('super_admin', 'org_admin', 'school_head'), authorizeOrg, (req, res) => {
   try {
     const teacher = db.prepare('SELECT * FROM teachers WHERE id = ?').get(req.params.id);
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+
+    // Org check
+    if (req.user.role === 'org_admin' && teacher.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Teacher does not belong to your organization' });
+    }
 
     const { term_id, period_id, classroom_id } = req.query;
 
@@ -902,26 +1113,14 @@ router.get('/teacher/:id/feedback', authenticate, authorize('admin', 'school_hea
     `;
     const params = [req.params.id];
 
-    if (term_id) {
-      query += ' AND r.term_id = ?';
-      params.push(term_id);
-    }
-
-    if (period_id) {
-      query += ' AND r.feedback_period_id = ?';
-      params.push(period_id);
-    }
-
-    if (classroom_id) {
-      query += ' AND r.classroom_id = ?';
-      params.push(classroom_id);
-    }
+    if (term_id) { query += ' AND r.term_id = ?'; params.push(term_id); }
+    if (period_id) { query += ' AND r.feedback_period_id = ?'; params.push(period_id); }
+    if (classroom_id) { query += ' AND r.classroom_id = ?'; params.push(classroom_id); }
 
     query += ' ORDER BY r.created_at DESC';
 
     const reviews = db.prepare(query).all(...params);
 
-    // Get teacher scores
     const { getTeacherScores, getRatingDistribution } = require('../utils/scoring');
     const scores = getTeacherScores(teacher.id, {
       termId: term_id ? parseInt(term_id) : undefined,
@@ -935,31 +1134,34 @@ router.get('/teacher/:id/feedback', authenticate, authorize('admin', 'school_hea
       classroomId: classroom_id ? parseInt(classroom_id) : undefined
     });
 
-    res.json({
-      teacher,
-      reviews,
-      scores,
-      distribution
-    });
+    res.json({ teacher, reviews, scores, distribution });
   } catch (err) {
     console.error('Teacher feedback error:', err);
     res.status(500).json({ error: 'Failed to fetch teacher feedback' });
   }
 });
 
-// GET /api/admin/teachers - list all teachers with summary stats
-router.get('/teachers', authenticate, authorize('admin', 'school_head'), (req, res) => {
+// GET /api/admin/teachers
+router.get('/teachers', authenticate, authorize('super_admin', 'org_admin', 'school_head'), authorizeOrg, (req, res) => {
   try {
-    const teachers = db.prepare('SELECT * FROM teachers WHERE school_id = 1 ORDER BY full_name').all();
+    const params = [];
+    let where = 'WHERE 1=1';
+
+    if (req.orgId) {
+      where += ' AND org_id = ?';
+      params.push(req.orgId);
+    } else if (req.user.role !== 'super_admin' && req.user.org_id) {
+      where += ' AND org_id = ?';
+      params.push(req.user.org_id);
+    }
+
+    const teachers = db.prepare(`SELECT * FROM teachers ${where} ORDER BY full_name`).all(...params);
     const { getTeacherScores } = require('../utils/scoring');
 
-    const teachersWithStats = teachers.map(t => {
-      const scores = getTeacherScores(t.id);
-      return {
-        ...t,
-        scores
-      };
-    });
+    const teachersWithStats = teachers.map(t => ({
+      ...t,
+      scores: getTeacherScores(t.id)
+    }));
 
     res.json(teachersWithStats);
   } catch (err) {
@@ -968,11 +1170,15 @@ router.get('/teachers', authenticate, authorize('admin', 'school_head'), (req, r
   }
 });
 
-// PUT /api/admin/teachers/:id - edit teacher profile
-router.put('/teachers/:id', authenticate, authorize('admin'), (req, res) => {
+// PUT /api/admin/teachers/:id
+router.put('/teachers/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const teacher = db.prepare('SELECT * FROM teachers WHERE id = ?').get(req.params.id);
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+
+    if (req.user.role === 'org_admin' && teacher.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Teacher does not belong to your organization' });
+    }
 
     const { full_name, subject, department, experience_years, bio } = req.body;
 
@@ -986,14 +1192,9 @@ router.put('/teachers/:id', authenticate, authorize('admin'), (req, res) => {
       WHERE id = ?
     `).run(
       full_name ? sanitizeInput(full_name) : null,
-      subject,
-      department,
-      experience_years,
-      bio,
-      req.params.id
+      subject, department, experience_years, bio, req.params.id
     );
 
-    // Update user table too if name changed
     if (full_name && teacher.user_id) {
       db.prepare('UPDATE users SET full_name = ? WHERE id = ?')
         .run(sanitizeInput(full_name), teacher.user_id);
@@ -1008,7 +1209,8 @@ router.put('/teachers/:id', authenticate, authorize('admin'), (req, res) => {
       targetType: 'teacher',
       targetId: teacher.id,
       metadata: { changes: req.body },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     const updated = db.prepare('SELECT * FROM teachers WHERE id = ?').get(req.params.id);
@@ -1022,7 +1224,7 @@ router.put('/teachers/:id', authenticate, authorize('admin'), (req, res) => {
 // ============ AUDIT LOGS ============
 
 // GET /api/admin/audit-logs
-router.get('/audit-logs', authenticate, authorize('admin'), (req, res) => {
+router.get('/audit-logs', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { user_id, action_type, target_type, target_id, start_date, end_date, limit, offset } = req.query;
 
@@ -1034,7 +1236,8 @@ router.get('/audit-logs', authenticate, authorize('admin'), (req, res) => {
       startDate: start_date,
       endDate: end_date,
       limit: limit ? parseInt(limit) : 100,
-      offset: offset ? parseInt(offset) : 0
+      offset: offset ? parseInt(offset) : 0,
+      orgId: req.orgId
     });
 
     res.json(logs);
@@ -1045,13 +1248,14 @@ router.get('/audit-logs', authenticate, authorize('admin'), (req, res) => {
 });
 
 // GET /api/admin/audit-stats
-router.get('/audit-stats', authenticate, authorize('admin'), (req, res) => {
+router.get('/audit-stats', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { start_date, end_date } = req.query;
 
     const stats = getAuditStats({
       startDate: start_date,
-      endDate: end_date
+      endDate: end_date,
+      orgId: req.orgId
     });
 
     res.json(stats);
@@ -1064,31 +1268,51 @@ router.get('/audit-stats', authenticate, authorize('admin'), (req, res) => {
 // ============ STATISTICS ============
 
 // GET /api/admin/stats
-router.get('/stats', authenticate, authorize('admin', 'school_head'), (req, res) => {
+router.get('/stats', authenticate, authorize('super_admin', 'org_admin', 'school_head'), authorizeOrg, (req, res) => {
   try {
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get().count;
-    const totalTeachers = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'teacher'").get().count;
-    const totalClassrooms = db.prepare('SELECT COUNT(*) as count FROM classrooms').get().count;
-    const totalReviews = db.prepare('SELECT COUNT(*) as count FROM reviews').get().count;
-    const pendingReviews = db.prepare("SELECT COUNT(*) as count FROM reviews WHERE flagged_status = 'pending'").get().count;
-    const flaggedReviews = db.prepare("SELECT COUNT(*) as count FROM reviews WHERE flagged_status = 'flagged'").get().count;
-    const approvedReviews = db.prepare("SELECT COUNT(*) as count FROM reviews WHERE approved_status = 1").get().count;
+    let orgWhere = '';
+    let orgWhereReviews = '';
+    const params = [];
+    const reviewParams = [];
+
+    if (req.orgId) {
+      orgWhere = ' AND org_id = ?';
+      orgWhereReviews = ' AND org_id = ?';
+    } else if (req.user.role !== 'super_admin' && req.user.org_id) {
+      orgWhere = ' AND org_id = ?';
+      orgWhereReviews = ' AND org_id = ?';
+    }
+
+    const orgVal = req.orgId || (req.user.role !== 'super_admin' ? req.user.org_id : null);
+
+    const buildParams = () => orgVal ? [orgVal] : [];
+
+    const totalUsers = db.prepare(`SELECT COUNT(*) as count FROM users WHERE 1=1${orgWhere}`).get(...buildParams()).count;
+    const totalStudents = db.prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'student'${orgWhere}`).get(...buildParams()).count;
+    const totalTeachers = db.prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'teacher'${orgWhere}`).get(...buildParams()).count;
+    const totalClassrooms = db.prepare(`SELECT COUNT(*) as count FROM classrooms WHERE 1=1${orgWhere ? ' AND org_id = ?' : ''}`).get(...buildParams()).count;
+    const totalReviews = db.prepare(`SELECT COUNT(*) as count FROM reviews WHERE 1=1${orgWhereReviews}`).get(...buildParams()).count;
+    const pendingReviews = db.prepare(`SELECT COUNT(*) as count FROM reviews WHERE flagged_status = 'pending'${orgWhereReviews}`).get(...buildParams()).count;
+    const flaggedReviews = db.prepare(`SELECT COUNT(*) as count FROM reviews WHERE flagged_status = 'flagged'${orgWhereReviews}`).get(...buildParams()).count;
+    const approvedReviews = db.prepare(`SELECT COUNT(*) as count FROM reviews WHERE approved_status = 1${orgWhereReviews}`).get(...buildParams()).count;
 
     const avgRating = db.prepare(
-      'SELECT ROUND(AVG(overall_rating), 2) as avg FROM reviews WHERE approved_status = 1'
-    ).get().avg;
+      `SELECT ROUND(AVG(overall_rating), 2) as avg FROM reviews WHERE approved_status = 1${orgWhereReviews}`
+    ).get(...buildParams()).avg;
 
-    // Rating distribution for charts
     const ratingDist = db.prepare(
-      'SELECT overall_rating as rating, COUNT(*) as count FROM reviews WHERE approved_status = 1 GROUP BY overall_rating ORDER BY overall_rating'
-    ).all();
+      `SELECT overall_rating as rating, COUNT(*) as count FROM reviews WHERE approved_status = 1${orgWhereReviews} GROUP BY overall_rating ORDER BY overall_rating`
+    ).all(...buildParams());
     const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     ratingDist.forEach(r => { ratingDistribution[r.rating] = r.count; });
 
-    // Admin count
-    const totalAdmins = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get().count;
-    const totalSchoolHeads = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'school_head'").get().count;
+    const totalAdmins = db.prepare(`SELECT COUNT(*) as count FROM users WHERE role IN ('super_admin', 'org_admin')${orgWhere}`).get(...buildParams()).count;
+    const totalSchoolHeads = db.prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'school_head'${orgWhere}`).get(...buildParams()).count;
+
+    // Add org count for super_admin
+    const totalOrgs = req.user.role === 'super_admin'
+      ? db.prepare('SELECT COUNT(*) as count FROM organizations').get().count
+      : undefined;
 
     res.json({
       total_users: totalUsers,
@@ -1102,7 +1326,8 @@ router.get('/stats', authenticate, authorize('admin', 'school_head'), (req, res)
       flagged_reviews: flaggedReviews,
       approved_reviews: approvedReviews,
       average_rating: avgRating,
-      rating_distribution: ratingDistribution
+      rating_distribution: ratingDistribution,
+      ...(totalOrgs !== undefined && { total_organizations: totalOrgs })
     });
   } catch (err) {
     console.error('Stats error:', err);
@@ -1112,62 +1337,58 @@ router.get('/stats', authenticate, authorize('admin', 'school_head'), (req, res)
 
 // ============ SUPPORT MESSAGES MANAGEMENT ============
 
-// GET /api/admin/support/messages - list all support messages
-router.get('/support/messages', authenticate, authorize('admin'), (req, res) => {
+// GET /api/admin/support/messages
+router.get('/support/messages', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { status, user_id, category, limit, offset } = req.query;
 
-    let query = 'SELECT * FROM support_messages WHERE 1=1';
+    let query = 'SELECT sm.* FROM support_messages sm WHERE 1=1';
+    let countQuery = 'SELECT COUNT(*) as count FROM support_messages sm WHERE 1=1';
     const params = [];
-
-    if (status) {
-      query += ' AND status = ?';
-      params.push(status);
-    }
-
-    if (user_id) {
-      query += ' AND user_id = ?';
-      params.push(parseInt(user_id));
-    }
-
-    if (category) {
-      query += ' AND category = ?';
-      params.push(category);
-    }
-
-    query += ' ORDER BY created_at DESC';
-
-    if (limit) {
-      query += ' LIMIT ?';
-      params.push(parseInt(limit));
-    }
-
-    if (offset) {
-      query += ' OFFSET ?';
-      params.push(parseInt(offset));
-    }
-
-    const messages = db.prepare(query).all(...params);
-
-    // Get total count for pagination
-    let countQuery = 'SELECT COUNT(*) as count FROM support_messages WHERE 1=1';
     const countParams = [];
 
+    // Org scoping: org_admin sees messages from users in their org
+    if (req.user.role === 'org_admin' && req.orgId) {
+      const orgFilter = ' AND (sm.org_id = ? OR sm.user_id IN (SELECT user_id FROM user_organizations WHERE org_id = ?))';
+      query += orgFilter;
+      countQuery += orgFilter;
+      params.push(req.orgId, req.orgId);
+      countParams.push(req.orgId, req.orgId);
+    } else if (req.orgId) {
+      const orgFilter = ' AND (sm.org_id = ? OR sm.user_id IN (SELECT user_id FROM user_organizations WHERE org_id = ?))';
+      query += orgFilter;
+      countQuery += orgFilter;
+      params.push(req.orgId, req.orgId);
+      countParams.push(req.orgId, req.orgId);
+    }
+
     if (status) {
-      countQuery += ' AND status = ?';
+      query += ' AND sm.status = ?';
+      countQuery += ' AND sm.status = ?';
+      params.push(status);
       countParams.push(status);
     }
 
     if (user_id) {
-      countQuery += ' AND user_id = ?';
+      query += ' AND sm.user_id = ?';
+      countQuery += ' AND sm.user_id = ?';
+      params.push(parseInt(user_id));
       countParams.push(parseInt(user_id));
     }
 
     if (category) {
-      countQuery += ' AND category = ?';
+      query += ' AND sm.category = ?';
+      countQuery += ' AND sm.category = ?';
+      params.push(category);
       countParams.push(category);
     }
 
+    query += ' ORDER BY sm.created_at DESC';
+
+    if (limit) { query += ' LIMIT ?'; params.push(parseInt(limit)); }
+    if (offset) { query += ' OFFSET ?'; params.push(parseInt(offset)); }
+
+    const messages = db.prepare(query).all(...params);
     const totalCount = db.prepare(countQuery).get(...countParams).count;
 
     res.json({ messages, total: totalCount });
@@ -1177,8 +1398,8 @@ router.get('/support/messages', authenticate, authorize('admin'), (req, res) => 
   }
 });
 
-// PUT /api/admin/support/messages/:id - update support message status
-router.put('/support/messages/:id', authenticate, authorize('admin'), (req, res) => {
+// PUT /api/admin/support/messages/:id
+router.put('/support/messages/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const message = db.prepare('SELECT * FROM support_messages WHERE id = ?').get(req.params.id);
     if (!message) return res.status(404).json({ error: 'Support message not found' });
@@ -1192,32 +1413,16 @@ router.put('/support/messages/:id', authenticate, authorize('admin'), (req, res)
     const updates = [];
     const params = [];
 
-    if (status) {
-      updates.push('status = ?');
-      params.push(status);
-    }
-
-    if (admin_notes !== undefined) {
-      updates.push('admin_notes = ?');
-      params.push(admin_notes ? sanitizeInput(admin_notes) : null);
-    }
-
-    if (status === 'resolved') {
-      updates.push('resolved_at = CURRENT_TIMESTAMP');
-      updates.push('resolved_by = ?');
-      params.push(req.user.id);
-    }
+    if (status) { updates.push('status = ?'); params.push(status); }
+    if (admin_notes !== undefined) { updates.push('admin_notes = ?'); params.push(admin_notes ? sanitizeInput(admin_notes) : null); }
+    if (status === 'resolved') { updates.push('resolved_at = CURRENT_TIMESTAMP'); updates.push('resolved_by = ?'); params.push(req.user.id); }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No updates provided' });
     }
 
     params.push(req.params.id);
-
-    db.prepare(`
-      UPDATE support_messages SET ${updates.join(', ')}
-      WHERE id = ?
-    `).run(...params);
+    db.prepare(`UPDATE support_messages SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
     logAuditEvent({
       userId: req.user.id,
@@ -1228,7 +1433,8 @@ router.put('/support/messages/:id', authenticate, authorize('admin'), (req, res)
       targetType: 'support_message',
       targetId: parseInt(req.params.id),
       metadata: { status, admin_notes },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     const updated = db.prepare('SELECT * FROM support_messages WHERE id = ?').get(req.params.id);
@@ -1239,8 +1445,8 @@ router.put('/support/messages/:id', authenticate, authorize('admin'), (req, res)
   }
 });
 
-// DELETE /api/admin/support/messages/:id - delete support message
-router.delete('/support/messages/:id', authenticate, authorize('admin'), (req, res) => {
+// DELETE /api/admin/support/messages/:id
+router.delete('/support/messages/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const message = db.prepare('SELECT * FROM support_messages WHERE id = ?').get(req.params.id);
     if (!message) return res.status(404).json({ error: 'Support message not found' });
@@ -1256,7 +1462,8 @@ router.delete('/support/messages/:id', authenticate, authorize('admin'), (req, r
       targetType: 'support_message',
       targetId: parseInt(req.params.id),
       metadata: { subject: message.subject, category: message.category },
-      ipAddress: req.ip
+      ipAddress: req.ip,
+      orgId: req.orgId
     });
 
     res.json({ message: 'Support message deleted successfully' });
@@ -1266,19 +1473,30 @@ router.delete('/support/messages/:id', authenticate, authorize('admin'), (req, r
   }
 });
 
-// GET /api/admin/support/stats - get support message statistics
-router.get('/support/stats', authenticate, authorize('admin'), (req, res) => {
+// GET /api/admin/support/stats
+router.get('/support/stats', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const totalMessages = db.prepare('SELECT COUNT(*) as count FROM support_messages').get().count;
-    const newMessages = db.prepare("SELECT COUNT(*) as count FROM support_messages WHERE status = 'new'").get().count;
-    const inProgressMessages = db.prepare("SELECT COUNT(*) as count FROM support_messages WHERE status = 'in_progress'").get().count;
-    const resolvedMessages = db.prepare("SELECT COUNT(*) as count FROM support_messages WHERE status = 'resolved'").get().count;
+    let orgFilter = '';
+    const params = [];
+
+    if (req.user.role === 'org_admin' && req.orgId) {
+      orgFilter = ' AND (org_id = ? OR user_id IN (SELECT user_id FROM user_organizations WHERE org_id = ?))';
+      params.push(req.orgId, req.orgId);
+    } else if (req.orgId) {
+      orgFilter = ' AND (org_id = ? OR user_id IN (SELECT user_id FROM user_organizations WHERE org_id = ?))';
+      params.push(req.orgId, req.orgId);
+    }
+
+    const totalMessages = db.prepare(`SELECT COUNT(*) as count FROM support_messages WHERE 1=1${orgFilter}`).get(...params).count;
+    const newMessages = db.prepare(`SELECT COUNT(*) as count FROM support_messages WHERE status = 'new'${orgFilter}`).get(...params).count;
+    const inProgressMessages = db.prepare(`SELECT COUNT(*) as count FROM support_messages WHERE status = 'in_progress'${orgFilter}`).get(...params).count;
+    const resolvedMessages = db.prepare(`SELECT COUNT(*) as count FROM support_messages WHERE status = 'resolved'${orgFilter}`).get(...params).count;
 
     const categoryBreakdown = db.prepare(`
       SELECT category, COUNT(*) as count
-      FROM support_messages
+      FROM support_messages WHERE 1=1${orgFilter}
       GROUP BY category
-    `).all();
+    `).all(...params);
 
     res.json({
       total: totalMessages,

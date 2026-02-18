@@ -59,7 +59,7 @@ router.get('/', authenticate, (req, res) => {
 });
 
 // POST /api/classrooms - create classroom (teacher/admin)
-router.post('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
+router.post('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
   try {
     const { subject, grade_level, term_id } = req.body;
 
@@ -68,13 +68,18 @@ router.post('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
     }
 
     let teacherId;
+    let orgId;
+
     if (req.user.role === 'teacher') {
-      const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(req.user.id);
+      const teacher = db.prepare('SELECT id, org_id FROM teachers WHERE user_id = ?').get(req.user.id);
       if (!teacher) return res.status(400).json({ error: 'Teacher profile not found' });
       teacherId = teacher.id;
+      orgId = teacher.org_id;
     } else {
       teacherId = req.body.teacher_id;
       if (!teacherId) return res.status(400).json({ error: 'teacher_id is required for admin' });
+      const teacher = db.prepare('SELECT org_id FROM teachers WHERE id = ?').get(teacherId);
+      orgId = teacher?.org_id;
     }
 
     const term = db.prepare('SELECT id FROM terms WHERE id = ?').get(term_id);
@@ -83,9 +88,9 @@ router.post('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
     const join_code = generateJoinCode();
 
     const result = db.prepare(`
-      INSERT INTO classrooms (teacher_id, subject, grade_level, term_id, join_code)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(teacherId, subject, grade_level, term_id, join_code);
+      INSERT INTO classrooms (teacher_id, subject, grade_level, term_id, join_code, org_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(teacherId, subject, grade_level, term_id, join_code, orgId);
 
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(result.lastInsertRowid);
 
@@ -169,6 +174,21 @@ router.post('/join', authenticate, authorize('student'), (req, res) => {
       'INSERT INTO classroom_members (classroom_id, student_id) VALUES (?, ?)'
     ).run(classroom.id, req.user.id);
 
+    // Auto-associate student with the classroom's org
+    if (classroom.org_id) {
+      db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org) VALUES (?, ?, ?)')
+        .run(req.user.id, classroom.org_id, 'student');
+    }
+
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'classroom_join',
+      actionDescription: `Joined classroom: ${classroom.subject} with ${classroom.teacher_name}`,
+      targetType: 'classroom', targetId: classroom.id,
+      metadata: { teacher_id: classroom.teacher_id, join_code },
+      ipAddress: req.ip
+    });
+
     res.status(201).json({ message: `Joined ${classroom.subject} with ${classroom.teacher_name}`, classroom });
   } catch (err) {
     console.error('Join classroom error:', err);
@@ -192,6 +212,14 @@ router.post('/:id/regenerate-code', authenticate, authorize('teacher', 'admin'),
     const newCode = generateJoinCode();
     db.prepare('UPDATE classrooms SET join_code = ? WHERE id = ?').run(newCode, req.params.id);
 
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'join_code_regenerate',
+      actionDescription: `Regenerated join code for classroom: ${classroom.subject}`,
+      targetType: 'classroom', targetId: parseInt(req.params.id),
+      ipAddress: req.ip
+    });
+
     res.json({ join_code: newCode });
   } catch (err) {
     console.error('Regenerate code error:', err);
@@ -209,6 +237,15 @@ router.delete('/:id/leave', authenticate, authorize('student'), (req, res) => {
     if (result.changes === 0) {
       return res.status(404).json({ error: 'You are not a member of this classroom' });
     }
+
+    const classroom = db.prepare('SELECT subject FROM classrooms WHERE id = ?').get(req.params.id);
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'classroom_leave',
+      actionDescription: `Left classroom: ${classroom?.subject || 'Unknown'}`,
+      targetType: 'classroom', targetId: parseInt(req.params.id),
+      ipAddress: req.ip
+    });
 
     res.json({ message: 'Left classroom successfully' });
   } catch (err) {

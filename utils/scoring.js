@@ -94,15 +94,27 @@ function getTeacherTrend(teacherId, termId) {
   return { periods, trend };
 }
 
-function getDepartmentAverage(department, termId) {
+function getDepartmentAverage(department, termId, orgId) {
+  let where = 't.department = ? AND r.approved_status = 1';
+  const params = [department];
+
+  if (termId) {
+    where += ' AND r.term_id = ?';
+    params.push(termId);
+  }
+
+  if (orgId) {
+    where += ' AND t.org_id = ?';
+    params.push(orgId);
+  }
+
   const result = db.prepare(`
     SELECT
       ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) + AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as avg_score
     FROM reviews r
     JOIN teachers t ON r.teacher_id = t.id
-    WHERE t.department = ? AND r.approved_status = 1
-    ${termId ? 'AND r.term_id = ?' : ''}
-  `).get(...(termId ? [department, termId] : [department]));
+    WHERE ${where}
+  `).get(...params);
 
   return result?.avg_score || 0;
 }

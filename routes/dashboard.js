@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { getTeacherScores, getRatingDistribution, getTeacherTrend, getDepartmentAverage, getClassroomCompletionRate } = require('../utils/scoring');
+const { logAuditEvent } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -89,8 +90,8 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
     // Distribution
     const distribution = getRatingDistribution(teacher.id);
 
-    // Department comparison
-    const deptAvg = teacher.department ? getDepartmentAverage(teacher.department, activeTerm?.id) : null;
+    // Department comparison (within same org)
+    const deptAvg = teacher.department ? getDepartmentAverage(teacher.department, activeTerm?.id, teacher.org_id) : null;
 
     // All reviews for this teacher (approved + pending for visibility)
     const recentReviews = db.prepare(`
@@ -170,6 +171,15 @@ router.post('/teacher/respond', authenticate, authorize('teacher'), (req, res) =
       VALUES (?, ?, ?, ?)
     `).run(teacher.id, classroom_id, feedback_period_id, response_text);
 
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'teacher_respond',
+      actionDescription: `Posted response to feedback for ${classroom.subject}`,
+      targetType: 'teacher_response', targetId: classroom_id,
+      metadata: { classroom_id, feedback_period_id },
+      ipAddress: req.ip
+    });
+
     res.json({ message: 'Response saved' });
   } catch (err) {
     console.error('Teacher respond error:', err);
@@ -178,11 +188,16 @@ router.post('/teacher/respond', authenticate, authorize('teacher'), (req, res) =
 });
 
 // GET /api/dashboard/school-head
-router.get('/school-head', authenticate, authorize('school_head', 'admin'), (req, res) => {
+router.get('/school-head', authenticate, authorize('school_head', 'super_admin', 'org_admin'), (req, res) => {
   try {
-    const activeTerm = db.prepare('SELECT * FROM terms WHERE active_status = 1 LIMIT 1').get();
+    const orgId = req.user.org_id;
+    if (!orgId && req.user.role !== 'super_admin') {
+      return res.status(400).json({ error: 'Organization context required' });
+    }
 
-    const teachers = db.prepare('SELECT * FROM teachers WHERE school_id = 1').all();
+    const activeTerm = db.prepare(`SELECT * FROM terms WHERE active_status = 1 ${orgId ? 'AND org_id = ?' : ''} LIMIT 1`).get(...(orgId ? [orgId] : []));
+
+    const teachers = db.prepare(`SELECT * FROM teachers WHERE ${orgId ? 'org_id = ?' : '1=1'}`).all(...(orgId ? [orgId] : []));
 
     const teacherPerformance = teachers.map(t => {
       const scores = getTeacherScores(t.id, activeTerm ? { termId: activeTerm.id } : {});
@@ -208,7 +223,7 @@ router.get('/school-head', authenticate, authorize('school_head', 'admin'), (req
     });
 
     for (const [dept, data] of Object.entries(departments)) {
-      data.avg_score = getDepartmentAverage(dept, activeTerm?.id);
+      data.avg_score = getDepartmentAverage(dept, activeTerm?.id, orgId);
     }
 
     // All classrooms with stats
@@ -221,7 +236,7 @@ router.get('/school-head', authenticate, authorize('school_head', 'admin'), (req
       ORDER BY c.created_at DESC
     `).all();
 
-    const terms = db.prepare('SELECT * FROM terms WHERE school_id = 1 ORDER BY start_date DESC').all();
+    const terms = db.prepare(`SELECT * FROM terms WHERE ${orgId ? 'org_id = ?' : '1=1'} ORDER BY start_date DESC`).all(...(orgId ? [orgId] : []));
 
     res.json({
       active_term: activeTerm,
@@ -237,12 +252,17 @@ router.get('/school-head', authenticate, authorize('school_head', 'admin'), (req
 });
 
 // GET /api/dashboard/school-head/teacher/:id - detailed teacher view
-router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 'admin'), (req, res) => {
+router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 'super_admin', 'org_admin'), (req, res) => {
   try {
     const teacher = db.prepare('SELECT * FROM teachers WHERE id = ?').get(req.params.id);
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
 
-    const terms = db.prepare('SELECT * FROM terms WHERE school_id = 1 ORDER BY start_date DESC').all();
+    // Org check
+    if (req.user.role !== 'super_admin' && req.user.org_id !== teacher.org_id) {
+      return res.status(403).json({ error: 'Teacher does not belong to your organization' });
+    }
+
+    const terms = db.prepare(`SELECT * FROM terms WHERE ${teacher.org_id ? 'org_id = ?' : '1=1'} ORDER BY start_date DESC`).all(...(teacher.org_id ? [teacher.org_id] : []));
     const activeTerm = db.prepare('SELECT * FROM terms WHERE active_status = 1 LIMIT 1').get();
 
     const classrooms = db.prepare(`

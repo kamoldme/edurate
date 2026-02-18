@@ -12,6 +12,7 @@ const db = require('../database');
  * @param {number} [params.targetId] - ID of target
  * @param {Object} [params.metadata] - Additional metadata as object
  * @param {string} [params.ipAddress] - IP address of request
+ * @param {number} [params.orgId] - Organization ID for multi-tenant scoping
  */
 function logAuditEvent(params) {
   try {
@@ -24,14 +25,15 @@ function logAuditEvent(params) {
       targetType = null,
       targetId = null,
       metadata = null,
-      ipAddress = null
+      ipAddress = null,
+      orgId = null
     } = params;
 
     db.prepare(`
       INSERT INTO audit_logs (
         user_id, user_role, user_name, action_type, action_description,
-        target_type, target_id, metadata, ip_address
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        target_type, target_id, metadata, ip_address, org_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       userId,
       userRole,
@@ -41,7 +43,8 @@ function logAuditEvent(params) {
       targetType,
       targetId,
       metadata ? JSON.stringify(metadata) : null,
-      ipAddress
+      ipAddress,
+      orgId
     );
   } catch (err) {
     console.error('Audit log error:', err);
@@ -61,7 +64,8 @@ function getAuditLogs(options = {}) {
     startDate,
     endDate,
     limit = 100,
-    offset = 0
+    offset = 0,
+    orgId
   } = options;
 
   let query = 'SELECT * FROM audit_logs WHERE 1=1';
@@ -97,6 +101,11 @@ function getAuditLogs(options = {}) {
     params.push(endDate);
   }
 
+  if (orgId) {
+    query += ' AND org_id = ?';
+    params.push(orgId);
+  }
+
   query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
   params.push(limit, offset);
 
@@ -113,7 +122,7 @@ function getAuditLogs(options = {}) {
  * Get audit log statistics
  */
 function getAuditStats(options = {}) {
-  const { startDate, endDate } = options;
+  const { startDate, endDate, orgId } = options;
 
   let where = 'WHERE 1=1';
   const params = [];
@@ -126,6 +135,11 @@ function getAuditStats(options = {}) {
   if (endDate) {
     where += ' AND created_at <= ?';
     params.push(endDate);
+  }
+
+  if (orgId) {
+    where += ' AND org_id = ?';
+    params.push(orgId);
   }
 
   const totalActions = db.prepare(`SELECT COUNT(*) as count FROM audit_logs ${where}`).get(...params).count;

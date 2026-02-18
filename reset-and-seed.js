@@ -1,7 +1,7 @@
 const db = require('./database');
 const bcrypt = require('bcryptjs');
 
-console.log('🔄 Resetting database and creating test data...\n');
+console.log('🔄 Resetting database and creating test data (org_id=1: Lincoln High School)...\n');
 
 // Delete all reviews
 console.log('🗑️  Deleting all reviews...');
@@ -32,18 +32,19 @@ if (teacherBek) {
 }
 console.log('');
 
-// Create new teachers from different departments
-console.log('👨‍🏫 Creating new teachers...');
+// Create new teachers from different departments (for org_id=1)
+console.log('👨‍🏫 Creating new teachers for Lincoln High School...');
 
 const newTeachers = [
-  { name: 'Dr. Sarah Martinez', email: 'martinez@edurate.school.edu', department: 'Science', subject: 'Biology' },
-  { name: 'Prof. Michael Chen', email: 'chen@edurate.school.edu', department: 'Math', subject: 'Calculus' },
-  { name: 'Ms. Jennifer Lopez', email: 'lopez@edurate.school.edu', department: 'English', subject: 'Literature' },
-  { name: 'Mr. David Kim', email: 'kim@edurate.school.edu', department: 'Humanities', subject: 'World History' },
-  { name: 'Ms. Aisha Karimova', email: 'karimova@edurate.school.edu', department: 'Non-English', subject: 'Russian Language' },
-  { name: 'Prof. Robert Taylor', email: 'taylor@edurate.school.edu', department: 'Arts', subject: 'Visual Arts' }
+  { name: 'Dr. Sarah Martinez', email: 'martinez@lincoln.edu', department: 'Science', subject: 'Biology' },
+  { name: 'Prof. Michael Chen', email: 'chen@lincoln.edu', department: 'Math', subject: 'Calculus' },
+  { name: 'Ms. Jennifer Lopez', email: 'lopez@lincoln.edu', department: 'English', subject: 'Literature' },
+  { name: 'Mr. David Kim', email: 'kim@lincoln.edu', department: 'Humanities', subject: 'World History' },
+  { name: 'Ms. Aisha Karimova', email: 'karimova@lincoln.edu', department: 'Non-English', subject: 'Russian Language' },
+  { name: 'Prof. Robert Taylor', email: 'taylor@lincoln.edu', department: 'Arts', subject: 'Visual Arts' }
 ];
 
+const ORG_ID = 1; // Lincoln High School
 const password = 'Teacher@123';
 const hashedPassword = bcrypt.hashSync(password, 10);
 
@@ -55,30 +56,36 @@ newTeachers.forEach(t => {
     return;
   }
 
-  // Create user
+  // Create user (with org_id)
   const userResult = db.prepare(`
-    INSERT INTO users (full_name, email, password, role, grade_or_position, verified_status)
-    VALUES (?, ?, ?, 'teacher', ?, 1)
-  `).run(t.name, t.email, hashedPassword, t.department);
+    INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, org_id, verified_status)
+    VALUES (?, ?, ?, 'teacher', ?, 1, ?, 1)
+  `).run(t.name, t.email, hashedPassword, t.department, ORG_ID);
 
-  // Create teacher
+  // Create teacher (with org_id)
   db.prepare(`
-    INSERT INTO teachers (user_id, full_name, subject, department, experience_years, bio)
-    VALUES (?, ?, ?, ?, 5, 'Passionate educator dedicated to student success')
-  `).run(userResult.lastInsertRowid, t.name, t.subject, t.department);
+    INSERT INTO teachers (user_id, full_name, subject, department, experience_years, bio, school_id, org_id)
+    VALUES (?, ?, ?, ?, 5, 'Passionate educator dedicated to student success', 1, ?)
+  `).run(userResult.lastInsertRowid, t.name, t.subject, t.department, ORG_ID);
+
+  // Add to user_organizations
+  db.prepare(`
+    INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary)
+    VALUES (?, ?, 'teacher', 1)
+  `).run(userResult.lastInsertRowid, ORG_ID);
 
   console.log(`✅ Created ${t.name} (${t.department} - ${t.subject})`);
 });
 console.log('');
 
-// Get active term
-let activeTerm = db.prepare('SELECT id FROM terms WHERE active_status = 1 LIMIT 1').get();
+// Get active term for org_id=1
+let activeTerm = db.prepare('SELECT id FROM terms WHERE active_status = 1 AND org_id = ? LIMIT 1').get(ORG_ID);
 if (!activeTerm) {
-  console.log('❌ No active term found. Creating one...');
+  console.log('❌ No active term found for Lincoln. Creating one...');
   const termResult = db.prepare(`
-    INSERT INTO terms (name, start_date, end_date, active_status, feedback_visible)
-    VALUES ('Spring 2026', '2026-01-15', '2026-05-30', 1, 1)
-  `).run();
+    INSERT INTO terms (name, start_date, end_date, school_id, org_id, active_status, feedback_visible)
+    VALUES ('Spring 2026', '2026-01-15', '2026-05-30', 1, ?, 1, 1)
+  `).run(ORG_ID);
   activeTerm = { id: termResult.lastInsertRowid };
 
   // Create feedback periods
@@ -93,10 +100,10 @@ if (!activeTerm) {
   console.log('✅ Created Spring 2026 term with feedback periods');
 }
 
-// Create test classrooms with group numbers
+// Create test classrooms with group numbers (with org_id)
 console.log('🏫 Creating test classrooms...');
 
-const teachers = db.prepare('SELECT id, full_name, subject, department FROM teachers').all();
+const teachers = db.prepare('SELECT id, full_name, subject, department FROM teachers WHERE org_id = ?').all(ORG_ID);
 const classrooms = [];
 
 // Track how many groups each teacher has to assign group numbers
@@ -108,9 +115,9 @@ teachers.forEach(teacher => {
   const subjectWithGroup = `${teacher.subject} - Group ${groupNum}`;
 
   const result = db.prepare(`
-    INSERT INTO classrooms (teacher_id, subject, grade_level, term_id, join_code, active_status)
-    VALUES (?, ?, 'Grade 10', ?, ?, 1)
-  `).run(teacher.id, subjectWithGroup, activeTerm.id, String(Math.floor(10000000 + Math.random() * 90000000)));
+    INSERT INTO classrooms (teacher_id, subject, grade_level, term_id, join_code, org_id, active_status)
+    VALUES (?, ?, 'Grade 10', ?, ?, ?, 1)
+  `).run(teacher.id, subjectWithGroup, activeTerm.id, String(Math.floor(10000000 + Math.random() * 90000000)), ORG_ID);
 
   classrooms.push({ id: result.lastInsertRowid, teacher_id: teacher.id, teacher_name: teacher.full_name, subject: subjectWithGroup });
   console.log(`✅ Created classroom for ${teacher.full_name} - ${subjectWithGroup}`);
@@ -133,6 +140,12 @@ students.forEach((student, idx) => {
         INSERT INTO classroom_members (classroom_id, student_id)
         VALUES (?, ?)
       `).run(classroom.id, student.id);
+
+      // Auto-add student to user_organizations (simulating the /join endpoint behavior)
+      db.prepare(`
+        INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary)
+        VALUES (?, ?, 'student', ?)
+      `).run(student.id, ORG_ID, idx === 0 ? 1 : 0); // First enrollment is primary
     } catch (err) {
       // Skip if already enrolled
     }
@@ -192,13 +205,13 @@ students.forEach((student) => {
       try {
         db.prepare(`
           INSERT INTO reviews (
-            teacher_id, classroom_id, student_id, school_id, term_id, feedback_period_id,
+            teacher_id, classroom_id, student_id, school_id, org_id, term_id, feedback_period_id,
             overall_rating, clarity_rating, engagement_rating, fairness_rating,
             supportiveness_rating, preparation_rating, workload_rating,
             feedback_text, tags, flagged_status, approved_status
-          ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)
+          ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)
         `).run(
-          enrollment.teacher_id, enrollment.classroom_id, student.id, activeTerm.id, activePeriod.id,
+          enrollment.teacher_id, enrollment.classroom_id, student.id, ORG_ID, activeTerm.id, activePeriod.id,
           overall, clarity, engagement, fairness, supportiveness, preparation, workload,
           review.text, JSON.stringify(review.tags)
         );
@@ -216,8 +229,9 @@ console.log('🎉 Database reset complete!\n');
 console.log('Summary:');
 console.log(`  - Deleted all old reviews and classrooms`);
 console.log(`  - Removed teacherjonov and teacherbek`);
-console.log(`  - Created ${newTeachers.length} new teachers from different departments`);
+console.log(`  - Created ${newTeachers.length} new teachers for Lincoln High School (org_id=${ORG_ID})`);
 console.log(`  - Created ${classrooms.length} classrooms (each with group number)`);
 console.log(`  - Enrolled ${students.length} students (4-5 classrooms each)`);
+console.log(`  - Auto-added students to user_organizations`);
 console.log(`  - Created ${reviewCount} test reviews (already approved)`);
 console.log('');

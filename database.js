@@ -186,6 +186,40 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_verification_codes_email ON verification_codes(email);
+
+  CREATE TABLE IF NOT EXISTS organizations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    logo_url TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    address TEXT,
+    subscription_status TEXT DEFAULT 'active' CHECK(subscription_status IN ('active', 'suspended', 'trial')),
+    max_teachers INTEGER DEFAULT 100,
+    max_students INTEGER DEFAULT 2000,
+    settings TEXT DEFAULT '{}',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug);
+  CREATE INDEX IF NOT EXISTS idx_organizations_status ON organizations(subscription_status);
+
+  CREATE TABLE IF NOT EXISTS user_organizations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    org_id INTEGER NOT NULL,
+    role_in_org TEXT NOT NULL CHECK(role_in_org IN ('org_admin', 'school_head', 'teacher', 'student')),
+    is_primary INTEGER DEFAULT 1,
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    UNIQUE(user_id, org_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_user_orgs_user ON user_organizations(user_id);
+  CREATE INDEX IF NOT EXISTS idx_user_orgs_org ON user_organizations(org_id);
+  CREATE INDEX IF NOT EXISTS idx_user_orgs_role ON user_organizations(role_in_org);
 `);
 
 // Migration: Add feedback_visible column to terms table if it doesn't exist
@@ -251,6 +285,120 @@ try {
   }
 } catch (err) {
   // Column might already exist, ignore error
+}
+
+// Migration: Add language column to users table if it doesn't exist
+try {
+  const userCols = db.prepare("PRAGMA table_info(users)").all();
+  if (!userCols.some(col => col.name === 'language')) {
+    db.exec("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'");
+    console.log('✅ Migration: Added language column to users table');
+  }
+} catch (err) {
+  // Column might already exist, ignore error
+}
+
+// Migration: Multi-tenancy - Add org_id columns and migrate roles
+try {
+  const userCols2 = db.prepare("PRAGMA table_info(users)").all();
+  const hasOrgId = userCols2.some(col => col.name === 'org_id');
+
+  if (!hasOrgId) {
+    // Step 1: Seed default organization
+    const orgExists = db.prepare("SELECT COUNT(*) as count FROM organizations").get();
+    if (orgExists.count === 0) {
+      db.prepare("INSERT INTO organizations (id, name, slug, contact_email) VALUES (1, 'Default School', 'default-school', 'admin@edurate.school.edu')").run();
+      console.log('✅ Migration: Created default organization');
+    }
+
+    // Step 2: Recreate users table with new role CHECK and org_id column
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      BEGIN TRANSACTION;
+
+      CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'school_head', 'org_admin', 'super_admin')),
+        grade_or_position TEXT,
+        school_id INTEGER DEFAULT 1,
+        org_id INTEGER REFERENCES organizations(id),
+        verified_status INTEGER DEFAULT 0,
+        suspended INTEGER DEFAULT 0,
+        avatar_url TEXT,
+        language TEXT DEFAULT 'en',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      INSERT INTO users_new (id, full_name, email, password, role, grade_or_position, school_id, org_id, verified_status, suspended, avatar_url, language, created_at)
+        SELECT id, full_name, email, password,
+          CASE WHEN role = 'admin' THEN 'super_admin' ELSE role END,
+          grade_or_position, school_id,
+          CASE WHEN role = 'admin' THEN NULL ELSE school_id END,
+          verified_status, suspended, avatar_url, language, created_at
+        FROM users;
+
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id);
+
+      COMMIT;
+    `);
+    db.pragma('foreign_keys = ON');
+    console.log('✅ Migration: Recreated users table with new roles and org_id');
+
+    // Step 3: Add org_id to teachers
+    db.exec('ALTER TABLE teachers ADD COLUMN org_id INTEGER REFERENCES organizations(id)');
+    db.exec('UPDATE teachers SET org_id = school_id');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_teachers_org ON teachers(org_id)');
+    console.log('✅ Migration: Added org_id to teachers table');
+
+    // Step 4: Add org_id to terms
+    db.exec('ALTER TABLE terms ADD COLUMN org_id INTEGER REFERENCES organizations(id)');
+    db.exec('UPDATE terms SET org_id = school_id');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_terms_org ON terms(org_id)');
+    console.log('✅ Migration: Added org_id to terms table');
+
+    // Step 5: Add org_id to classrooms
+    db.exec('ALTER TABLE classrooms ADD COLUMN org_id INTEGER REFERENCES organizations(id)');
+    db.exec('UPDATE classrooms SET org_id = (SELECT t.org_id FROM teachers t WHERE t.id = classrooms.teacher_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_classrooms_org ON classrooms(org_id)');
+    console.log('✅ Migration: Added org_id to classrooms table');
+
+    // Step 6: Add org_id to reviews
+    db.exec('ALTER TABLE reviews ADD COLUMN org_id INTEGER REFERENCES organizations(id)');
+    db.exec('UPDATE reviews SET org_id = school_id');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_reviews_org ON reviews(org_id)');
+    console.log('✅ Migration: Added org_id to reviews table');
+
+    // Step 7: Add org_id to audit_logs
+    db.exec('ALTER TABLE audit_logs ADD COLUMN org_id INTEGER');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_audit_logs_org ON audit_logs(org_id)');
+    console.log('✅ Migration: Added org_id to audit_logs table');
+
+    // Step 8: Add org_id to support_messages
+    db.exec('ALTER TABLE support_messages ADD COLUMN org_id INTEGER');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_support_messages_org ON support_messages(org_id)');
+    console.log('✅ Migration: Added org_id to support_messages table');
+
+    // Step 9: Populate user_organizations for existing users
+    const existingUsers = db.prepare("SELECT id, role, org_id FROM users WHERE org_id IS NOT NULL").all();
+    const insertUserOrg = db.prepare("INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)");
+    for (const u of existingUsers) {
+      const roleInOrg = u.role === 'super_admin' ? 'org_admin' : u.role;
+      if (['org_admin', 'school_head', 'teacher', 'student'].includes(roleInOrg)) {
+        insertUserOrg.run(u.id, u.org_id, roleInOrg);
+      }
+    }
+    console.log('✅ Migration: Populated user_organizations junction table');
+  }
+} catch (err) {
+  console.error('Migration error (multi-tenancy):', err.message);
 }
 
 module.exports = db;

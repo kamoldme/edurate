@@ -4,6 +4,7 @@ const db = require('../database');
 const { generateToken, authenticate } = require('../middleware/auth');
 const { sanitizeInput } = require('../utils/moderation');
 const { sendVerificationCode } = require('../utils/email');
+const { logAuditEvent } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -106,12 +107,13 @@ router.post('/register', (req, res) => {
     const hashedPassword = bcrypt.hashSync(password, 12);
     const sanitizedName = sanitizeInput(full_name);
 
+    // Students register globally with org_id = NULL (they join orgs via classrooms)
     const result = db.prepare(`
-      INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, verified_status)
-      VALUES (?, ?, ?, 'student', ?, 1, 1)
+      INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, org_id, verified_status)
+      VALUES (?, ?, ?, 'student', ?, 1, NULL, 1)
     `).run(sanitizedName, email.toLowerCase(), hashedPassword, grade_or_position || null);
 
-    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, avatar_url FROM users WHERE id = ?')
+    const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, org_id, verified_status, avatar_url, language FROM users WHERE id = ?')
       .get(result.lastInsertRowid);
 
     const token = generateToken(user);
@@ -121,6 +123,17 @@ router.post('/register', (req, res) => {
       secure: false,
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000
+    });
+
+    logAuditEvent({
+      userId: user.id,
+      userRole: 'student',
+      userName: sanitizedName,
+      actionType: 'user_register',
+      actionDescription: `Registered new account: ${email.toLowerCase()}`,
+      targetType: 'user',
+      targetId: user.id,
+      ipAddress: req.ip
     });
 
     res.status(201).json({ message: 'Registration successful', user, token });
@@ -141,14 +154,35 @@ router.post('/login', (req, res) => {
 
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
     if (!user) {
+      logAuditEvent({
+        userId: 0, userRole: 'unknown', userName: email.toLowerCase(),
+        actionType: 'login_failed',
+        actionDescription: `Failed login attempt: unknown email`,
+        metadata: { email: email.toLowerCase(), reason: 'unknown_email' },
+        ipAddress: req.ip
+      });
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     if (!bcrypt.compareSync(password, user.password)) {
+      logAuditEvent({
+        userId: user.id, userRole: user.role, userName: user.full_name,
+        actionType: 'login_failed',
+        actionDescription: `Failed login attempt: wrong password`,
+        metadata: { email: email.toLowerCase(), reason: 'wrong_password' },
+        ipAddress: req.ip
+      });
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     if (user.suspended) {
+      logAuditEvent({
+        userId: user.id, userRole: user.role, userName: user.full_name,
+        actionType: 'login_failed',
+        actionDescription: `Failed login attempt: account suspended`,
+        metadata: { email: email.toLowerCase(), reason: 'suspended' },
+        ipAddress: req.ip
+      });
       return res.status(403).json({ error: 'Account suspended. Contact administrator.' });
     }
 
@@ -165,6 +199,14 @@ router.post('/login', (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
 
+    logAuditEvent({
+      userId: user.id, userRole: user.role, userName: user.full_name,
+      actionType: 'user_login',
+      actionDescription: `Logged in successfully`,
+      targetType: 'user', targetId: user.id,
+      ipAddress: req.ip
+    });
+
     const { password: _, ...safeUser } = user;
     res.json({ message: 'Login successful', user: safeUser, token });
   } catch (err) {
@@ -179,7 +221,31 @@ router.get('/me', authenticate, (req, res) => {
   if (req.user.role === 'teacher') {
     teacherInfo = db.prepare('SELECT * FROM teachers WHERE user_id = ?').get(req.user.id);
   }
-  res.json({ user: req.user, teacher: teacherInfo });
+
+  // For students, include their organization memberships
+  let organizations = [];
+  if (req.user.role === 'student') {
+    organizations = db.prepare(`
+      SELECT o.id, o.name, o.slug, uo.role_in_org, uo.joined_at
+      FROM user_organizations uo
+      JOIN organizations o ON uo.org_id = o.id
+      WHERE uo.user_id = ?
+      ORDER BY uo.joined_at DESC
+    `).all(req.user.id);
+  }
+
+  // Include org name for non-students
+  let orgName = null;
+  if (req.user.org_id) {
+    const org = db.prepare('SELECT name FROM organizations WHERE id = ?').get(req.user.org_id);
+    orgName = org?.name;
+  }
+
+  res.json({
+    user: { ...req.user, org_name: orgName },
+    teacher: teacherInfo,
+    organizations: organizations.length > 0 ? organizations : undefined
+  });
 });
 
 // PUT /api/auth/change-password
@@ -206,6 +272,14 @@ router.put('/change-password', authenticate, (req, res) => {
     const hashed = bcrypt.hashSync(new_password, 12);
     db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, req.user.id);
 
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'password_change',
+      actionDescription: 'Changed password',
+      targetType: 'user', targetId: req.user.id,
+      ipAddress: req.ip
+    });
+
     res.json({ message: 'Password changed successfully' });
   } catch (err) {
     console.error('Change password error:', err);
@@ -217,7 +291,6 @@ router.put('/change-password', authenticate, (req, res) => {
 router.put('/update-profile', authenticate, (req, res) => {
   try {
     const { full_name, grade_or_position, bio, subject, department } = req.body;
-    const { logAuditEvent } = require('../utils/audit');
 
     if (full_name) {
       const sanitized = sanitizeInput(full_name);
@@ -231,6 +304,18 @@ router.put('/update-profile', authenticate, (req, res) => {
 
     if (grade_or_position !== undefined) {
       db.prepare('UPDATE users SET grade_or_position = ? WHERE id = ?').run(grade_or_position, req.user.id);
+    }
+
+    // Log profile update for non-teacher users (teacher updates are logged below)
+    if (req.user.role !== 'teacher' && (full_name || grade_or_position !== undefined)) {
+      logAuditEvent({
+        userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+        actionType: 'profile_update',
+        actionDescription: 'Updated own profile',
+        targetType: 'user', targetId: req.user.id,
+        metadata: { full_name, grade_or_position },
+        ipAddress: req.ip
+      });
     }
 
     // Teacher-specific fields
@@ -269,7 +354,7 @@ router.put('/update-profile', authenticate, (req, res) => {
       }
     }
 
-    const updated = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, verified_status, suspended, avatar_url FROM users WHERE id = ?').get(req.user.id);
+    const updated = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, org_id, verified_status, suspended, avatar_url FROM users WHERE id = ?').get(req.user.id);
 
     let teacherInfo = null;
     if (req.user.role === 'teacher') {
@@ -287,7 +372,6 @@ router.put('/update-profile', authenticate, (req, res) => {
 router.post('/avatar', authenticate, (req, res) => {
   try {
     const { avatar, filename } = req.body;
-    const { logAuditEvent } = require('../utils/audit');
     const fs = require('fs');
     const path = require('path');
 
@@ -366,7 +450,6 @@ router.post('/avatar', authenticate, (req, res) => {
 // DELETE /api/auth/avatar
 router.delete('/avatar', authenticate, (req, res) => {
   try {
-    const { logAuditEvent } = require('../utils/audit');
     const fs = require('fs');
     const path = require('path');
 
@@ -408,8 +491,41 @@ router.delete('/avatar', authenticate, (req, res) => {
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
+  const jwt = require('jsonwebtoken');
+  const { JWT_SECRET } = require('../middleware/auth');
+  const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = db.prepare('SELECT id, full_name, role FROM users WHERE id = ?').get(decoded.id);
+      if (user) {
+        logAuditEvent({
+          userId: user.id, userRole: user.role, userName: user.full_name,
+          actionType: 'user_logout',
+          actionDescription: 'Logged out',
+          targetType: 'user', targetId: user.id,
+          ipAddress: req.ip
+        });
+      }
+    } catch (e) { /* token expired or invalid, skip logging */ }
+  }
   res.clearCookie('token');
   res.json({ message: 'Logged out' });
+});
+
+// PUT /api/auth/language - save language preference
+router.put('/language', authenticate, (req, res) => {
+  try {
+    const { language } = req.body;
+    if (!['en', 'ru', 'uz'].includes(language)) {
+      return res.status(400).json({ error: 'Invalid language' });
+    }
+    db.prepare('UPDATE users SET language = ? WHERE id = ?').run(language, req.user.id);
+    res.json({ message: 'Language updated', language });
+  } catch (err) {
+    console.error('Language update error:', err);
+    res.status(500).json({ error: 'Failed to update language' });
+  }
 });
 
 module.exports = router;

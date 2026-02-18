@@ -144,15 +144,18 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
       flaggedStatus = 'flagged';
     }
 
+    // Use the classroom's org_id for the review
+    const reviewOrgId = classroom.org_id;
+
     const result = db.prepare(`
       INSERT INTO reviews (
-        teacher_id, classroom_id, student_id, school_id, term_id, feedback_period_id,
+        teacher_id, classroom_id, student_id, school_id, org_id, term_id, feedback_period_id,
         overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating,
         preparation_rating, workload_rating,
         feedback_text, tags, flagged_status, approved_status
-      ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `).run(
-      teacher_id, classroom_id, req.user.id, activePeriod.term_id, activePeriod.id,
+      teacher_id, classroom_id, req.user.id, reviewOrgId || 1, reviewOrgId, activePeriod.term_id, activePeriod.id,
       overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating,
       preparation_rating, workload_rating,
       sanitized, JSON.stringify(validatedTags), flaggedStatus
@@ -283,6 +286,16 @@ router.put('/:id', authenticate, authorize('student'), (req, res) => {
       req.params.id
     );
 
+    const teacher = db.prepare('SELECT full_name FROM teachers WHERE id = ?').get(review.teacher_id);
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'review_edit',
+      actionDescription: `Edited review for ${teacher?.full_name || 'teacher'}`,
+      targetType: 'review', targetId: parseInt(req.params.id),
+      metadata: { teacher_id: review.teacher_id },
+      ipAddress: req.ip
+    });
+
     const updated = db.prepare('SELECT * FROM reviews WHERE id = ?').get(req.params.id);
     res.json({ message: 'Review updated. Awaiting re-approval.', review: updated });
   } catch (err) {
@@ -298,6 +311,15 @@ router.post('/:id/flag', authenticate, (req, res) => {
     if (!review) return res.status(404).json({ error: 'Review not found' });
 
     db.prepare("UPDATE reviews SET flagged_status = 'flagged' WHERE id = ?").run(req.params.id);
+
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'review_flag',
+      actionDescription: `Flagged review #${req.params.id}`,
+      targetType: 'review', targetId: parseInt(req.params.id),
+      ipAddress: req.ip
+    });
+
     res.json({ message: 'Review flagged for admin review' });
   } catch (err) {
     console.error('Flag review error:', err);
