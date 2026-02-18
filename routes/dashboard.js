@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../database');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, authorize, authorizeOrg } = require('../middleware/auth');
 const { getTeacherScores, getRatingDistribution, getTeacherTrend, getDepartmentAverage, getClassroomCompletionRate } = require('../utils/scoring');
 const { logAuditEvent } = require('../utils/audit');
 
@@ -188,9 +188,9 @@ router.post('/teacher/respond', authenticate, authorize('teacher'), (req, res) =
 });
 
 // GET /api/dashboard/school-head
-router.get('/school-head', authenticate, authorize('school_head', 'super_admin', 'org_admin'), (req, res) => {
+router.get('/school-head', authenticate, authorize('school_head', 'super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const orgId = req.user.org_id;
+    const orgId = req.orgId;
     if (!orgId && req.user.role !== 'super_admin') {
       return res.status(400).json({ error: 'Organization context required' });
     }

@@ -84,6 +84,11 @@ router.post('/users', authenticate, authorize('super_admin', 'org_admin'), autho
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
     if (existing) return res.status(409).json({ error: 'Email already exists' });
 
+    // org_admin must always have an org context
+    if (req.user.role === 'org_admin' && !req.orgId) {
+      return res.status(400).json({ error: 'Organization context required' });
+    }
+
     // Determine org_id for the new user
     const userOrgId = role === 'super_admin' ? null : (req.orgId || null);
 
@@ -325,6 +330,10 @@ router.post('/terms', authenticate, authorize('super_admin', 'org_admin'), autho
       return res.status(400).json({ error: 'Start date and end date are required' });
     }
 
+    if (start_date >= end_date) {
+      return res.status(400).json({ error: 'Start date must be before end date' });
+    }
+
     const termOrgId = req.orgId || null;
     if (!termOrgId && req.user.role === 'org_admin') {
       return res.status(400).json({ error: 'Organization context required' });
@@ -376,6 +385,13 @@ router.put('/terms/:id', authenticate, authorize('super_admin', 'org_admin'), au
     // org_admin can only modify terms in their org
     if (req.user.role === 'org_admin' && term.org_id !== req.orgId) {
       return res.status(403).json({ error: 'Term does not belong to your organization' });
+    }
+
+    // Validate date range if either date is being updated
+    const effectiveTermStart = start_date || term.start_date;
+    const effectiveTermEnd = end_date || term.end_date;
+    if (effectiveTermStart && effectiveTermEnd && effectiveTermStart >= effectiveTermEnd) {
+      return res.status(400).json({ error: 'Start date must be before end date' });
     }
 
     // If activating, deactivate others in same org
@@ -507,6 +523,13 @@ router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_
     // org_admin ownership check via term's org
     if (req.user.role === 'org_admin' && period.org_id !== req.orgId) {
       return res.status(403).json({ error: 'Period does not belong to your organization' });
+    }
+
+    // Validate date range if either date is being updated
+    const effectiveStart = start_date || period.start_date;
+    const effectiveEnd = end_date || period.end_date;
+    if (effectiveStart && effectiveEnd && effectiveStart > effectiveEnd) {
+      return res.status(400).json({ error: 'Start date must be before end date' });
     }
 
     // If activating, deactivate all others in same term
@@ -812,6 +835,13 @@ router.put('/classrooms/:id', authenticate, authorize('super_admin', 'org_admin'
 
     const { subject, grade_level, teacher_id, term_id, active_status } = req.body;
 
+    if (subject !== undefined && !subject?.trim()) {
+      return res.status(400).json({ error: 'Subject cannot be empty' });
+    }
+    if (grade_level !== undefined && !grade_level?.trim()) {
+      return res.status(400).json({ error: 'Grade level cannot be empty' });
+    }
+
     db.prepare(`
       UPDATE classrooms SET
         subject = COALESCE(?, subject),
@@ -1106,12 +1136,12 @@ router.get('/teacher/:id/feedback', authenticate, authorize('super_admin', 'org_
     const { term_id, period_id, classroom_id } = req.query;
 
     let query = `
-      SELECT r.*,
-        u.full_name as student_name, u.email as student_email, u.grade_or_position as student_grade,
+      SELECT r.id, r.overall_rating, r.clarity_rating, r.engagement_rating,
+        r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
+        r.feedback_text, r.tags, r.created_at, r.flagged_status, r.approved_status,
         c.subject as classroom_subject, c.grade_level,
         fp.name as period_name, t.name as term_name
       FROM reviews r
-      JOIN users u ON r.student_id = u.id
       JOIN classrooms c ON r.classroom_id = c.id
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
       JOIN terms t ON r.term_id = t.id

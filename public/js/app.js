@@ -2703,10 +2703,7 @@ async function viewTeacherFeedback(teacherId) {
         ${data.reviews.length === 0 ? '<div class="empty-state"><p>No approved reviews yet</p></div>' : data.reviews.map(r => `
           <div style="padding:12px;border:1px solid var(--gray-200);border-radius:var(--radius-md);margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-              <div>
-                <strong>${r.student_name}</strong>
-                <span style="color:var(--gray-500);font-size:0.85rem"> (${r.student_email})</span>
-              </div>
+              <div style="font-size:0.85rem;color:var(--gray-500)">${new Date(r.created_at).toLocaleDateString()}</div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
                 <div style="font-weight:600;color:${scoreColor(r.overall_rating)}">Overall: ${r.overall_rating}/5</div>
                 ${starsHTML(r.overall_rating, 'small')}
