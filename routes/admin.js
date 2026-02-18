@@ -291,18 +291,18 @@ router.put('/users/:id/suspend', authenticate, authorize('super_admin', 'org_adm
 router.get('/terms', authenticate, authorize('super_admin', 'org_admin', 'school_head', 'teacher'), authorizeOrg, (req, res) => {
   try {
     const params = [];
-    let query = 'SELECT * FROM terms WHERE 1=1';
+    let query = 'SELECT t.*, o.name as org_name FROM terms t LEFT JOIN organizations o ON t.org_id = o.id WHERE 1=1';
 
     if (req.orgId) {
-      query += ' AND org_id = ?';
+      query += ' AND t.org_id = ?';
       params.push(req.orgId);
     } else if (req.user.role !== 'super_admin') {
       // Non-super_admin must have org context
-      query += ' AND org_id = ?';
+      query += ' AND t.org_id = ?';
       params.push(req.user.org_id);
     }
 
-    query += ' ORDER BY start_date DESC';
+    query += ' ORDER BY t.start_date DESC';
     const terms = db.prepare(query).all(...params);
 
     const termsWithPeriods = terms.map(term => {
@@ -321,8 +321,8 @@ router.get('/terms', authenticate, authorize('super_admin', 'org_admin', 'school
 router.post('/terms', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
     const { name, start_date, end_date } = req.body;
-    if (!name || !start_date || !end_date) {
-      return res.status(400).json({ error: 'Name, start date, and end date are required' });
+    if (!start_date || !end_date) {
+      return res.status(400).json({ error: 'Start date and end date are required' });
     }
 
     const termOrgId = req.orgId || null;
@@ -330,18 +330,18 @@ router.post('/terms', authenticate, authorize('super_admin', 'org_admin'), autho
       return res.status(400).json({ error: 'Organization context required' });
     }
 
+    // Auto-generate name if not provided
+    const termName = (name && name.trim()) || `Term ${new Date(start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+
     const result = db.prepare(
       'INSERT INTO terms (name, start_date, end_date, school_id, org_id) VALUES (?, ?, ?, ?, ?)'
-    ).run(name, start_date, end_date, termOrgId || 1, termOrgId);
+    ).run(termName, start_date, end_date, termOrgId || 1, termOrgId);
 
-    // Auto-create 2 feedback periods
+    // Auto-create one default feedback period spanning the whole term
     const termId = result.lastInsertRowid;
-    const periodNames = ['1st Half', '2nd Half'];
-    periodNames.forEach(pName => {
-      db.prepare(
-        'INSERT INTO feedback_periods (term_id, name, active_status) VALUES (?, ?, 0)'
-      ).run(termId, pName);
-    });
+    db.prepare(
+      'INSERT INTO feedback_periods (term_id, name, start_date, end_date, active_status) VALUES (?, ?, ?, ?, 0)'
+    ).run(termId, 'Feedback Period', start_date, end_date);
 
     const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(termId);
     const periods = db.prepare('SELECT * FROM feedback_periods WHERE term_id = ?').all(termId);
@@ -351,7 +351,7 @@ router.post('/terms', authenticate, authorize('super_admin', 'org_admin'), autho
       userRole: req.user.role,
       userName: req.user.full_name,
       actionType: 'term_create',
-      actionDescription: `Created term: ${name} (${start_date} to ${end_date})`,
+      actionDescription: `Created term: ${termName} (${start_date} to ${end_date})`,
       targetType: 'term',
       targetId: termId,
       metadata: { name, start_date, end_date, org_id: termOrgId },
@@ -1344,18 +1344,22 @@ router.get('/support/messages', authenticate, authorize('super_admin', 'org_admi
   try {
     const { status, user_id, category, limit, offset } = req.query;
 
-    let query = 'SELECT sm.* FROM support_messages sm WHERE 1=1';
+    let query = 'SELECT sm.*, o.name as org_name FROM support_messages sm LEFT JOIN organizations o ON sm.org_id = o.id WHERE 1=1';
     let countQuery = 'SELECT COUNT(*) as count FROM support_messages sm WHERE 1=1';
     const params = [];
     const countParams = [];
 
-    // Org scoping: org_admin sees messages from users in their org
+    // Org scoping: org_admin sees only org-level messages (not technical/feature requests)
     if (req.user.role === 'org_admin' && req.orgId) {
       const orgFilter = ' AND (sm.org_id = ? OR sm.user_id IN (SELECT user_id FROM user_organizations WHERE org_id = ?))';
       query += orgFilter;
       countQuery += orgFilter;
       params.push(req.orgId, req.orgId);
       countParams.push(req.orgId, req.orgId);
+      // Org admins only see org-relevant categories, not platform-level ones
+      const catFilter = " AND sm.category NOT IN ('technical', 'feature')";
+      query += catFilter;
+      countQuery += catFilter;
     } else if (req.orgId) {
       const orgFilter = ' AND (sm.org_id = ? OR sm.user_id IN (SELECT user_id FROM user_organizations WHERE org_id = ?))';
       query += orgFilter;

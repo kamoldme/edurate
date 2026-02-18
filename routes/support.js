@@ -34,13 +34,14 @@ router.post('/message', authenticate, (req, res) => {
 
     // Insert support message
     const result = db.prepare(`
-      INSERT INTO support_messages (user_id, user_name, user_email, user_role, category, subject, message)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO support_messages (user_id, user_name, user_email, user_role, org_id, category, subject, message)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       req.user.id,
       req.user.full_name,
       req.user.email,
       req.user.role,
+      req.user.org_id || null,
       category,
       sanitizedSubject,
       sanitizedMessage

@@ -170,7 +170,6 @@ function buildNavigation() {
       { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
-      { id: 'admin-flagged', label: t('nav.flagged'), icon: 'flag' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -183,7 +182,6 @@ function buildNavigation() {
       { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
-      { id: 'admin-flagged', label: t('nav.flagged'), icon: 'flag' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -1170,7 +1168,6 @@ async function renderTeacherClassrooms() {
               <div class="class-subject">${c.subject}</div>
               <div class="class-meta">${c.grade_level} &middot; ${c.term_name} &middot; ${c.student_count} ${t('common.students').toLowerCase()}</div>
             </div>
-            <span class="badge ${c.active_status ? 'badge-active' : 'badge-inactive'}">${c.active_status ? 'Active' : 'Inactive'}</span>
           </div>
           <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
             <div>
@@ -2020,6 +2017,7 @@ async function renderAdminTerms() {
       <div class="card" style="margin-bottom:20px">
         <div class="card-header">
           <div>
+            ${currentUser.role === 'super_admin' && term.org_name ? `<div style="font-size:0.72rem;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">${term.org_name}</div>` : ''}
             <h3>${term.name}</h3>
             <span style="font-size:0.8rem;color:var(--gray-500)">${term.start_date} to ${term.end_date}</span>
           </div>
@@ -2031,20 +2029,17 @@ async function renderAdminTerms() {
           </div>
         </div>
         <div class="card-body">
-          <h4 style="font-size:0.85rem;color:var(--gray-500);margin-bottom:12px">Feedback Periods</h4>
-          <div class="grid grid-2">
-            ${term.periods.map(p => `
-              <div style="padding:16px;border:2px solid ${p.active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px;text-align:center">
-                <div style="font-weight:600;margin-bottom:4px">${p.name}</div>
-                <span class="badge ${p.active_status ? 'badge-active' : 'badge-inactive'}">${p.active_status ? 'Active' : 'Closed'}</span>
-                <div style="margin-top:12px;display:flex;gap:6px;justify-content:center">
-                  ${p.active_status
-                    ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${p.id}, 0)">Close</button>`
-                    : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${p.id}, 1)">Open</button>`}
-                </div>
+          ${term.periods.length > 0 ? `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:2px solid ${term.periods[0].active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px">
+              <div>
+                <span style="font-weight:600">Feedback Period</span>
+                <span class="badge ${term.periods[0].active_status ? 'badge-active' : 'badge-inactive'}" style="margin-left:10px">${term.periods[0].active_status ? 'Open' : 'Closed'}</span>
               </div>
-            `).join('')}
-          </div>
+              ${term.periods[0].active_status
+                ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${term.periods[0].id}, 0)">Close Feedback</button>`
+                : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${term.periods[0].id}, 1)">Open Feedback</button>`}
+            </div>
+          ` : ''}
         </div>
       </div>
     `).join('')}
@@ -2055,7 +2050,7 @@ function showCreateTerm() {
   openModal(`
     <div class="modal-header"><h3>Create Term</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Term Name</label><input type="text" class="form-control" id="termName" placeholder="e.g. Term 2 2025-2026"></div>
+      <div class="form-group"><label>Term Name <span style="color:var(--gray-400);font-weight:400">(optional)</span></label><input type="text" class="form-control" id="termName" placeholder="Auto-generated if left blank"></div>
       <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="termStart"></div>
       <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="termEnd"></div>
     </div>
@@ -2070,10 +2065,10 @@ async function createTerm() {
   const name = document.getElementById('termName').value;
   const start_date = document.getElementById('termStart').value;
   const end_date = document.getElementById('termEnd').value;
-  if (!name || !start_date || !end_date) return toast('Fill all fields', 'error');
+  if (!start_date || !end_date) return toast('Start date and end date are required', 'error');
   try {
     await API.post('/admin/terms', { name, start_date, end_date });
-    toast('Term created with 2 feedback periods');
+    toast('Term created successfully');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -2184,7 +2179,7 @@ async function renderAdminClassrooms() {
     <div class="card">
       <div class="table-container">
         <table>
-          <thead><tr><th>${t('common.subject')}</th>${orgColumnHeader}<th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.term')}</th><th>${t('common.students')}</th><th>${t('admin.join_code')}</th><th>${t('common.status')}</th><th>${t('common.actions')}</th></tr></thead>
+          <thead><tr><th>${t('common.subject')}</th>${orgColumnHeader}<th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.term')}</th><th>${t('common.students')}</th><th>${t('admin.join_code')}</th><th>${t('common.actions')}</th></tr></thead>
           <tbody>
             ${classrooms.map(c => {
               const orgColumn = isSuperAdmin ? `<td>${c.org_name || '-'}</td>` : '';
@@ -2197,7 +2192,6 @@ async function renderAdminClassrooms() {
                 <td>${c.term_name}</td>
                 <td><a href="#" onclick="event.preventDefault();viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')" style="color:var(--primary);font-weight:600">${c.student_count || 0}</a></td>
                 <td><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px">${c.join_code}</code></td>
-                <td><span class="badge ${c.active_status ? 'badge-active' : 'badge-inactive'}">${c.active_status ? 'Active' : 'Inactive'}</span></td>
                 <td>
                   <button class="btn btn-sm btn-outline" onclick="viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Members</button>
                   <button class="btn btn-sm btn-outline" onclick='editClassroom(${JSON.stringify(c)})'>Edit</button>
@@ -2300,13 +2294,6 @@ function editClassroom(classroom) {
             ${terms.map(t => `<option value="${t.id}" ${t.id === classroom.term_id ? 'selected' : ''}>${t.name}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
-          <label>Status</label>
-          <select class="form-control" id="editClassroomStatus">
-            <option value="1" ${classroom.active_status ? 'selected' : ''}>Active</option>
-            <option value="0" ${!classroom.active_status ? 'selected' : ''}>Inactive</option>
-          </select>
-        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -2321,8 +2308,7 @@ async function saveClassroomEdit(classroomId) {
     subject: document.getElementById('editClassroomSubject').value,
     grade_level: document.getElementById('editClassroomGrade').value,
     teacher_id: parseInt(document.getElementById('editClassroomTeacher').value),
-    term_id: parseInt(document.getElementById('editClassroomTerm').value),
-    active_status: parseInt(document.getElementById('editClassroomStatus').value)
+    term_id: parseInt(document.getElementById('editClassroomTerm').value)
   };
   try {
     await API.put(`/admin/classrooms/${classroomId}`, body);
@@ -2385,7 +2371,10 @@ async function removeStudentFromClassroom(classroomId, studentId, studentName, s
 }
 
 async function renderAdminModerate() {
-  const reviews = await API.get('/admin/reviews/pending');
+  const [reviews, flagged] = await Promise.all([
+    API.get('/admin/reviews/pending'),
+    API.get('/admin/reviews/flagged')
+  ]);
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
@@ -2435,6 +2424,50 @@ async function renderAdminModerate() {
           </div>
         </div>
       `).join('')}
+    ${flagged.length > 0 ? `
+      <div style="margin-top:32px;margin-bottom:16px">
+        <h3 style="display:flex;align-items:center;gap:8px">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger)"></span>
+          Flagged Reviews (${flagged.length})
+        </h3>
+        <p style="color:var(--gray-500);font-size:0.9rem;margin-top:4px">These reviews were flagged as potentially inappropriate</p>
+      </div>
+      ${flagged.map(r => `
+        <div class="card" style="margin-bottom:16px;border-left:4px solid var(--danger)">
+          <div class="card-body">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+              <div>
+                <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
+                <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                <span class="badge badge-flagged">Flagged</span>
+                <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+              <div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
+                <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
+              </div>
+              ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
+                const v = r[c.k]; const val = v || 0;
+                return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
+                  <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
+                </div>`;
+              }).join('')}
+            </div>
+            ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger);margin-bottom:12px">${r.feedback_text}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">Approve Anyway</button>
+              <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">Reject</button>
+              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">Delete</button>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    ` : ''}
   `;
 }
 
@@ -2490,8 +2523,7 @@ async function moderateReview(id, action) {
   try {
     await API.put(`/admin/reviews/${id}/${action}`);
     toast(`Review ${action}d`);
-    if (currentView === 'admin-moderate') renderAdminModerate();
-    else if (currentView === 'admin-flagged') renderAdminFlagged();
+    renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -2854,6 +2886,7 @@ async function renderAdminSupport() {
                 <tr>
                   <th>Date</th>
                   <th>User</th>
+                  ${currentUser.role === 'super_admin' ? '<th>Organization</th>' : ''}
                   <th>Category</th>
                   <th>Subject</th>
                   <th>Status</th>
@@ -2869,6 +2902,7 @@ async function renderAdminSupport() {
                       <div style="font-size:0.85rem;color:var(--gray-500)">${msg.user_email}</div>
                       <div><span class="badge badge-pending">${msg.user_role}</span></div>
                     </td>
+                    ${currentUser.role === 'super_admin' ? `<td style="font-size:0.85rem">${msg.org_name || '<span style="color:var(--gray-400)">—</span>'}</td>` : ''}
                     <td><span class="badge badge-approved">${categoryLabels[msg.category]}</span></td>
                     <td style="max-width:300px">
                       <strong>${msg.subject}</strong>
