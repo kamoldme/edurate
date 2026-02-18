@@ -84,9 +84,8 @@ function setupUI() {
     topBarActions.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;">
         <button id="appNotifBtn" onclick="navigateTo('admin-applications')" title="Organization Applications"
-          style="position:relative;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.85rem;color:#64748b;font-weight:500">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Applications
+          style="position:relative;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;cursor:pointer;display:flex;align-items:center;color:#64748b">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <span id="appNotifBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.65rem;font-weight:700;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></span>
         </button>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -2758,7 +2757,7 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
         <select class="form-control" style="display:inline-block;width:auto" onchange="renderAdminSubmissions(parseInt(this.value))">
           ${periods.map(p => `
             <option value="${p.id}" ${p.id === periodToShow.id ? 'selected' : ''}>
-              ${p.term_name} ${p.active_status ? '(Active)' : '(Closed)'}
+              ${p.term_name}
             </option>
           `).join('')}
         </select>
@@ -2767,7 +2766,7 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
 
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <h3>Submission Overview — ${periodToShow.term_name}${periodToShow.active_status ? ' <span style="font-size:0.8rem;font-weight:500;color:var(--success)">(Active)</span>' : ''}</h3>
+        <h3>Submission Overview — ${periodToShow.term_name}</h3>
       </div>
       <div class="card-body">
         <div class="grid grid-4" style="margin-bottom:24px">
