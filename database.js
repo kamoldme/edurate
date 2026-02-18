@@ -51,7 +51,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS feedback_periods (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     term_id INTEGER NOT NULL,
-    name TEXT NOT NULL CHECK(name IN ('1st Half', '2nd Half')),
+    name TEXT NOT NULL,
     start_date DATE,
     end_date DATE,
     active_status INTEGER DEFAULT 0,
@@ -399,6 +399,50 @@ try {
   }
 } catch (err) {
   console.error('Migration error (multi-tenancy):', err.message);
+}
+
+// Migration: Remove CHECK constraint from feedback_periods.name to allow custom names
+try {
+  const fpCols = db.prepare("PRAGMA table_info(feedback_periods)").all();
+  const nameCol = fpCols.find(c => c.name === 'name');
+
+  // Check if the table still has the old CHECK constraint
+  // We detect this by trying to insert an invalid value and catching the error
+  const hasConstraint = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='feedback_periods'")
+    .get().sql.includes("CHECK(name IN ('1st Half', '2nd Half'))");
+
+  if (hasConstraint) {
+    console.log('🔄 Migration: Removing feedback period name constraint...');
+
+    // Create new table without CHECK constraint
+    db.exec(`
+      CREATE TABLE feedback_periods_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        term_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        start_date DATE,
+        end_date DATE,
+        active_status INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (term_id) REFERENCES terms(id) ON DELETE CASCADE
+      );
+    `);
+
+    // Copy existing data
+    db.exec(`
+      INSERT INTO feedback_periods_new (id, term_id, name, start_date, end_date, active_status, created_at)
+      SELECT id, term_id, name, start_date, end_date, active_status, created_at
+      FROM feedback_periods;
+    `);
+
+    // Drop old table and rename new one
+    db.exec(`DROP TABLE feedback_periods;`);
+    db.exec(`ALTER TABLE feedback_periods_new RENAME TO feedback_periods;`);
+
+    console.log('✅ Migration: Removed feedback period name constraint - now accepts any name');
+  }
+} catch (err) {
+  console.error('Migration error (feedback_periods name constraint):', err.message);
 }
 
 module.exports = db;
