@@ -93,19 +93,19 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
     // Department comparison (within same org)
     const deptAvg = teacher.department ? getDepartmentAverage(teacher.department, activeTerm?.id, teacher.org_id) : null;
 
-    // All reviews for this teacher (approved + pending for visibility)
+    // Approved reviews only — teachers must not see pending/flagged moderation status
     const recentReviews = db.prepare(`
       SELECT r.overall_rating, r.clarity_rating, r.engagement_rating,
         r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
         r.feedback_text, r.tags,
-        r.created_at, r.flagged_status, r.approved_status,
+        r.created_at,
         fp.name as period_name, t.name as term_name, c.subject as classroom_subject,
         c.grade_level
       FROM reviews r
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
       JOIN terms t ON r.term_id = t.id
       JOIN classrooms c ON r.classroom_id = c.id
-      WHERE r.teacher_id = ?
+      WHERE r.teacher_id = ? AND r.approved_status = 1
       ORDER BY r.created_at DESC
       LIMIT 50
     `).all(teacher.id);

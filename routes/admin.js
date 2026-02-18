@@ -432,6 +432,10 @@ router.delete('/terms/:id', authenticate, authorize('super_admin', 'org_admin'),
       return res.status(403).json({ error: 'Term does not belong to your organization' });
     }
 
+    if (term.active_status) {
+      return res.status(400).json({ error: 'Cannot delete an active term. Deactivate it first.' });
+    }
+
     db.prepare('DELETE FROM terms WHERE id = ?').run(req.params.id);
 
     logAuditEvent({
