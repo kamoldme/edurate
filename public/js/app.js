@@ -1771,12 +1771,18 @@ async function renderAdminHome() {
   }
 }
 
+// Store orgs globally for editing
+let cachedOrgs = [];
+
 async function renderAdminOrgs() {
   // Force direct API call without org filter
   const savedOrg = currentOrg;
   currentOrg = null; // Temporarily disable org filtering
   const orgs = await API.get('/organizations');
   currentOrg = savedOrg; // Restore org filter
+
+  // Cache orgs for editing
+  cachedOrgs = orgs;
 
   const el = document.getElementById('contentArea');
 
@@ -1802,7 +1808,7 @@ async function renderAdminOrgs() {
         </thead>
         <tbody>
           ${orgs.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:40px">${t('common.no_data')}</td></tr>` :
-            orgs.map(org => `
+            orgs.map((org, index) => `
               <tr>
                 <td><strong>${org.name}</strong></td>
                 <td><code>${org.slug}</code></td>
@@ -1810,9 +1816,9 @@ async function renderAdminOrgs() {
                 <td>${org.teacher_count || 0}</td>
                 <td>${org.student_count || 0}</td>
                 <td>
-                  <button class="btn btn-sm btn-outline" onclick='editOrganization(${JSON.stringify(org)})'>Edit</button>
-                  <button class="btn btn-sm btn-outline" onclick="viewOrgMembers(${org.id}, '${org.name}')">Members</button>
-                  <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="deleteOrganization(${org.id}, '${org.name}', ${org.total_members || 0})">Delete</button>
+                  <button class="btn btn-sm btn-outline" onclick="editOrganization(${index})">Edit</button>
+                  <button class="btn btn-sm btn-outline" onclick="viewOrgMembers(${org.id}, '${org.name.replace(/'/g, "\\'")}')">Members</button>
+                  <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="deleteOrganization(${org.id}, '${org.name.replace(/'/g, "\\'")}', ${org.total_members || 0})">Delete</button>
                 </td>
               </tr>
             `).join('')}
@@ -3429,7 +3435,13 @@ async function saveNewOrganization() {
   }
 }
 
-function editOrganization(org) {
+function editOrganization(orgIndex) {
+  const org = cachedOrgs[orgIndex];
+  if (!org) {
+    toast('Organization not found', 'error');
+    return;
+  }
+
   openModal(`
     <div class="modal-header">
       <h2>${t('admin.edit_org')}</h2>
