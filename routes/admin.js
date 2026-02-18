@@ -26,7 +26,7 @@ router.get('/users', authenticate, authorize('super_admin', 'org_admin'), author
   try {
     const { role, search } = req.query;
     const params = [];
-    let query = 'SELECT id, full_name, email, role, grade_or_position, school_id, org_id, verified_status, suspended, created_at FROM users WHERE 1=1';
+    let query = 'SELECT u.id, u.full_name, u.email, u.role, u.grade_or_position, u.school_id, u.org_id, u.verified_status, u.suspended, u.created_at FROM users u WHERE 1=1';
 
     // Org scoping
     if (req.user.role === 'org_admin') {
