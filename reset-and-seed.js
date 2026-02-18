@@ -36,12 +36,12 @@ console.log('');
 console.log('👨‍🏫 Creating new teachers for Lincoln High School...');
 
 const newTeachers = [
-  { name: 'Dr. Sarah Martinez', email: 'martinez@lincoln.edu', department: 'Science', subject: 'Biology' },
-  { name: 'Prof. Michael Chen', email: 'chen@lincoln.edu', department: 'Math', subject: 'Calculus' },
-  { name: 'Ms. Jennifer Lopez', email: 'lopez@lincoln.edu', department: 'English', subject: 'Literature' },
-  { name: 'Mr. David Kim', email: 'kim@lincoln.edu', department: 'Humanities', subject: 'World History' },
-  { name: 'Ms. Aisha Karimova', email: 'karimova@lincoln.edu', department: 'Non-English', subject: 'Russian Language' },
-  { name: 'Prof. Robert Taylor', email: 'taylor@lincoln.edu', department: 'Arts', subject: 'Visual Arts' }
+  { name: 'Dr. Sarah Martinez', email: 'martinez@edurate.school.edu', department: 'Science', subject: 'Biology' },
+  { name: 'Prof. Michael Chen', email: 'chen@edurate.school.edu', department: 'Math', subject: 'Calculus' },
+  { name: 'Ms. Jennifer Lopez', email: 'lopez@edurate.school.edu', department: 'English', subject: 'Literature' },
+  { name: 'Mr. David Kim', email: 'kim@edurate.school.edu', department: 'Humanities', subject: 'World History' },
+  { name: 'Ms. Aisha Karimova', email: 'karimova@edurate.school.edu', department: 'Non-English', subject: 'Russian Language' },
+  { name: 'Prof. Robert Taylor', email: 'taylor@edurate.school.edu', department: 'Arts', subject: 'Visual Arts' }
 ];
 
 const ORG_ID = 1; // Lincoln High School

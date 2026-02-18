@@ -25,8 +25,8 @@ const insertOrg = db.prepare(`
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
-insertOrg.run(1, 'Lincoln High School', 'lincoln-high', 'admin@lincoln.edu', '+1-555-0100', '123 Main St, Springfield, IL 62701', 'active', 50, 1000);
-insertOrg.run(2, 'Roosevelt Academy', 'roosevelt-academy', 'admin@roosevelt.edu', '+1-555-0200', '456 Oak Ave, Riverside, CA 92501', 'active', 40, 800);
+insertOrg.run(1, 'Lincoln High School', 'lincoln-high', 'admin@edurate.school.edu', '+1-555-0100', '123 Main St, Springfield, IL 62701', 'active', 50, 1000);
+insertOrg.run(2, 'Roosevelt Academy', 'roosevelt-academy', 'admin2@edurate.school.edu', '+1-555-0200', '456 Oak Ave, Riverside, CA 92501', 'active', 40, 800);
 
 console.log('Organizations created: Lincoln High School (org_id=1), Roosevelt Academy (org_id=2)');
 
@@ -37,35 +37,35 @@ const insertUser = db.prepare(`
 `);
 
 // Super Admin (global, sees everything)
-const superAdminId = insertUser.run('Sarah Williams', 'superadmin@edurate.com', hash('SuperAdmin@123'), 'super_admin', 'System Administrator', 1, null).lastInsertRowid;
+const superAdminId = insertUser.run('Sarah Williams', 'superadmin@edurate.school.edu', hash('SuperAdmin@123'), 'super_admin', 'System Administrator', 1, null).lastInsertRowid;
 
 // Org Admins (one per organization)
-const org1AdminId = insertUser.run('Michael Roberts', 'admin@lincoln.edu', hash('OrgAdmin@123'), 'org_admin', 'Administrator', 1, 1).lastInsertRowid;
-const org2AdminId = insertUser.run('Jennifer Martinez', 'admin@roosevelt.edu', hash('OrgAdmin@123'), 'org_admin', 'Administrator', 1, 2).lastInsertRowid;
+const org1AdminId = insertUser.run('Michael Roberts', 'admin@edurate.school.edu', hash('OrgAdmin@123'), 'org_admin', 'Administrator', 1, 1).lastInsertRowid;
+const org2AdminId = insertUser.run('Jennifer Martinez', 'admin2@edurate.school.edu', hash('OrgAdmin@123'), 'org_admin', 'Administrator', 1, 2).lastInsertRowid;
 
 // School Heads (one per organization)
-const org1HeadId = insertUser.run('Dr. Robert Johnson', 'head@lincoln.edu', hash('Head@123'), 'school_head', 'School Head', 1, 1).lastInsertRowid;
-const org2HeadId = insertUser.run('Dr. Lisa Chen', 'head@roosevelt.edu', hash('Head@123'), 'school_head', 'School Head', 1, 2).lastInsertRowid;
+const org1HeadId = insertUser.run('Dr. Robert Johnson', 'head@edurate.school.edu', hash('Head@123'), 'school_head', 'School Head', 1, 1).lastInsertRowid;
+const org2HeadId = insertUser.run('Dr. Lisa Chen', 'head2@edurate.school.edu', hash('Head@123'), 'school_head', 'School Head', 1, 2).lastInsertRowid;
 
 // ORG 1 (Lincoln High School) - Teachers
-const t1UserId = insertUser.run('Mr. James Smith', 'smith@lincoln.edu', hash('Teacher@123'), 'teacher', 'Math Teacher', 1, 1).lastInsertRowid;
-const t2UserId = insertUser.run('Ms. Emily Anderson', 'anderson@lincoln.edu', hash('Teacher@123'), 'teacher', 'English Teacher', 1, 1).lastInsertRowid;
-const t3UserId = insertUser.run('Dr. Sarah Martinez', 'martinez@lincoln.edu', hash('Teacher@123'), 'teacher', 'Science Teacher', 1, 1).lastInsertRowid;
-const t4UserId = insertUser.run('Mr. David Kim', 'kim@lincoln.edu', hash('Teacher@123'), 'teacher', 'History Teacher', 1, 1).lastInsertRowid;
+const t1UserId = insertUser.run('Mr. James Smith', 'smith@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Math Teacher', 1, 1).lastInsertRowid;
+const t2UserId = insertUser.run('Ms. Emily Anderson', 'anderson@edurate.school.edu', hash('Teacher@123'), 'teacher', 'English Teacher', 1, 1).lastInsertRowid;
+const t3UserId = insertUser.run('Dr. Sarah Martinez', 'martinez@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Science Teacher', 1, 1).lastInsertRowid;
+const t4UserId = insertUser.run('Mr. David Kim', 'kim@edurate.school.edu', hash('Teacher@123'), 'teacher', 'History Teacher', 1, 1).lastInsertRowid;
 
 // ORG 2 (Roosevelt Academy) - Teachers
-const t5UserId = insertUser.run('Ms. Aisha Karimova', 'karimova@roosevelt.edu', hash('Teacher@123'), 'teacher', 'Russian Teacher', 1, 2).lastInsertRowid;
-const t6UserId = insertUser.run('Prof. Robert Taylor', 'taylor@roosevelt.edu', hash('Teacher@123'), 'teacher', 'Arts Teacher', 1, 2).lastInsertRowid;
-const t7UserId = insertUser.run('Ms. Patricia Wilson', 'wilson@roosevelt.edu', hash('Teacher@123'), 'teacher', 'Math Teacher', 1, 2).lastInsertRowid;
-const t8UserId = insertUser.run('Mr. Carlos Garcia', 'garcia@roosevelt.edu', hash('Teacher@123'), 'teacher', 'Science Teacher', 1, 2).lastInsertRowid;
+const t5UserId = insertUser.run('Ms. Aisha Karimova', 'karimova@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Russian Teacher', 1, 2).lastInsertRowid;
+const t6UserId = insertUser.run('Prof. Robert Taylor', 'taylor@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Arts Teacher', 1, 2).lastInsertRowid;
+const t7UserId = insertUser.run('Ms. Patricia Wilson', 'wilson@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Math Teacher', 1, 2).lastInsertRowid;
+const t8UserId = insertUser.run('Mr. Carlos Garcia', 'garcia@edurate.school.edu', hash('Teacher@123'), 'teacher', 'Science Teacher', 1, 2).lastInsertRowid;
 
 // Students (global users, org_id=NULL - they join orgs via classrooms)
-const aliceId = insertUser.run('Alice Johnson', 'alice@student.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
-const bobId = insertUser.run('Bob Williams', 'bob@student.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
-const carolId = insertUser.run('Carol Davis', 'carol@student.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
-const davidId = insertUser.run('David Brown', 'david@student.edu', hash('Student@123'), 'student', 'Grade 11', 1, null).lastInsertRowid;
-const eveId = insertUser.run('Eve Thompson', 'eve@student.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
-const frankId = insertUser.run('Frank Miller', 'frank@student.edu', hash('Student@123'), 'student', 'Grade 11', 1, null).lastInsertRowid;
+const aliceId = insertUser.run('Alice Johnson', 'alice@edurate.school.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
+const bobId = insertUser.run('Bob Williams', 'bob@edurate.school.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
+const carolId = insertUser.run('Carol Davis', 'carol@edurate.school.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
+const davidId = insertUser.run('David Brown', 'david@edurate.school.edu', hash('Student@123'), 'student', 'Grade 11', 1, null).lastInsertRowid;
+const eveId = insertUser.run('Eve Thompson', 'eve@edurate.school.edu', hash('Student@123'), 'student', 'Grade 10', 1, null).lastInsertRowid;
+const frankId = insertUser.run('Frank Miller', 'frank@edurate.school.edu', hash('Student@123'), 'student', 'Grade 11', 1, null).lastInsertRowid;
 
 console.log('Users created:');
 console.log('  - 1 super_admin (global)');
@@ -467,36 +467,36 @@ console.log('');
 console.log('  Login Credentials:');
 console.log('  ──────────────────────────────────────────────────');
 console.log('  GLOBAL:');
-console.log('    Super Admin: superadmin@edurate.com / SuperAdmin@123');
+console.log('    Super Admin: superadmin@edurate.school.edu / SuperAdmin@123');
 console.log('');
 console.log('  LINCOLN HIGH SCHOOL (org_id=1):');
-console.log('    Org Admin:   admin@lincoln.edu     / OrgAdmin@123');
-console.log('    School Head: head@lincoln.edu      / Head@123');
-console.log('    Teacher 1:   smith@lincoln.edu     / Teacher@123  (Math)');
-console.log('    Teacher 2:   anderson@lincoln.edu  / Teacher@123  (English)');
-console.log('    Teacher 3:   martinez@lincoln.edu  / Teacher@123  (Science)');
-console.log('    Teacher 4:   kim@lincoln.edu       / Teacher@123  (Humanities)');
-console.log('    Students:    alice@student.edu     / Student@123  (also in Roosevelt)');
-console.log('                 bob@student.edu       / Student@123');
-console.log('                 carol@student.edu     / Student@123');
+console.log('    Org Admin:   admin@edurate.school.edu    / OrgAdmin@123');
+console.log('    School Head: head@edurate.school.edu     / Head@123');
+console.log('    Teacher 1:   smith@edurate.school.edu    / Teacher@123  (Math)');
+console.log('    Teacher 2:   anderson@edurate.school.edu / Teacher@123  (English)');
+console.log('    Teacher 3:   martinez@edurate.school.edu / Teacher@123  (Science)');
+console.log('    Teacher 4:   kim@edurate.school.edu      / Teacher@123  (History)');
+console.log('    Students:    alice@edurate.school.edu    / Student@123  (also in Roosevelt)');
+console.log('                 bob@edurate.school.edu      / Student@123');
+console.log('                 carol@edurate.school.edu    / Student@123');
 console.log('');
 console.log('  ROOSEVELT ACADEMY (org_id=2):');
-console.log('    Org Admin:   admin@roosevelt.edu   / OrgAdmin@123');
-console.log('    School Head: head@roosevelt.edu    / Head@123');
-console.log('    Teacher 1:   karimova@roosevelt.edu / Teacher@123  (Russian)');
-console.log('    Teacher 2:   taylor@roosevelt.edu   / Teacher@123  (Arts)');
-console.log('    Teacher 3:   wilson@roosevelt.edu   / Teacher@123  (Math)');
-console.log('    Teacher 4:   garcia@roosevelt.edu   / Teacher@123  (Science)');
-console.log('    Students:    david@student.edu      / Student@123');
-console.log('                 eve@student.edu        / Student@123');
-console.log('                 frank@student.edu      / Student@123');
+console.log('    Org Admin:   admin2@edurate.school.edu   / OrgAdmin@123');
+console.log('    School Head: head2@edurate.school.edu    / Head@123');
+console.log('    Teacher 1:   karimova@edurate.school.edu / Teacher@123  (Russian)');
+console.log('    Teacher 2:   taylor@edurate.school.edu   / Teacher@123  (Arts)');
+console.log('    Teacher 3:   wilson@edurate.school.edu   / Teacher@123  (Math)');
+console.log('    Teacher 4:   garcia@edurate.school.edu   / Teacher@123  (Science)');
+console.log('    Students:    david@edurate.school.edu    / Student@123');
+console.log('                 eve@edurate.school.edu      / Student@123');
+console.log('                 frank@edurate.school.edu    / Student@123');
 console.log('  ──────────────────────────────────────────────────');
 console.log('');
 console.log('  Test Scenarios:');
 console.log('    1. Login as super_admin → see all orgs, switch between them');
-console.log('    2. Login as org_admin@lincoln.edu → only see Lincoln data');
-console.log('    3. Login as org_admin@roosevelt.edu → only see Roosevelt data');
-console.log('    4. Login as alice@student.edu → see classrooms from BOTH orgs');
+console.log('    2. Login as admin@edurate.school.edu → only see Lincoln data');
+console.log('    3. Login as admin2@edurate.school.edu → only see Roosevelt data');
+console.log('    4. Login as alice@edurate.school.edu → see classrooms from BOTH orgs');
 console.log('    5. Create new classroom via teacher → auto-assigns org_id');
 console.log('    6. Student joins classroom → auto-added to user_organizations');
 console.log('  ──────────────────────────────────────────────────\n');
