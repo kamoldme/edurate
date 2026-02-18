@@ -391,6 +391,47 @@ function confirmDialog(message, confirmText = t('common.confirm'), cancelText = 
   });
 }
 
+function confirmWithText(message, requiredText, warningMessage = '') {
+  return new Promise((resolve) => {
+    openModal(`
+      <div class="modal-header">
+        <h2 style="color:#ef4444">⚠️ Confirm Dangerous Action</h2>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:1.1rem;margin-bottom:16px">${message}</p>
+        ${warningMessage ? `<div style="background:#fef2f2;border:1px solid #ef4444;border-radius:8px;padding:16px;margin-bottom:20px">
+          <p style="color:#991b1b;font-weight:600;margin:0">${warningMessage}</p>
+        </div>` : ''}
+        <div style="margin-bottom:20px">
+          <p style="font-size:0.95rem;margin-bottom:8px;color:var(--gray-600)">Type <strong style="color:#ef4444">"${requiredText}"</strong> to confirm:</p>
+          <input type="text" id="confirmTextInput" class="form-control" placeholder="${requiredText}" autocomplete="off">
+        </div>
+        <div style="display:flex;gap:12px;justify-content:flex-end">
+          <button class="btn btn-outline" onclick="window.confirmTextResolve(false);closeModal()">Cancel</button>
+          <button class="btn btn-danger" id="confirmTextBtn" disabled onclick="if(document.getElementById('confirmTextInput').value === '${requiredText}'){window.confirmTextResolve(true);closeModal();}">Confirm</button>
+        </div>
+      </div>
+    `);
+    window.confirmTextResolve = resolve;
+    setTimeout(() => {
+      const input = document.getElementById('confirmTextInput');
+      const btn = document.getElementById('confirmTextBtn');
+      if (input && btn) {
+        input.focus();
+        input.addEventListener('input', (e) => {
+          btn.disabled = e.target.value !== '${requiredText}';
+        });
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' && e.target.value === '${requiredText}') {
+            window.confirmTextResolve(true);
+            closeModal();
+          }
+        });
+      }
+    }, 100);
+  });
+}
+
 function getCriteriaInfo() {
   return [
     {name: t('criteria.clarity'), key: 'Clarity', desc: t('criteria.clarity_desc')},
@@ -3481,16 +3522,20 @@ async function viewOrgMembers(orgId, orgName) {
               <th>${t('common.email')}</th>
               <th>${t('common.role')}</th>
               <th>${t('common.joined')}</th>
+              <th>${t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
-            ${members.length === 0 ? `<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--gray-400)">${t('common.no_data')}</td></tr>` :
+            ${members.length === 0 ? `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--gray-400)">${t('common.no_data')}</td></tr>` :
               members.map(m => `
                 <tr>
                   <td>${m.full_name}</td>
                   <td style="font-size:0.85rem;color:var(--gray-500)">${m.email}</td>
                   <td><span class="badge ${m.role_in_org === 'org_admin' ? 'badge-flagged' : m.role_in_org === 'teacher' ? 'badge-active' : 'badge-pending'}">${m.role_in_org}</span></td>
                   <td style="font-size:0.85rem">${new Date(m.joined_at).toLocaleDateString()}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="removeOrgMember(${orgId}, ${m.user_id}, '${m.full_name.replace(/'/g, "\\'")}', '${orgName.replace(/'/g, "\\'")}')">Remove</button>
+                  </td>
                 </tr>
               `).join('')}
           </tbody>
@@ -3506,14 +3551,14 @@ async function viewOrgMembers(orgId, orgName) {
 }
 
 async function deleteOrganization(orgId, orgName, memberCount) {
-  if (memberCount > 0) {
-    return toast(`Cannot delete organization with ${memberCount} active members. Remove all members first.`, 'error');
-  }
+  const warningMsg = memberCount > 0
+    ? `⚠️ WARNING: This organization has ${memberCount} active member${memberCount > 1 ? 's' : ''}. Deleting it will remove ALL associated data including teachers, students, classrooms, reviews, and terms. This action is IRREVERSIBLE!`
+    : 'This action will permanently delete the organization and cannot be undone.';
 
-  const confirmed = await confirm(
-    `Are you sure you want to delete "${orgName}"? This action cannot be undone.`,
+  const confirmed = await confirmWithText(
+    `Are you sure you want to permanently delete "${orgName}"?`,
     'Delete',
-    'Cancel'
+    warningMsg
   );
 
   if (!confirmed) return;
@@ -3524,5 +3569,25 @@ async function deleteOrganization(orgId, orgName, memberCount) {
     navigateTo('admin-orgs');
   } catch (error) {
     toast(error.message || 'Failed to delete organization', 'error');
+  }
+}
+
+async function removeOrgMember(orgId, userId, userName, orgName) {
+  const confirmed = await confirmDialog(
+    `Remove <strong>${userName}</strong> from <strong>${orgName}</strong>?<br><br>This will remove their association with this organization.`,
+    'Remove',
+    'Cancel'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await API.delete(`/organizations/${orgId}/members/${userId}`);
+    toast('Member removed successfully', 'success');
+    closeModal();
+    // Refresh the members view
+    viewOrgMembers(orgId, orgName);
+  } catch (error) {
+    toast(error.message || 'Failed to remove member', 'error');
   }
 }

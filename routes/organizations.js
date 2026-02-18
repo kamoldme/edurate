@@ -170,12 +170,18 @@ router.delete('/:id', authorize('super_admin'), (req, res) => {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    // Safety check: don't allow deleting orgs with active members
+    // Get count for logging purposes
     const memberCount = db.prepare('SELECT COUNT(*) as count FROM user_organizations WHERE org_id = ?').get(orgId);
-    if (memberCount.count > 0) {
-      return res.status(400).json({ error: `Cannot delete organization with ${memberCount.count} active members. Remove all members first.` });
-    }
 
+    // Manually delete all associated data (SQLite CASCADE may not be fully configured)
+    db.prepare('DELETE FROM user_organizations WHERE org_id = ?').run(orgId);
+    db.prepare('DELETE FROM reviews WHERE org_id = ?').run(orgId);
+    db.prepare('DELETE FROM classroom_members WHERE classroom_id IN (SELECT id FROM classrooms WHERE org_id = ?)').run(orgId);
+    db.prepare('DELETE FROM classrooms WHERE org_id = ?').run(orgId);
+    db.prepare('DELETE FROM feedback_periods WHERE term_id IN (SELECT id FROM terms WHERE org_id = ?)').run(orgId);
+    db.prepare('DELETE FROM terms WHERE org_id = ?').run(orgId);
+    db.prepare('DELETE FROM teachers WHERE org_id = ?').run(orgId);
+    db.prepare('DELETE FROM audit_logs WHERE org_id = ?').run(orgId);
     db.prepare('DELETE FROM organizations WHERE id = ?').run(orgId);
 
     logAuditEvent({
@@ -183,14 +189,16 @@ router.delete('/:id', authorize('super_admin'), (req, res) => {
       userRole: req.user.role,
       userName: req.user.full_name,
       actionType: 'org_delete',
-      actionDescription: `Deleted organization: ${org.name}`,
+      actionDescription: `Deleted organization: ${org.name} (had ${memberCount.count} members)`,
       targetType: 'organization',
       targetId: orgId,
+      metadata: { member_count: memberCount.count, org_name: org.name },
       ipAddress: req.ip
     });
 
     res.json({ message: 'Organization deleted' });
   } catch (err) {
+    console.error('Delete organization error:', err);
     res.status(500).json({ error: 'Failed to delete organization' });
   }
 });
