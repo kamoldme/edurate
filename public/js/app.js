@@ -2766,7 +2766,7 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
         <select class="form-control" style="display:inline-block;width:auto" onchange="renderAdminSubmissions(parseInt(this.value))">
           ${termOptions.map(p => `
             <option value="${p.id}" ${p.id === periodToShow.id ? 'selected' : ''}>
-              ${p.term_name}
+              ${p.term_name}${p.active_status !== 1 ? ' (Closed)' : ''}
             </option>
           `).join('')}
         </select>
