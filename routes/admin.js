@@ -1095,7 +1095,7 @@ router.get('/teacher/:id/feedback', authenticate, authorize('super_admin', 'org_
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
 
     // Org check
-    if (req.user.role === 'org_admin' && teacher.org_id !== req.orgId) {
+    if (['org_admin', 'school_head'].includes(req.user.role) && teacher.org_id !== req.orgId) {
       return res.status(403).json({ error: 'Teacher does not belong to your organization' });
     }
 

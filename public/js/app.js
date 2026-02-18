@@ -1614,6 +1614,9 @@ async function renderHeadTeachers() {
               </div>`;
             }).join('')}
             ${t.trend ? `<div style="margin-top:12px;font-size:0.85rem">Trend: ${trendArrow(t.trend.trend)} <span class="trend-${t.trend.trend === 'improving' ? 'up' : t.trend.trend === 'declining' ? 'down' : 'stable'}">${t.trend.trend}</span></div>` : ''}
+            <div style="margin-top:16px">
+              <button class="btn btn-primary" style="width:100%;font-size:0.85rem" onclick="viewTeacherFeedback(${t.id})">View Feedback</button>
+            </div>
           </div>
         </div>
       `).join('')}

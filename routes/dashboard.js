@@ -226,15 +226,16 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
       data.avg_score = getDepartmentAverage(dept, activeTerm?.id, orgId);
     }
 
-    // All classrooms with stats
+    // All classrooms with stats (scoped to org)
     const classrooms = db.prepare(`
       SELECT c.*, te.full_name as teacher_name, t.name as term_name,
         (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
       JOIN terms t ON c.term_id = t.id
+      ${orgId ? 'WHERE c.org_id = ?' : ''}
       ORDER BY c.created_at DESC
-    `).all();
+    `).all(...(orgId ? [orgId] : []));
 
     const terms = db.prepare(`SELECT * FROM terms WHERE ${orgId ? 'org_id = ?' : '1=1'} ORDER BY start_date DESC`).all(...(orgId ? [orgId] : []));
 
