@@ -195,7 +195,11 @@ function buildNavigation() {
   const langSwitcher = `<div class="nav-section"><div class="nav-section-title">${t('lang.language')}</div>
     <div style="display:flex;gap:6px;padding:4px 12px">
       ${locales.map(l => `<button class="btn btn-sm ${l.code === currentLang ? 'btn-primary' : 'btn-outline'}" onclick="switchLanguage('${l.code}')" style="flex:1;font-size:0.78rem">${l.flag} ${l.code.toUpperCase()}</button>`).join('')}
-    </div></div>`;
+    </div>
+    <div style="padding:4px 12px;font-size:0.75rem;color:#94a3b8;text-align:center;font-style:italic">
+      🇷🇺 RU, 🇺🇿 UZ - Coming soon
+    </div>
+  </div>`;
 
   nav.innerHTML = '<div class="nav-section"><div class="nav-section-title">' + t('nav.main_menu') + '</div>' +
     items.map(it => `

@@ -35,7 +35,7 @@ const I18n = {
   },
 
   async setLocale(lang) {
-    if (!['en', 'ru', 'uz'].includes(lang)) return;
+    if (!['en'].includes(lang)) return;
     await this.loadLocale(lang);
     this.locale = lang;
     localStorage.setItem('edurate_lang', lang);
@@ -58,9 +58,7 @@ const I18n = {
 
   getAvailableLocales() {
     return [
-      { code: 'en', label: 'English', flag: '🇬🇧' },
-      { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-      { code: 'uz', label: "O'zbek", flag: '🇺🇿' }
+      { code: 'en', label: 'English', flag: '🇬🇧' }
     ];
   }
 };
