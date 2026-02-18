@@ -30,19 +30,19 @@ router.get('/users', authenticate, authorize('super_admin', 'org_admin'), author
 
     // Org scoping
     if (req.user.role === 'org_admin') {
-      // org_admin sees users in their org (via user_organizations) + unassigned students
+      // org_admin sees users in their org (via user_organizations) + staff assigned to org
       query = `SELECT DISTINCT u.id, u.full_name, u.email, u.role, u.grade_or_position, u.school_id, u.org_id, u.verified_status, u.suspended, u.created_at
         FROM users u
         LEFT JOIN user_organizations uo ON u.id = uo.user_id AND uo.org_id = ?
-        WHERE (uo.org_id = ? OR u.org_id = ?)`;
-      params.push(req.orgId, req.orgId, req.orgId);
+        WHERE (u.org_id = ? OR uo.org_id IS NOT NULL)`;
+      params.push(req.orgId, req.orgId);
     } else if (req.orgId) {
       // super_admin filtering by specific org
       query = `SELECT DISTINCT u.id, u.full_name, u.email, u.role, u.grade_or_position, u.school_id, u.org_id, u.verified_status, u.suspended, u.created_at
         FROM users u
         LEFT JOIN user_organizations uo ON u.id = uo.user_id AND uo.org_id = ?
-        WHERE (uo.org_id = ? OR u.org_id = ?)`;
-      params.push(req.orgId, req.orgId, req.orgId);
+        WHERE (u.org_id = ? OR uo.org_id IS NOT NULL)`;
+      params.push(req.orgId, req.orgId);
     }
 
     if (role) { query += ' AND u.role = ?'; params.push(role); }
