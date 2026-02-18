@@ -194,7 +194,7 @@ function buildNavigation() {
   const currentLang = I18n.getLocale();
   const langSwitcher = `<div class="nav-section"><div class="nav-section-title">${t('lang.language')}</div>
     <div style="display:flex;gap:6px;padding:4px 12px">
-      ${locales.map(l => `<button class="btn btn-sm ${l.code === currentLang ? 'btn-primary' : 'btn-outline'}" onclick="switchLanguage('${l.code}')" style="flex:1;font-size:0.78rem">${l.flag} ${l.code.toUpperCase()}</button>`).join('')}
+      ${locales.map(l => `<button onclick="switchLanguage('${l.code}')" style="flex:1;font-size:0.78rem;padding:5px 8px;border-radius:6px;cursor:pointer;border:1px solid ${l.code === currentLang ? 'var(--gray-300)' : 'transparent'};background:${l.code === currentLang ? 'var(--gray-100)' : 'transparent'};color:${l.code === currentLang ? 'var(--gray-700)' : 'var(--gray-400)'};font-weight:${l.code === currentLang ? '600' : '400'}">${l.flag} ${l.code.toUpperCase()}</button>`).join('')}
     </div>
     <div style="padding:4px 12px;font-size:0.75rem;color:#94a3b8;text-align:center;font-style:italic">
       More languages coming soon
