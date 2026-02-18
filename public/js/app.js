@@ -1847,7 +1847,7 @@ async function renderAdminUsers() {
         <table>
           <thead><tr><th>${t('common.name')}</th><th>${t('common.email')}</th><th>${t('common.role')}</th><th>${t('admin.grade_position')}</th><th>${t('common.status')}</th><th>${t('common.actions')}</th></tr></thead>
           <tbody>
-            ${users.filter(u => !window._userFilter || u.role === window._userFilter).map(u => `
+            ${users.filter(u => !window._userFilter || (window._userFilter === 'admin' ? ['org_admin', 'super_admin'].includes(u.role) : u.role === window._userFilter)).map(u => `
               <tr>
                 <td><strong>${u.full_name}</strong></td>
                 <td style="font-size:0.8rem;color:var(--gray-500)">${u.email}</td>
