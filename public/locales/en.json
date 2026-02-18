@@ -401,6 +401,7 @@
   "admin.contact_phone": "Contact Phone",
   "admin.address": "Address",
   "admin.org_members": "Organization Members",
+  "admin.organization": "Organization",
 
   "account.profile_info": "Profile Information",
   "account.full_name": "Full Name",

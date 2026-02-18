@@ -1727,12 +1727,17 @@ async function renderAdminHome() {
 }
 
 async function renderAdminOrgs() {
+  // Force direct API call without org filter
+  const savedOrg = currentOrg;
+  currentOrg = null; // Temporarily disable org filtering
   const orgs = await API.get('/organizations');
+  currentOrg = savedOrg; // Restore org filter
+
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-      <h3>${t('admin.organizations')}</h3>
+      <h3>${t('admin.organizations')} (${orgs.length})</h3>
       <button class="btn btn-primary" onclick="createOrganization()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         ${t('admin.create_org')}
@@ -1757,11 +1762,12 @@ async function renderAdminOrgs() {
                 <td><strong>${org.name}</strong></td>
                 <td><code>${org.slug}</code></td>
                 <td><span class="badge ${org.subscription_status === 'active' ? 'badge-approved' : org.subscription_status === 'suspended' ? 'badge-rejected' : 'badge-pending'}">${org.subscription_status}</span></td>
-                <td>${org.max_teachers || 0}</td>
-                <td>${org.max_students || 0}</td>
+                <td>${org.teacher_count || 0}</td>
+                <td>${org.student_count || 0}</td>
                 <td>
                   <button class="btn btn-sm btn-outline" onclick='editOrganization(${JSON.stringify(org)})'>Edit</button>
                   <button class="btn btn-sm btn-outline" onclick="viewOrgMembers(${org.id}, '${org.name}')">Members</button>
+                  <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="deleteOrganization(${org.id}, '${org.name}', ${org.total_members || 0})">Delete</button>
                 </td>
               </tr>
             `).join('')}
@@ -2113,6 +2119,9 @@ async function renderAdminClassrooms() {
   const classrooms = await API.get('/admin/classrooms');
   const el = document.getElementById('contentArea');
 
+  const isSuperAdmin = currentUser.role === 'super_admin';
+  const orgColumnHeader = isSuperAdmin ? `<th>${t('admin.organization')}</th>` : '';
+
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
       <h2>${t('admin.classroom_management_count', {count: classrooms.length})}</h2>
@@ -2121,11 +2130,14 @@ async function renderAdminClassrooms() {
     <div class="card">
       <div class="table-container">
         <table>
-          <thead><tr><th>${t('common.subject')}</th><th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.term')}</th><th>${t('common.students')}</th><th>${t('admin.join_code')}</th><th>${t('common.status')}</th><th>${t('common.actions')}</th></tr></thead>
+          <thead><tr><th>${t('common.subject')}</th>${orgColumnHeader}<th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.term')}</th><th>${t('common.students')}</th><th>${t('admin.join_code')}</th><th>${t('common.status')}</th><th>${t('common.actions')}</th></tr></thead>
           <tbody>
-            ${classrooms.map(c => `
+            ${classrooms.map(c => {
+              const orgColumn = isSuperAdmin ? `<td>${c.org_name || '-'}</td>` : '';
+              return `
               <tr>
                 <td><strong>${c.subject}</strong></td>
+                ${orgColumn}
                 <td>${c.teacher_name || '-'}</td>
                 <td>${c.grade_level}</td>
                 <td>${c.term_name}</td>
@@ -2138,7 +2150,8 @@ async function renderAdminClassrooms() {
                   <button class="btn btn-sm btn-danger" onclick="deleteClassroom(${c.id}, '${c.subject}')">Delete</button>
                 </td>
               </tr>
-            `).join('')}
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -3489,5 +3502,27 @@ async function viewOrgMembers(orgId, orgName) {
     `);
   } catch (error) {
     toast(error.message || 'Failed to load members', 'error');
+  }
+}
+
+async function deleteOrganization(orgId, orgName, memberCount) {
+  if (memberCount > 0) {
+    return toast(`Cannot delete organization with ${memberCount} active members. Remove all members first.`, 'error');
+  }
+
+  const confirmed = await confirm(
+    `Are you sure you want to delete "${orgName}"? This action cannot be undone.`,
+    'Delete',
+    'Cancel'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await API.delete(`/organizations/${orgId}`);
+    toast('Organization deleted successfully', 'success');
+    navigateTo('admin-orgs');
+  } catch (error) {
+    toast(error.message || 'Failed to delete organization', 'error');
   }
 }

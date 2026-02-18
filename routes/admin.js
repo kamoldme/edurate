@@ -779,10 +779,12 @@ router.get('/classrooms', authenticate, authorize('super_admin', 'org_admin', 's
 
     const classrooms = db.prepare(`
       SELECT c.*, te.full_name as teacher_name, t.name as term_name,
+        o.name as org_name,
         (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
       JOIN terms t ON c.term_id = t.id
+      LEFT JOIN organizations o ON c.org_id = o.id
       ${where}
       ORDER BY c.created_at DESC
     `).all(...params);
