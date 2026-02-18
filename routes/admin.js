@@ -1517,4 +1517,44 @@ router.get('/support/stats', authenticate, authorize('super_admin', 'org_admin')
   }
 });
 
+// ============ ORGANIZATION APPLICATIONS ============
+
+// GET /api/admin/applications - list all org applications (super_admin only)
+router.get('/applications', authenticate, authorize('super_admin'), (req, res) => {
+  try {
+    const applications = db.prepare(`
+      SELECT * FROM org_applications ORDER BY created_at DESC
+    `).all();
+    res.json(applications);
+  } catch (err) {
+    console.error('Get applications error:', err);
+    res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+// GET /api/admin/applications/count - count of new applications (super_admin only)
+router.get('/applications/count', authenticate, authorize('super_admin'), (req, res) => {
+  try {
+    const { count } = db.prepare(`SELECT COUNT(*) as count FROM org_applications WHERE status = 'new'`).get();
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch count' });
+  }
+});
+
+// PUT /api/admin/applications/:id - update application status (super_admin only)
+router.put('/applications/:id', authenticate, authorize('super_admin'), (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['new', 'reviewed', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    db.prepare('UPDATE org_applications SET status = ? WHERE id = ?').run(status, req.params.id);
+    res.json({ message: 'Application updated' });
+  } catch (err) {
+    console.error('Update application error:', err);
+    res.status(500).json({ error: 'Failed to update application' });
+  }
+});
+
 module.exports = router;

@@ -82,19 +82,43 @@ function setupUI() {
   const topBarActions = document.getElementById('topBarActions');
   if (u.role === 'super_admin') {
     topBarActions.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;">
-        <label style="font-size:0.875rem;color:#64748b;font-weight:500;">Organization:</label>
-        <select id="orgSwitcher" onchange="switchOrg(this.value)" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.875rem;cursor:pointer;">
-          <option value="">All Organizations</option>
-        </select>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button id="appNotifBtn" onclick="navigateTo('admin-applications')" title="Organization Applications"
+          style="position:relative;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:0.85rem;color:#64748b;font-weight:500">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Applications
+          <span id="appNotifBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.65rem;font-weight:700;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></span>
+        </button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:0.875rem;color:#64748b;font-weight:500;">Organization:</label>
+          <select id="orgSwitcher" onchange="switchOrg(this.value)" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.875rem;cursor:pointer;">
+            <option value="">All Organizations</option>
+          </select>
+        </div>
       </div>
     `;
     loadOrganizations();
+    loadApplicationBadge();
   } else {
     topBarActions.innerHTML = '';
   }
 
   buildNavigation();
+}
+
+async function loadApplicationBadge() {
+  try {
+    const { count } = await API.get('/admin/applications/count');
+    const badge = document.getElementById('appNotifBadge');
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  } catch (err) { /* silently ignore */ }
 }
 
 async function loadOrganizations() {
@@ -164,6 +188,7 @@ function buildNavigation() {
     items = [
       { id: 'admin-home', label: t('nav.dashboard'), icon: 'home' },
       { id: 'admin-orgs', label: t('nav.organizations'), icon: 'users' },
+      { id: 'admin-applications', label: 'Applications', icon: 'list' },
       { id: 'admin-users', label: t('nav.users'), icon: 'users' },
       { id: 'admin-terms', label: t('nav.terms_periods'), icon: 'calendar' },
       { id: 'admin-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
@@ -255,6 +280,7 @@ function navigateTo(view) {
     'head-analytics': t('title.analytics'),
     'admin-home': t('title.admin_dashboard'),
     'admin-orgs': t('title.organizations'),
+    'admin-applications': 'Organization Applications',
     'admin-users': t('title.user_management'),
     'admin-terms': t('title.terms_periods'),
     'admin-classrooms': t('title.classroom_management'),
@@ -283,6 +309,7 @@ function navigateTo(view) {
     'head-analytics': renderHeadAnalytics,
     'admin-home': renderAdminHome,
     'admin-orgs': renderAdminOrgs,
+    'admin-applications': renderAdminApplications,
     'admin-users': renderAdminUsers,
     'admin-terms': renderAdminTerms,
     'admin-classrooms': renderAdminClassrooms,
@@ -2832,6 +2859,64 @@ async function viewClassroomSubmissions(classroomId, periodId) {
       </div>
     </div>
   `);
+}
+
+// ============ ADMIN: ORGANIZATION APPLICATIONS ============
+async function renderAdminApplications() {
+  const applications = await API.get('/admin/applications');
+  const el = document.getElementById('contentArea');
+
+  const statusColors = { new: 'badge-flagged', reviewed: 'badge-pending', approved: 'badge-active', rejected: 'badge-inactive' };
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <p style="color:var(--gray-500)">${applications.length} application(s) from schools and institutions</p>
+    </div>
+    ${applications.length === 0 ? `
+      <div class="card"><div class="card-body">
+        <div class="empty-state">
+          <h3>No applications yet</h3>
+          <p>When schools apply through the landing page, they will appear here.</p>
+        </div>
+      </div></div>
+    ` : `
+      <div class="card">
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Date</th><th>Organization</th><th>Contact</th><th>Email</th><th>Message</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${applications.map(a => `
+                <tr>
+                  <td style="white-space:nowrap;font-size:0.85rem">${new Date(a.created_at).toLocaleDateString()}</td>
+                  <td><strong>${a.org_name}</strong></td>
+                  <td>${a.contact_name}</td>
+                  <td><a href="mailto:${a.email}" style="color:var(--primary)">${a.email}</a></td>
+                  <td style="max-width:260px;font-size:0.85rem;color:var(--gray-600)">${a.message ? `<span title="${a.message}">${a.message.length > 80 ? a.message.slice(0, 80) + '…' : a.message}</span>` : '<em style="color:var(--gray-400)">—</em>'}</td>
+                  <td><span class="badge ${statusColors[a.status] || 'badge-pending'}">${a.status}</span></td>
+                  <td style="white-space:nowrap">
+                    ${a.status === 'new' ? `<button class="btn btn-sm btn-outline" onclick="updateApplication(${a.id},'reviewed')">Mark Reviewed</button>` : ''}
+                    ${a.status !== 'approved' ? `<button class="btn btn-sm btn-success" onclick="updateApplication(${a.id},'approved')" style="margin-left:4px">Approve</button>` : ''}
+                    ${a.status !== 'rejected' ? `<button class="btn btn-sm btn-danger" onclick="updateApplication(${a.id},'rejected')" style="margin-left:4px">Reject</button>` : ''}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `}
+  `;
+
+  // Refresh badge after viewing
+  loadApplicationBadge();
+}
+
+async function updateApplication(id, status) {
+  try {
+    await API.put(`/admin/applications/${id}`, { status });
+    toast(`Application marked as ${status}`);
+    renderAdminApplications();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 // ============ ADMIN: SUPPORT MESSAGES ============

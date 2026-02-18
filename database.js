@@ -445,4 +445,23 @@ try {
   console.error('Migration error (feedback_periods name constraint):', err.message);
 }
 
+// Migration: Add org_applications table
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS org_applications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      org_name TEXT NOT NULL,
+      contact_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      message TEXT,
+      status TEXT DEFAULT 'new' CHECK(status IN ('new', 'reviewed', 'approved', 'rejected')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_org_applications_status ON org_applications(status);
+    CREATE INDEX IF NOT EXISTS idx_org_applications_created ON org_applications(created_at);
+  `);
+} catch (err) {
+  // Table already exists
+}
+
 module.exports = db;

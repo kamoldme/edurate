@@ -32,6 +32,7 @@ const adminRoutes = require('./routes/admin');
 const supportRoutes = require('./routes/support');
 const teacherRoutes = require('./routes/teachers');
 const organizationRoutes = require('./routes/organizations');
+const applyRoutes = require('./routes/apply');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -90,6 +91,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/organizations', organizationRoutes);
+app.use('/api/apply', applyRoutes);
 
 // Specific page routes (BEFORE static middleware)
 app.get('/app', (req, res) => {

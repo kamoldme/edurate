@@ -68,9 +68,9 @@
 
     .orb-5 {
       width: 320px; height: 320px;
-      background: #06b6d4;
+      background: #f59e0b;
       bottom: 20%; right: -60px;
-      opacity: 0.18;
+      opacity: 0.12;
       animation: driftB 24s ease-in-out infinite alternate;
     }
 
@@ -220,7 +220,7 @@
       animation: fadeInUp 0.7s 0.2s ease both;
     }
 
-    .hero h2 .blue { color: #93c5fd; }
+    .hero h2 .blue { color: #60a5fa; }
 
     .hero p {
       font-size: 1.15rem;
@@ -292,7 +292,7 @@
     .stat-number {
       font-size: 2rem;
       font-weight: 800;
-      color: #67e8f9;
+      color: #fbbf24;
       letter-spacing: -1px;
     }
 
@@ -313,7 +313,7 @@
       font-size: 0.78rem;
       font-weight: 700;
       letter-spacing: 0.12em;
-      color: #67e8f9;
+      color: #fbbf24;
       text-transform: uppercase;
       margin-bottom: 12px;
     }
@@ -369,8 +369,8 @@
 
     .step-number {
       width: 52px; height: 52px;
-      background: linear-gradient(135deg, #0891b2, #06b6d4);
-      border: 2px solid rgba(103,232,249,0.4);
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      border: 2px solid rgba(251,191,36,0.4);
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -379,7 +379,7 @@
       font-size: 1.2rem;
       margin: 0 auto 20px;
       color: #fff;
-      box-shadow: 0 0 0 6px rgba(6,182,212,0.12), 0 4px 16px rgba(6,182,212,0.3);
+      box-shadow: 0 0 0 6px rgba(251,191,36,0.1), 0 4px 16px rgba(245,158,11,0.35);
     }
 
     .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: #fff; }
@@ -412,7 +412,7 @@
       inset: 0;
       background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.07) 50%, transparent 70%);
       transform: translateX(-100%);
-      transition: transform 0.5s ease;
+      transition: transform 0.2s ease;
     }
     .feature:hover::after { transform: translateX(100%); }
 
@@ -421,15 +421,15 @@
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 2px;
-      background: linear-gradient(90deg, #06b6d4, #67e8f9);
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
       opacity: 0;
-      transition: opacity 0.25s;
+      transition: opacity 0.2s;
     }
 
     /* Permanent colored top border per feature card */
-    .feature:nth-child(3n+1) { border-top: 2px solid rgba(6,182,212,0.45); }
+    .feature:nth-child(3n+1) { border-top: 2px solid rgba(245,158,11,0.5); }
     .feature:nth-child(3n+2) { border-top: 2px solid rgba(96,165,250,0.45); }
-    .feature:nth-child(3n+3) { border-top: 2px solid rgba(103,232,249,0.35); }
+    .feature:nth-child(3n+3) { border-top: 2px solid rgba(251,191,36,0.4); }
     .feature:hover {
       background: rgba(255,255,255,0.15);
       border-color: rgba(255,255,255,0.28);
@@ -446,8 +446,8 @@
     .cta-section { padding: 0 0 80px; }
 
     .cta-card {
-      background: linear-gradient(135deg, rgba(6,182,212,0.2) 0%, rgba(37,99,235,0.25) 100%);
-      border: 1px solid rgba(103,232,249,0.3);
+      background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(37,99,235,0.2) 100%);
+      border: 1px solid rgba(251,191,36,0.25);
       border-radius: 24px;
       padding: 56px 40px;
       text-align: center;
@@ -461,7 +461,7 @@
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 3px;
-      background: linear-gradient(90deg, #06b6d4, #60a5fa, #67e8f9);
+      background: linear-gradient(90deg, #f59e0b, #fbbf24, #60a5fa, #f59e0b);
       background-size: 200% 100%;
       animation: shimmer-line 3s linear infinite;
     }
@@ -473,7 +473,7 @@
       letter-spacing: -0.5px;
     }
 
-    .cta-card p {
+    .cta-card > p {
       color: rgba(255,255,255,0.72);
       margin-bottom: 32px;
       font-size: 1.05rem;
@@ -482,18 +482,76 @@
       margin-right: auto;
     }
 
-    .cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-
-    .btn-cyan {
-      background: linear-gradient(135deg, #0891b2, #06b6d4);
-      color: #fff;
-      border: 2px solid rgba(103,232,249,0.3);
-      box-shadow: 0 4px 20px rgba(6,182,212,0.35);
+    /* Application form inside CTA */
+    .apply-form {
+      max-width: 520px;
+      margin: 0 auto;
+      text-align: left;
     }
-    .btn-cyan:hover {
-      background: linear-gradient(135deg, #0e7490, #0891b2);
+    .apply-form .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .apply-form .form-group { margin-bottom: 14px; }
+    .apply-form label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 6px;
+      letter-spacing: 0.03em;
+    }
+    .apply-form input,
+    .apply-form textarea,
+    .apply-form select {
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .apply-form input::placeholder,
+    .apply-form textarea::placeholder { color: rgba(255,255,255,0.35); }
+    .apply-form input:focus,
+    .apply-form textarea:focus {
+      border-color: rgba(251,191,36,0.6);
+      background: rgba(255,255,255,0.15);
+    }
+    .apply-form textarea { resize: vertical; min-height: 90px; }
+
+    .btn-amber {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      color: #fff;
+      border: 2px solid rgba(251,191,36,0.3);
+      box-shadow: 0 4px 20px rgba(245,158,11,0.35);
+      font-weight: 700;
+    }
+    .btn-amber:hover {
+      background: linear-gradient(135deg, #b45309, #d97706);
       transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(6,182,212,0.45);
+      box-shadow: 0 8px 28px rgba(245,158,11,0.45);
+    }
+
+    .apply-success {
+      display: none;
+      padding: 20px;
+      background: rgba(34,197,94,0.15);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 12px;
+      text-align: center;
+    }
+    .apply-success h4 { font-size: 1.1rem; margin-bottom: 8px; }
+    .apply-success p { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
+
+    @media (max-width: 560px) {
+      .apply-form .form-row { grid-template-columns: 1fr; }
+      .cta-card { padding: 36px 20px; }
     }
 
     /* ── FOOTER ── */
@@ -737,15 +795,36 @@
       </div>
     </section>
 
-    <!-- CTA -->
+    <!-- APPLY -->
     <section class="cta-section">
       <div class="container">
         <div class="cta-card reveal">
-          <h2>Ready to get started?</h2>
-          <p>Join schools already using EduRate to build a culture of meaningful, constructive feedback.</p>
-          <div class="cta-buttons">
-            <a href="/register" class="btn btn-cyan" style="padding:14px 32px;font-size:1rem">Create Your Account</a>
-            <a href="/login" class="btn btn-outline" style="padding:14px 32px;font-size:1rem">Sign In</a>
+          <h2>Apply to Join EduRate</h2>
+          <p>Interested in bringing EduRate to your school or institution? Submit a short request and our team will reach out.</p>
+          <div class="apply-form" id="applyForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Organization Name *</label>
+                <input type="text" id="applyOrg" placeholder="e.g. Lincoln High School">
+              </div>
+              <div class="form-group">
+                <label>Your Name *</label>
+                <input type="text" id="applyName" placeholder="Full name">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email Address *</label>
+              <input type="email" id="applyEmail" placeholder="your@school.edu">
+            </div>
+            <div class="form-group">
+              <label>Tell us about your school <span style="opacity:0.5;font-weight:400">(optional)</span></label>
+              <textarea id="applyMessage" placeholder="Number of teachers, grade levels, any specific needs..."></textarea>
+            </div>
+            <button class="btn btn-amber" style="width:100%;padding:13px;font-size:1rem" onclick="submitApplication()">Send Application</button>
+          </div>
+          <div class="apply-success" id="applySuccess">
+            <h4>✅ Application received!</h4>
+            <p>Thank you! We'll review your request and get back to you shortly.</p>
           </div>
         </div>
       </div>
@@ -776,6 +855,44 @@
     }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
     document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => observer.observe(el));
+
+    // Organization application form
+    async function submitApplication() {
+      const org_name = document.getElementById('applyOrg').value.trim();
+      const contact_name = document.getElementById('applyName').value.trim();
+      const email = document.getElementById('applyEmail').value.trim();
+      const message = document.getElementById('applyMessage').value.trim();
+      const btn = document.querySelector('#applyForm .btn-amber');
+
+      if (!org_name || !contact_name || !email) {
+        alert('Please fill in the required fields.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      try {
+        const res = await fetch('/api/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ org_name, contact_name, email, message })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to submit');
+        }
+        document.getElementById('applyForm').style.display = 'none';
+        document.getElementById('applySuccess').style.display = 'block';
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.textContent = 'Send Application';
+      }
+    }
   </script>
 </body>
 </html>
