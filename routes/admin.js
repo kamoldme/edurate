@@ -1557,4 +1557,15 @@ router.put('/applications/:id', authenticate, authorize('super_admin'), (req, re
   }
 });
 
+// DELETE /api/admin/applications/:id - delete application (super_admin only)
+router.delete('/applications/:id', authenticate, authorize('super_admin'), (req, res) => {
+  try {
+    db.prepare('DELETE FROM org_applications WHERE id = ?').run(req.params.id);
+    res.json({ message: 'Application deleted' });
+  } catch (err) {
+    console.error('Delete application error:', err);
+    res.status(500).json({ error: 'Failed to delete application' });
+  }
+});
+
 module.exports = router;

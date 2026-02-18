@@ -453,6 +453,7 @@ try {
       org_name TEXT NOT NULL,
       contact_name TEXT NOT NULL,
       email TEXT NOT NULL,
+      phone TEXT,
       message TEXT,
       status TEXT DEFAULT 'new' CHECK(status IN ('new', 'reviewed', 'approved', 'rejected')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -463,5 +464,18 @@ try {
 } catch (err) {
   // Table already exists
 }
+
+// Migration: Add phone column to org_applications if missing
+try {
+  const appCols = db.prepare("PRAGMA table_info(org_applications)").all();
+  if (!appCols.some(c => c.name === 'phone')) {
+    db.exec('ALTER TABLE org_applications ADD COLUMN phone TEXT');
+  }
+} catch (err) { /* ignore */ }
+
+// Migration: Rename legacy "1st Half" / "2nd Half" feedback period names
+try {
+  db.prepare("UPDATE feedback_periods SET name = 'Feedback Period' WHERE name IN ('1st Half', '2nd Half')").run();
+} catch (err) { /* ignore */ }
 
 module.exports = db;

@@ -273,26 +273,30 @@
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 1px;
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 16px;
-      overflow: hidden;
+      gap: 16px;
     }
 
     .stat-item {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-top: 3px solid rgba(251,191,36,0.6);
+      border-radius: 16px;
       padding: 28px 20px;
       text-align: center;
-      transition: background 0.25s;
-      backdrop-filter: blur(4px);
+      transition: all 0.25s;
+      backdrop-filter: blur(6px);
     }
-    .stat-item:hover { background: rgba(255,255,255,0.18); }
+    .stat-item:hover {
+      background: rgba(255,255,255,0.14);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    }
 
     .stat-icon {
-      font-size: 1.6rem;
-      margin-bottom: 8px;
+      font-size: 2.2rem;
+      margin-bottom: 12px;
       line-height: 1;
+      display: block;
     }
 
     .stat-number {
@@ -305,7 +309,7 @@
     .stat-label {
       font-size: 0.82rem;
       color: rgba(255,255,255,0.6);
-      margin-top: 4px;
+      margin-top: 6px;
       font-weight: 500;
     }
 
@@ -432,10 +436,8 @@
       transition: opacity 0.2s;
     }
 
-    /* Permanent colored top border per feature card */
-    .feature:nth-child(3n+1) { border-top: 2px solid rgba(245,158,11,0.5); }
-    .feature:nth-child(3n+2) { border-top: 2px solid rgba(96,165,250,0.45); }
-    .feature:nth-child(3n+3) { border-top: 2px solid rgba(251,191,36,0.4); }
+    /* Uniform top border on all feature cards */
+    .feature { border-top: 2px solid rgba(255,255,255,0.18); }
     .feature:hover {
       background: rgba(255,255,255,0.15);
       border-color: rgba(255,255,255,0.28);
@@ -822,9 +824,15 @@
                 <input type="text" id="applyName" placeholder="Full name">
               </div>
             </div>
-            <div class="form-group">
-              <label>Email Address *</label>
-              <input type="email" id="applyEmail" placeholder="your@school.edu">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Email Address *</label>
+                <input type="email" id="applyEmail" placeholder="your@school.edu">
+              </div>
+              <div class="form-group">
+                <label>Phone Number <span style="opacity:0.5;font-weight:400">(optional)</span></label>
+                <input type="tel" id="applyPhone" placeholder="+1 234 567 8900">
+              </div>
             </div>
             <div class="form-group">
               <label>Tell us about your school <span style="opacity:0.5;font-weight:400">(optional)</span></label>
@@ -871,6 +879,7 @@
       const org_name = document.getElementById('applyOrg').value.trim();
       const contact_name = document.getElementById('applyName').value.trim();
       const email = document.getElementById('applyEmail').value.trim();
+      const phone = document.getElementById('applyPhone').value.trim();
       const message = document.getElementById('applyMessage').value.trim();
       const btn = document.querySelector('#applyForm .btn-amber');
 
@@ -889,7 +898,7 @@
         const res = await fetch('/api/apply', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ org_name, contact_name, email, message })
+          body: JSON.stringify({ org_name, contact_name, email, phone, message })
         });
         if (!res.ok) {
           const err = await res.json();

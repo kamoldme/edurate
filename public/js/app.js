@@ -188,7 +188,6 @@ function buildNavigation() {
     items = [
       { id: 'admin-home', label: t('nav.dashboard'), icon: 'home' },
       { id: 'admin-orgs', label: t('nav.organizations'), icon: 'users' },
-      { id: 'admin-applications', label: 'Applications', icon: 'list' },
       { id: 'admin-users', label: t('nav.users'), icon: 'users' },
       { id: 'admin-terms', label: t('nav.terms_periods'), icon: 'calendar' },
       { id: 'admin-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
@@ -2755,11 +2754,11 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div>
-        <label style="margin-right:10px;font-weight:600">Feedback Period:</label>
+        <label style="margin-right:10px;font-weight:600">Term:</label>
         <select class="form-control" style="display:inline-block;width:auto" onchange="renderAdminSubmissions(parseInt(this.value))">
           ${periods.map(p => `
             <option value="${p.id}" ${p.id === periodToShow.id ? 'selected' : ''}>
-              ${p.name} - ${p.term_name} ${p.active_status ? '(Active)' : ''}
+              ${p.term_name} ${p.active_status ? '(Active)' : '(Closed)'}
             </option>
           `).join('')}
         </select>
@@ -2768,7 +2767,7 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
 
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <h3>Submission Overview - ${periodToShow.name} (${periodToShow.term_name})</h3>
+        <h3>Submission Overview — ${periodToShow.term_name}${periodToShow.active_status ? ' <span style="font-size:0.8rem;font-weight:500;color:var(--success)">(Active)</span>' : ''}</h3>
       </div>
       <div class="card-body">
         <div class="grid grid-4" style="margin-bottom:24px">
@@ -2866,8 +2865,6 @@ async function renderAdminApplications() {
   const applications = await API.get('/admin/applications');
   const el = document.getElementById('contentArea');
 
-  const statusColors = { new: 'badge-flagged', reviewed: 'badge-pending', approved: 'badge-active', rejected: 'badge-inactive' };
-
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <p style="color:var(--gray-500)">${applications.length} application(s) from schools and institutions</p>
@@ -2883,7 +2880,7 @@ async function renderAdminApplications() {
       <div class="card">
         <div class="table-container">
           <table>
-            <thead><tr><th>Date</th><th>Organization</th><th>Contact</th><th>Email</th><th>Message</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Date</th><th>Organization</th><th>Contact</th><th>Email</th><th>Phone</th><th>Message</th><th>Actions</th></tr></thead>
             <tbody>
               ${applications.map(a => `
                 <tr>
@@ -2891,12 +2888,10 @@ async function renderAdminApplications() {
                   <td><strong>${a.org_name}</strong></td>
                   <td>${a.contact_name}</td>
                   <td><a href="mailto:${a.email}" style="color:var(--primary)">${a.email}</a></td>
-                  <td style="max-width:260px;font-size:0.85rem;color:var(--gray-600)">${a.message ? `<span title="${a.message}">${a.message.length > 80 ? a.message.slice(0, 80) + '…' : a.message}</span>` : '<em style="color:var(--gray-400)">—</em>'}</td>
-                  <td><span class="badge ${statusColors[a.status] || 'badge-pending'}">${a.status}</span></td>
-                  <td style="white-space:nowrap">
-                    ${a.status === 'new' ? `<button class="btn btn-sm btn-outline" onclick="updateApplication(${a.id},'reviewed')">Mark Reviewed</button>` : ''}
-                    ${a.status !== 'approved' ? `<button class="btn btn-sm btn-success" onclick="updateApplication(${a.id},'approved')" style="margin-left:4px">Approve</button>` : ''}
-                    ${a.status !== 'rejected' ? `<button class="btn btn-sm btn-danger" onclick="updateApplication(${a.id},'rejected')" style="margin-left:4px">Reject</button>` : ''}
+                  <td style="font-size:0.85rem">${a.phone ? `<a href="tel:${a.phone}" style="color:var(--primary)">${a.phone}</a>` : '<em style="color:var(--gray-400)">—</em>'}</td>
+                  <td style="max-width:240px;font-size:0.85rem;color:var(--gray-600)">${a.message ? `<span title="${a.message}">${a.message.length > 70 ? a.message.slice(0, 70) + '…' : a.message}</span>` : '<em style="color:var(--gray-400)">—</em>'}</td>
+                  <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteApplication(${a.id}, '${a.org_name.replace(/'/g, "\\'")}')">Delete</button>
                   </td>
                 </tr>
               `).join('')}
@@ -2911,10 +2906,12 @@ async function renderAdminApplications() {
   loadApplicationBadge();
 }
 
-async function updateApplication(id, status) {
+async function deleteApplication(id, orgName) {
+  const confirmed = await confirmDialog(`Delete application from "${orgName}"? This cannot be undone.`, 'Delete', 'Cancel');
+  if (!confirmed) return;
   try {
-    await API.put(`/admin/applications/${id}`, { status });
-    toast(`Application marked as ${status}`);
+    await API.delete(`/admin/applications/${id}`);
+    toast('Application deleted');
     renderAdminApplications();
   } catch (err) { toast(err.message, 'error'); }
 }
