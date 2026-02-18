@@ -2750,12 +2750,24 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
   const periodToShow = currentPeriod || activePeriod;
   const overview = await API.get(`/admin/submission-overview?feedback_period_id=${periodToShow.id}`);
 
+  // Deduplicate by term_id — one option per term (prefer active period, then most recent)
+  const seenTerms = new Set();
+  const termOptions = [];
+  const sortedForDedup = [...periods].sort((a, b) => (b.active_status - a.active_status) || (b.id - a.id));
+  for (const p of sortedForDedup) {
+    if (!seenTerms.has(p.term_id)) {
+      seenTerms.add(p.term_id);
+      termOptions.push(p);
+    }
+  }
+  termOptions.sort((a, b) => b.id - a.id);
+
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div>
         <label style="margin-right:10px;font-weight:600">Term:</label>
         <select class="form-control" style="display:inline-block;width:auto" onchange="renderAdminSubmissions(parseInt(this.value))">
-          ${periods.map(p => `
+          ${termOptions.map(p => `
             <option value="${p.id}" ${p.id === periodToShow.id ? 'selected' : ''}>
               ${p.term_name}
             </option>
