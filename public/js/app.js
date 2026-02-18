@@ -197,7 +197,7 @@ function buildNavigation() {
       ${locales.map(l => `<button class="btn btn-sm ${l.code === currentLang ? 'btn-primary' : 'btn-outline'}" onclick="switchLanguage('${l.code}')" style="flex:1;font-size:0.78rem">${l.flag} ${l.code.toUpperCase()}</button>`).join('')}
     </div>
     <div style="padding:4px 12px;font-size:0.75rem;color:#94a3b8;text-align:center;font-style:italic">
-      🇷🇺 RU, 🇺🇿 UZ - Coming soon
+      More languages coming soon
     </div>
   </div>`;
 
