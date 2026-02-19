@@ -647,6 +647,223 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
+
+    /* ── ROLE MODAL ── */
+    .role-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .role-modal-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .role-modal-backdrop::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 20, 45, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .role-modal {
+      position: relative;
+      background: linear-gradient(160deg, #0f2044 0%, #1a3a6e 100%);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 40px 36px 36px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+      transform: scale(0.88) translateY(20px);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease;
+      opacity: 0;
+    }
+    .role-modal-backdrop.open .role-modal {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    .role-modal-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 50%;
+      color: rgba(255,255,255,0.6);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+    .role-modal-close:hover {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      transform: rotate(90deg);
+    }
+
+    .role-modal-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .role-modal-header .modal-icon {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .role-modal-header h3 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .role-modal-header p {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.55);
+    }
+
+    .role-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .role-card {
+      position: relative;
+      border-radius: 18px;
+      padding: 28px 20px 24px;
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.22s cubic-bezier(0.34,1.2,0.64,1);
+      overflow: hidden;
+      text-decoration: none;
+    }
+
+    .role-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.22s;
+    }
+
+    /* Student card — blue theme */
+    .role-card-student {
+      background: linear-gradient(145deg, rgba(37,99,235,0.25), rgba(29,78,216,0.15));
+      border-color: rgba(96,165,250,0.3);
+    }
+    .role-card-student::before {
+      background: linear-gradient(145deg, rgba(37,99,235,0.4), rgba(29,78,216,0.3));
+    }
+    .role-card-student:hover {
+      border-color: rgba(96,165,250,0.7);
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 16px 40px rgba(37,99,235,0.35), 0 0 0 1px rgba(96,165,250,0.2);
+    }
+    .role-card-student:hover::before { opacity: 1; }
+
+    /* Teacher card — amber theme */
+    .role-card-teacher {
+      background: linear-gradient(145deg, rgba(217,119,6,0.25), rgba(180,83,9,0.15));
+      border-color: rgba(251,191,36,0.3);
+    }
+    .role-card-teacher::before {
+      background: linear-gradient(145deg, rgba(217,119,6,0.4), rgba(180,83,9,0.3));
+    }
+    .role-card-teacher:hover {
+      border-color: rgba(251,191,36,0.7);
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 16px 40px rgba(217,119,6,0.35), 0 0 0 1px rgba(251,191,36,0.2);
+    }
+    .role-card-teacher:hover::before { opacity: 1; }
+
+    .role-card-emoji {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 14px;
+      position: relative;
+      line-height: 1;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+      transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .role-card:hover .role-card-emoji {
+      transform: scale(1.15) translateY(-2px);
+    }
+
+    .role-card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+      position: relative;
+    }
+    .role-card-desc {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.5;
+      position: relative;
+    }
+
+    .role-card-arrow {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 14px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      font-size: 0.85rem;
+      position: relative;
+      transition: all 0.22s;
+    }
+    .role-card-student .role-card-arrow {
+      background: rgba(96,165,250,0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(96,165,250,0.3);
+    }
+    .role-card-teacher .role-card-arrow {
+      background: rgba(251,191,36,0.2);
+      color: #fcd34d;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+    .role-card:hover .role-card-arrow {
+      transform: translateX(3px);
+    }
+    .role-card-student:hover .role-card-arrow {
+      background: rgba(96,165,250,0.35);
+    }
+    .role-card-teacher:hover .role-card-arrow {
+      background: rgba(251,191,36,0.35);
+    }
+
+    .role-modal-footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.4);
+    }
+    .role-modal-footer a {
+      color: rgba(255,255,255,0.65);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .role-modal-footer a:hover { color: #fff; text-decoration: underline; }
+
+    @media (max-width: 400px) {
+      .role-cards { grid-template-columns: 1fr; }
+      .role-modal { padding: 32px 20px 28px; }
+    }
   </style>
 </head>
 <body>
@@ -668,7 +885,7 @@
       </div>
       <div class="nav-links">
         <a href="/login" class="btn btn-outline">Sign In</a>
-        <a href="/register" class="btn btn-primary">Get Started</a>
+        <button onclick="showRoleModal()" class="btn btn-primary">Get Started</button>
       </div>
     </nav>
   </div>
@@ -688,7 +905,7 @@
           <h2>Edu<span class="blue">Rate</span></h2>
           <p>A secure platform where students give honest feedback to help teachers grow — anonymously, fairly, and with purpose.</p>
           <div class="hero-buttons">
-            <a href="/register" class="btn btn-primary">Create Account</a>
+            <button onclick="showRoleModal()" class="btn btn-primary">Create Account</button>
             <a href="/login" class="btn btn-outline">Sign In</a>
           </div>
         </div>
@@ -861,6 +1078,35 @@
     </div>
   </footer>
 
+  <!-- Role Selection Modal -->
+  <div class="role-modal-backdrop" id="roleModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="roleModalTitle">
+    <div class="role-modal">
+      <button class="role-modal-close" onclick="hideRoleModal()" aria-label="Close">&#x2715;</button>
+      <div class="role-modal-header">
+        <span class="modal-icon">👋</span>
+        <h3 id="roleModalTitle">Who are you?</h3>
+        <p>Choose your role to get started with EduRate</p>
+      </div>
+      <div class="role-cards">
+        <a href="/register" class="role-card role-card-student">
+          <span class="role-card-emoji">🎓</span>
+          <div class="role-card-title">Student</div>
+          <div class="role-card-desc">Join classes and give honest feedback to your teachers</div>
+          <div class="role-card-arrow">&#x2192;</div>
+        </a>
+        <a href="/join" class="role-card role-card-teacher">
+          <span class="role-card-emoji">👨‍🏫</span>
+          <div class="role-card-title">Teacher</div>
+          <div class="role-card-desc">Create your classroom and see what students think</div>
+          <div class="role-card-arrow">&#x2192;</div>
+        </a>
+      </div>
+      <div class="role-modal-footer">
+        Already have an account? <a href="/login">Sign in</a>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Scroll reveal via IntersectionObserver
     const observer = new IntersectionObserver((entries) => {
@@ -873,6 +1119,26 @@
     }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
     document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => observer.observe(el));
+
+    // Role selection modal
+    function showRoleModal() {
+      const backdrop = document.getElementById('roleModalBackdrop');
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function hideRoleModal() {
+      const backdrop = document.getElementById('roleModalBackdrop');
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    // Close on backdrop click
+    document.getElementById('roleModalBackdrop').addEventListener('click', function(e) {
+      if (e.target === this) hideRoleModal();
+    });
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') hideRoleModal();
+    });
 
     // Organization application form
     async function submitApplication() {
