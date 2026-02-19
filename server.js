@@ -81,6 +81,7 @@ const authLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/register-teacher', authLimiter);
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -100,6 +101,10 @@ app.get('/app', (req, res) => {
 
 app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'register.html'));
+});
+
+app.get('/join', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'join.html'));
 });
 
 app.get('/login', (req, res) => {

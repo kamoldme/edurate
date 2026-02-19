@@ -1815,6 +1815,36 @@ async function renderAdminHome() {
     </div>
   `;
 
+  // Invite code card for org_admin
+  if (currentUser.role === 'org_admin') {
+    const inviteCard = document.createElement('div');
+    inviteCard.id = 'inviteCodeCard';
+    inviteCard.className = 'card';
+    inviteCard.style.cssText = 'margin-bottom:28px;padding:20px 24px';
+    inviteCard.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-weight:600;color:var(--gray-800);margin-bottom:4px">Teacher Invite Code</div>
+          <div style="font-size:0.82rem;color:var(--gray-500)">Share this code with teachers so they can self-register and join your organization</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <code id="inviteCodeDisplay" style="font-size:1.3rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:8px 16px;border-radius:8px;color:var(--gray-800)">Loading...</code>
+          <button class="btn btn-sm btn-outline" id="copyInviteBtn" onclick="copyInviteCode()">Copy</button>
+          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateInviteCode()">Regenerate</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:0.78rem;color:var(--gray-400)">
+        Teachers go to <strong>/join</strong> on this site and enter the code above to register and join your organization instantly.
+      </div>
+    `;
+    el.insertBefore(inviteCard, el.firstChild);
+
+    API.get('/admin/invite-code').then(data => {
+      const display = document.getElementById('inviteCodeDisplay');
+      if (display) display.textContent = data.invite_code;
+    }).catch(() => {});
+  }
+
   // Users breakdown doughnut chart
   const usersCtx = document.getElementById('adminUsersChart');
   if (usersCtx) {
@@ -3712,12 +3742,46 @@ function editOrganization(orgIndex) {
           </div>
         </div>
       </form>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200)">
+        <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;color:var(--gray-700)">Teacher Invite Code</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <code id="superInviteCode" style="font-size:1.1rem;font-weight:700;letter-spacing:3px;background:var(--gray-100);padding:6px 14px;border-radius:8px;color:var(--gray-800)">${org.invite_code || 'N/A'}</code>
+          <button class="btn btn-sm btn-outline" onclick="copySuperInviteCode()">Copy</button>
+          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateSuperInviteCode(${org.id})">Regenerate</button>
+        </div>
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-top:6px">Teachers use this code at /join to self-register</div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveOrganizationEdit(${org.id})">Save Changes</button>
     </div>
   `);
+}
+
+function copySuperInviteCode() {
+  const code = document.getElementById('superInviteCode')?.textContent;
+  if (!code || code === 'N/A') return;
+  navigator.clipboard.writeText(code).then(() => toast('Invite code copied!', 'success')).catch(() => toast('Copy failed', 'error'));
+}
+
+async function regenerateSuperInviteCode(orgId) {
+  if (!confirm('Regenerate the invite code for this organization? The old code will stop working.')) return;
+  const savedOrg = currentOrg;
+  currentOrg = orgId;
+  try {
+    const data = await API.post('/admin/regenerate-invite-code', {});
+    const display = document.getElementById('superInviteCode');
+    if (display) display.textContent = data.invite_code;
+    // Update cached org
+    const cached = cachedOrgs.find(o => o.id === orgId);
+    if (cached) cached.invite_code = data.invite_code;
+    toast('Invite code regenerated', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to regenerate', 'error');
+  } finally {
+    currentOrg = savedOrg;
+  }
 }
 
 async function saveOrganizationEdit(orgId) {
@@ -3788,6 +3852,24 @@ async function viewOrgMembers(orgId, orgName) {
     `);
   } catch (error) {
     toast(error.message || 'Failed to load members', 'error');
+  }
+}
+
+function copyInviteCode() {
+  const code = document.getElementById('inviteCodeDisplay')?.textContent;
+  if (!code || code === 'Loading...') return;
+  navigator.clipboard.writeText(code).then(() => toast('Invite code copied!', 'success')).catch(() => toast('Copy failed', 'error'));
+}
+
+async function regenerateInviteCode() {
+  if (!confirm('Regenerate the invite code? The old code will stop working immediately.')) return;
+  try {
+    const data = await API.post('/admin/regenerate-invite-code', {});
+    const display = document.getElementById('inviteCodeDisplay');
+    if (display) display.textContent = data.invite_code;
+    toast('Invite code regenerated', 'success');
+  } catch (err) {
+    toast(err.message || 'Failed to regenerate', 'error');
   }
 }
 

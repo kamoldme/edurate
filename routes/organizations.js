@@ -4,6 +4,13 @@ const db = require('../database');
 const { authenticate, authorize, authorizeOrg } = require('../middleware/auth');
 const { logAuditEvent } = require('../utils/audit');
 
+function generateInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
 // All routes require authentication
 router.use(authenticate);
 
@@ -44,10 +51,13 @@ router.post('/', authorize('super_admin'), (req, res) => {
       return res.status(409).json({ error: 'An organization with this slug already exists' });
     }
 
+    let inviteCode;
+    do { inviteCode = generateInviteCode(); } while (db.prepare('SELECT id FROM organizations WHERE invite_code = ?').get(inviteCode));
+
     const result = db.prepare(`
-      INSERT INTO organizations (name, slug, contact_email, contact_phone, address, max_teachers, max_students)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(name, slug, contact_email || null, contact_phone || null, address || null, max_teachers || 100, max_students || 2000);
+      INSERT INTO organizations (name, slug, contact_email, contact_phone, address, max_teachers, max_students, invite_code)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, slug, contact_email || null, contact_phone || null, address || null, max_teachers || 100, max_students || 2000, inviteCode);
 
     const org = db.prepare('SELECT * FROM organizations WHERE id = ?').get(result.lastInsertRowid);
 

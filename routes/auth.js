@@ -143,6 +143,83 @@ router.post('/register', (req, res) => {
   }
 });
 
+// POST /api/auth/register-teacher - public self-registration via org invite code
+router.post('/register-teacher', async (req, res) => {
+  try {
+    const { full_name, email, password, invite_code } = req.body;
+
+    if (!full_name || !email || !password || !invite_code) {
+      return res.status(400).json({ error: 'Name, email, password, and invite code are required' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain uppercase, lowercase, and a number' });
+    }
+
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+    if (existing) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const org = db.prepare('SELECT * FROM organizations WHERE invite_code = ?').get(invite_code.trim().toUpperCase());
+    if (!org) {
+      return res.status(400).json({ error: 'Invalid invite code' });
+    }
+
+    if (org.subscription_status === 'suspended') {
+      return res.status(403).json({ error: 'This organization is currently suspended' });
+    }
+
+    const teacherCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE org_id = ? AND role = 'teacher'").get(org.id);
+    if (teacherCount.count >= org.max_teachers) {
+      return res.status(400).json({ error: 'This organization has reached its teacher limit' });
+    }
+
+    const hashedPassword = bcrypt.hashSync(password, 12);
+    const sanitizedName = sanitizeInput(full_name.trim());
+
+    const result = db.prepare(`
+      INSERT INTO users (full_name, email, password, role, school_id, org_id, verified_status)
+      VALUES (?, ?, ?, 'teacher', 1, ?, 1)
+    `).run(sanitizedName, email.toLowerCase(), hashedPassword, org.id);
+
+    const userId = result.lastInsertRowid;
+
+    db.prepare(`
+      INSERT INTO teachers (user_id, full_name, school_id, org_id)
+      VALUES (?, ?, 1, ?)
+    `).run(userId, sanitizedName, org.id);
+
+    db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)')
+      .run(userId, org.id, 'teacher');
+
+    const user = db.prepare('SELECT id, full_name, email, role, org_id, verified_status, avatar_url, language FROM users WHERE id = ?').get(userId);
+    const token = generateToken(user);
+
+    res.cookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 });
+
+    logAuditEvent({
+      userId: user.id, userRole: 'teacher', userName: sanitizedName,
+      actionType: 'teacher_self_register',
+      actionDescription: `Teacher self-registered via invite code for org: ${org.name}`,
+      targetType: 'organization', targetId: org.id,
+      orgId: org.id, ipAddress: req.ip
+    });
+
+    res.status(201).json({ message: 'Registration successful', user, token });
+  } catch (err) {
+    console.error('Teacher registration error:', err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
 // POST /api/auth/login
 router.post('/login', (req, res) => {
   try {

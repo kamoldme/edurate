@@ -521,4 +521,30 @@ try {
   console.error('Migration error (audit_logs fk removal):', err.message);
 }
 
+// Migration: Add invite_code to organizations for teacher self-registration
+try {
+  const orgCols = db.pragma('table_info(organizations)').map(c => c.name);
+  if (!orgCols.includes('invite_code')) {
+    db.exec('ALTER TABLE organizations ADD COLUMN invite_code TEXT UNIQUE');
+
+    // Generate unique codes for all existing orgs
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    function genInviteCode() {
+      let code = '';
+      for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    }
+
+    const orgs = db.prepare('SELECT id FROM organizations').all();
+    for (const org of orgs) {
+      let code;
+      do { code = genInviteCode(); } while (db.prepare('SELECT id FROM organizations WHERE invite_code = ?').get(code));
+      db.prepare('UPDATE organizations SET invite_code = ? WHERE id = ?').run(code, org.id);
+    }
+    console.log('✅ Migration: Added invite_code to organizations');
+  }
+} catch (err) {
+  console.error('Migration error (org invite_code):', err.message);
+}
+
 module.exports = db;
