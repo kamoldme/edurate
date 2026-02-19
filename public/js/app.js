@@ -177,14 +177,16 @@ function buildNavigation() {
       { id: 'student-home', label: t('nav.dashboard'), icon: 'home' },
       { id: 'student-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'student-review', label: t('nav.write_review'), icon: 'review' },
-      { id: 'student-my-reviews', label: t('nav.my_reviews'), icon: 'chart' }
+      { id: 'student-my-reviews', label: t('nav.my_reviews'), icon: 'chart' },
+      { id: 'student-forms', label: 'Forms', icon: 'review' }
     ];
   } else if (role === 'teacher') {
     items = [
       { id: 'teacher-home', label: t('nav.dashboard'), icon: 'home' },
       { id: 'teacher-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'teacher-feedback', label: t('nav.feedback'), icon: 'review' },
-      { id: 'teacher-analytics', label: t('nav.analytics'), icon: 'chart' }
+      { id: 'teacher-analytics', label: t('nav.analytics'), icon: 'chart' },
+      { id: 'teacher-forms', label: 'Forms', icon: 'review' }
     ];
   } else if (role === 'school_head') {
     items = [
@@ -307,10 +309,12 @@ function navigateTo(view) {
     'student-classrooms': renderStudentClassrooms,
     'student-review': renderStudentReview,
     'student-my-reviews': renderStudentMyReviews,
+    'student-forms': renderStudentForms,
     'teacher-home': renderTeacherHome,
     'teacher-classrooms': renderTeacherClassrooms,
     'teacher-feedback': renderTeacherFeedback,
     'teacher-analytics': renderTeacherAnalytics,
+    'teacher-forms': renderTeacherForms,
     'head-home': renderHeadHome,
     'head-teachers': renderHeadTeachers,
     'head-classrooms': renderHeadClassrooms,
@@ -803,22 +807,22 @@ async function renderStudentReview() {
           ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('student.no_teachers_title')}</h3><p>${t('student.no_teachers_desc')}</p></div></div></div>`
           : ''}
 
-      ${eligible.map(t => `
+      ${eligible.map(teacher => `
         <div class="card" style="margin-bottom:16px">
           <div class="card-header" style="display:flex;align-items:center;gap:12px">
-            ${avatarHTML({ full_name: t.teacher_name, avatar_url: t.avatar_url, teacher_id: t.teacher_id }, 'normal', true)}
+            ${avatarHTML({ full_name: teacher.teacher_name, avatar_url: teacher.avatar_url, teacher_id: teacher.teacher_id }, 'normal', true)}
             <div style="flex:1">
-              <h3 style="margin:0">${t.teacher_name}</h3>
-              <span style="color:var(--gray-500);font-size:0.85rem">${t.classroom_subject} &middot; ${t.grade_level}</span>
+              <h3 style="margin:0">${teacher.teacher_name}</h3>
+              <span style="color:var(--gray-500);font-size:0.85rem">${teacher.classroom_subject} &middot; ${teacher.grade_level}</span>
             </div>
           </div>
           <div class="card-body">
-            <form onsubmit="submitReview(event, ${t.teacher_id}, ${t.classroom_id})" data-teacher-id="${t.teacher_id}">
+            <form onsubmit="submitReview(event, ${teacher.teacher_id}, ${teacher.classroom_id})" data-teacher-id="${teacher.teacher_id}">
               <div class="form-group" style="margin-bottom:24px;padding:20px;background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);border-radius:12px;border:2px solid #bae6fd">
                 <label style="font-size:1.1rem;font-weight:600;margin-bottom:12px;display:block;color:#0c4a6e">${t('student.overall_rating_label')}</label>
                 <div style="display:flex;align-items:center;gap:16px">
-                  <div id="overall-stars-${t.teacher_id}" class="fractional-stars" style="font-size:2.5rem;display:flex;gap:4px"></div>
-                  <div id="overall-value-${t.teacher_id}" style="font-size:2rem;font-weight:700;color:#0369a1;min-width:60px">-</div>
+                  <div id="overall-stars-${teacher.teacher_id}" class="fractional-stars" style="font-size:2.5rem;display:flex;gap:4px"></div>
+                  <div id="overall-value-${teacher.teacher_id}" style="font-size:2rem;font-weight:700;color:#0369a1;min-width:60px">-</div>
                 </div>
                 <div style="margin-top:8px;color:#0369a1;font-size:0.85rem;font-style:italic">${t('student.rate_all_criteria')}</div>
               </div>
@@ -826,7 +830,7 @@ async function renderStudentReview() {
                 ${CRITERIA_INFO.map(cat => `
                   <div class="form-group" style="margin-bottom:12px">
                     <label style="display:flex;align-items:center;gap:6px">${cat.name} Rating ${criteriaInfoIcon(cat.name)}</label>
-                    <div class="star-rating-input" data-name="${cat.name.toLowerCase()}_rating" data-form="review-${t.teacher_id}">
+                    <div class="star-rating-input" data-name="${cat.name.toLowerCase()}_rating" data-form="review-${teacher.teacher_id}">
                       ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn" data-value="${i}" onclick="setRating(this)">\u2606</button>`).join('')}
                     </div>
                   </div>
@@ -834,7 +838,7 @@ async function renderStudentReview() {
               </div>
               <div class="form-group">
                 <label>${t('student.feedback_tags_label')}</label>
-                <div class="tag-container" id="tags-${t.teacher_id}">
+                <div class="tag-container" id="tags-${teacher.teacher_id}">
                   ${tags.map(tag => `<div class="tag" onclick="this.classList.toggle('selected')" data-tag="${tag}">${tag}</div>`).join('')}
                 </div>
               </div>
@@ -852,11 +856,11 @@ async function renderStudentReview() {
         <div class="card" style="margin-top:24px">
           <div class="card-header"><h3>Already Reviewed (${reviewed.length})</h3></div>
           <div class="card-body">
-            ${reviewed.map(t => `
+            ${reviewed.map(teacher => `
               <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);gap:12px">
                 <div style="display:flex;align-items:center;gap:12px;flex:1">
-                  ${avatarHTML({ full_name: t.teacher_name, avatar_url: t.avatar_url, teacher_id: t.teacher_id }, 'small', true)}
-                  <span>${t.teacher_name} - ${t.classroom_subject}</span>
+                  ${avatarHTML({ full_name: teacher.teacher_name, avatar_url: teacher.avatar_url, teacher_id: teacher.teacher_id }, 'small', true)}
+                  <span>${teacher.teacher_name} - ${teacher.classroom_subject}</span>
                 </div>
                 <span class="badge badge-approved">${t('common.submitted')}</span>
               </div>
@@ -1132,6 +1136,152 @@ async function viewTeacherProfile(teacherId) {
   } catch (err) {
     toast('Failed to load teacher profile: ' + err.message, 'error');
   }
+}
+
+// ============ STUDENT FORMS ============
+async function renderStudentForms() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = `<div class="empty-state"><p>Loading forms...</p></div>`;
+  try {
+    const forms = await API.get('/forms/student/available');
+
+    if (forms.length === 0) {
+      el.innerHTML = `
+        <h2 style="margin-bottom:24px">Forms</h2>
+        <div class="card"><div class="card-body">
+          <div class="empty-state">
+            <h3>No active forms</h3>
+            <p>Your teachers haven't shared any questionnaires yet. Check back later.</p>
+          </div>
+        </div></div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <h2 style="margin-bottom:24px">Forms <span style="font-size:1rem;color:var(--gray-400);font-weight:400">(${forms.length})</span></h2>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${forms.map(f => `
+          <div class="card" style="border-left:4px solid ${f.already_submitted ? 'var(--gray-300)' : 'var(--primary)'}">
+            <div class="card-body" style="display:flex;align-items:center;gap:16px">
+              <div style="flex:1">
+                <h3 style="margin:0 0 4px">${f.title}</h3>
+                <div style="font-size:0.82rem;color:var(--gray-500);margin-bottom:${f.description ? '6px' : '0'}">
+                  ${f.classroom_subject} &middot; ${f.grade_level} &middot; ${f.teacher_name}
+                </div>
+                ${f.description ? `<p style="font-size:0.85rem;color:var(--gray-600);margin:0">${f.description}</p>` : ''}
+              </div>
+              <div style="text-align:center;flex-shrink:0">
+                <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:6px">${f.question_count} question${f.question_count !== 1 ? 's' : ''}</div>
+                ${f.already_submitted
+                  ? `<span style="background:#dcfce7;color:#15803d;padding:4px 12px;border-radius:12px;font-size:0.82rem;font-weight:600">✓ Submitted</span>`
+                  : `<button class="btn btn-primary btn-sm" onclick="openStudentForm(${f.id})">Fill Out</button>`}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function openStudentForm(formId) {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = `<div class="empty-state"><p>Loading form...</p></div>`;
+  try {
+    const form = await API.get(`/forms/${formId}`);
+
+    const renderQuestion = (q, idx) => {
+      if (q.question_type === 'text') {
+        return `
+          <div class="form-group" style="margin-bottom:20px">
+            <label style="font-weight:600">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+            <textarea class="form-control" id="qa_${q.id}" rows="3" placeholder="Your answer..."></textarea>
+          </div>`;
+      }
+      if (q.question_type === 'yes_no') {
+        return `
+          <div class="form-group" style="margin-bottom:20px">
+            <label style="font-weight:600;display:block;margin-bottom:10px">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+            <div style="display:flex;gap:12px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:2px solid var(--gray-200);border-radius:8px;font-weight:500;transition:all 0.15s">
+                <input type="radio" name="qa_${q.id}" value="Yes" style="width:16px;height:16px"> Yes
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:2px solid var(--gray-200);border-radius:8px;font-weight:500;transition:all 0.15s">
+                <input type="radio" name="qa_${q.id}" value="No" style="width:16px;height:16px"> No
+              </label>
+            </div>
+          </div>`;
+      }
+      // multiple_choice
+      return `
+        <div class="form-group" style="margin-bottom:20px">
+          <label style="font-weight:600;display:block;margin-bottom:10px">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${(q.options || []).map(opt => `
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border:2px solid var(--gray-200);border-radius:8px;font-weight:500;transition:all 0.15s">
+                <input type="radio" name="qa_${q.id}" value="${opt.replace(/"/g,'&quot;')}" style="width:16px;height:16px"> ${opt}
+              </label>
+            `).join('')}
+          </div>
+        </div>`;
+    };
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('student-forms')">&larr; Back</button>
+        <div>
+          <h2 style="margin:0">${form.title}</h2>
+          <span style="font-size:0.82rem;color:var(--gray-500)">${form.classroom_subject} &middot; ${form.grade_level}</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          ${form.description ? `<p style="color:var(--gray-600);margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--gray-100)">${form.description}</p>` : ''}
+          <div id="studentFormQuestions">
+            ${form.questions.map((q, idx) => renderQuestion(q, idx)).join('')}
+          </div>
+          <div style="padding-top:16px;border-top:1px solid var(--gray-100);display:flex;gap:12px;justify-content:flex-end">
+            <button class="btn btn-outline" onclick="navigateTo('student-forms')">Cancel</button>
+            <button class="btn btn-primary" onclick="submitStudentForm(${formId})">Submit Anonymously</button>
+          </div>
+        </div>
+      </div>`;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function submitStudentForm(formId) {
+  try {
+    const form = await API.get(`/forms/${formId}`);
+    const answers = [];
+    let missingRequired = false;
+
+    for (const q of form.questions) {
+      let answer_text = '';
+      if (q.question_type === 'text') {
+        answer_text = document.getElementById(`qa_${q.id}`)?.value?.trim() || '';
+      } else {
+        const selected = document.querySelector(`input[name="qa_${q.id}"]:checked`);
+        answer_text = selected ? selected.value : '';
+      }
+      if (q.required && !answer_text) {
+        missingRequired = true;
+        break;
+      }
+      answers.push({ question_id: q.id, answer_text });
+    }
+
+    if (missingRequired) return toast('Please answer all required questions', 'error');
+
+    const confirmed = await confirmDialog('Submit your anonymous response? You cannot change it after submitting.', 'Submit', 'Go back');
+    if (!confirmed) return;
+
+    await API.post(`/forms/${formId}/submit`, { answers });
+    toast('Response submitted — thank you!');
+    navigateTo('student-forms');
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 // ============ TEACHER VIEWS ============
@@ -1605,6 +1755,413 @@ async function renderTeacherAnalytics() {
         scales: { r: { min: 0, max: 5, beginAtZero: true } }
       }
     });
+  }
+}
+
+// ============ TEACHER FORMS ============
+async function renderTeacherForms() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = `<div class="empty-state"><p>Loading forms...</p></div>`;
+  try {
+    const [forms, classrooms] = await Promise.all([
+      API.get('/forms'),
+      API.get('/classrooms')
+    ]);
+
+    const statusBadge = s => {
+      const map = { draft: ['#6b7280','Draft'], active: ['#16a34a','Active'], closed: ['#9ca3af','Closed'] };
+      const [color, label] = map[s] || ['#6b7280', s];
+      return `<span style="background:${color};color:#fff;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600">${label}</span>`;
+    };
+
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <h2 style="margin:0">My Forms</h2>
+        <button class="btn btn-primary" onclick="showCreateFormModal()">+ New Form</button>
+      </div>
+
+      ${forms.length === 0 ? `
+        <div class="card"><div class="card-body">
+          <div class="empty-state">
+            <h3>No forms yet</h3>
+            <p>Create a questionnaire to collect specific feedback from your students.</p>
+            <button class="btn btn-primary" style="margin-top:12px" onclick="showCreateFormModal()">Create First Form</button>
+          </div>
+        </div></div>
+      ` : `
+        <div class="grid grid-3" style="gap:16px">
+          ${forms.map(f => `
+            <div class="card" style="display:flex;flex-direction:column">
+              <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                <div>
+                  <h3 style="margin:0 0 4px">${f.title}</h3>
+                  <span style="font-size:0.8rem;color:var(--gray-500)">${f.classroom_subject} &middot; ${f.grade_level}</span>
+                </div>
+                ${statusBadge(f.status)}
+              </div>
+              <div class="card-body" style="flex:1">
+                ${f.description ? `<p style="color:var(--gray-600);font-size:0.85rem;margin-bottom:12px">${f.description}</p>` : ''}
+                <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--gray-500)">
+                  <span>📋 ${f.question_count} question${f.question_count !== 1 ? 's' : ''}</span>
+                  <span>💬 ${f.response_count} response${f.response_count !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              <div class="card-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px">
+                ${f.status === 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormBuilder(${f.id})">Edit Questions</button>` : ''}
+                ${f.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="setFormStatus(${f.id},'active')">Activate</button>` : ''}
+                ${f.status === 'active' ? `<button class="btn btn-sm btn-outline" onclick="setFormStatus(${f.id},'closed')">Close</button>` : ''}
+                ${f.response_count > 0 || f.status !== 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormResults(${f.id})">Results</button>` : ''}
+                ${f.status === 'draft' ? `<button class="btn btn-sm btn-danger" onclick="deleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">Delete</button>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
+
+      <!-- Hidden classroom list for modal -->
+      <div id="teacherClassroomList" style="display:none">${JSON.stringify(classrooms)}</div>
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+function showCreateFormModal() {
+  const classroomsEl = document.getElementById('teacherClassroomList');
+  const classrooms = classroomsEl ? JSON.parse(classroomsEl.textContent) : [];
+  openModal(`
+    <div class="modal-header"><h3>New Form</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" class="form-control" id="newFormTitle" placeholder="e.g. Mid-term check-in">
+      </div>
+      <div class="form-group">
+        <label>Description <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+        <textarea class="form-control" id="newFormDesc" rows="2" placeholder="What is this form about?"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Classroom *</label>
+        <select class="form-control" id="newFormClassroom">
+          <option value="">-- Select classroom --</option>
+          ${classrooms.map(c => `<option value="${c.id}">${c.subject} &middot; ${c.grade_level}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createForm()">Create Form</button>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('newFormTitle')?.focus(), 50);
+}
+
+async function createForm() {
+  const title = document.getElementById('newFormTitle').value.trim();
+  const description = document.getElementById('newFormDesc').value.trim();
+  const classroom_id = document.getElementById('newFormClassroom').value;
+  if (!title) return toast('Title is required', 'error');
+  if (!classroom_id) return toast('Please select a classroom', 'error');
+  try {
+    await API.post('/forms', { title, description, classroom_id: parseInt(classroom_id) });
+    closeModal();
+    toast('Form created! Now add your questions.');
+    await renderTeacherForms();
+    // Open builder for the newly created form — get the first draft
+    const forms = await API.get('/forms');
+    const newest = forms.find(f => f.title === title && f.status === 'draft');
+    if (newest) openFormBuilder(newest.id);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function openFormBuilder(formId) {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = `<div class="empty-state"><p>Loading form builder...</p></div>`;
+  try {
+    const form = await API.get(`/forms/${formId}`);
+    const statusBadgeColor = { draft: '#6b7280', active: '#16a34a', closed: '#9ca3af' };
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('teacher-forms')">&larr; Back to Forms</button>
+        <div style="flex:1">
+          <h2 style="margin:0">${form.title}</h2>
+          <span style="font-size:0.82rem;color:var(--gray-500)">${form.classroom_subject} &middot; ${form.grade_level}</span>
+        </div>
+        <span style="background:${statusBadgeColor[form.status]};color:#fff;padding:3px 12px;border-radius:12px;font-size:0.8rem;font-weight:600">${form.status}</span>
+      </div>
+
+      ${form.status !== 'draft' ? `
+        <div class="card" style="margin-bottom:16px;border-left:4px solid #f59e0b">
+          <div class="card-body" style="padding:12px 16px;font-size:0.85rem;color:var(--gray-600)">
+            ⚠️ This form is <strong>${form.status}</strong>. Questions can only be edited on draft forms.
+          </div>
+        </div>
+      ` : ''}
+
+      <div id="formQuestionsList">
+        ${renderFormQuestionsList(form.questions, form.status)}
+      </div>
+
+      ${form.status === 'draft' ? `
+        <div class="card" style="margin-top:16px;border:2px dashed var(--gray-200)">
+          <div class="card-body" style="text-align:center;padding:24px">
+            <p style="color:var(--gray-500);margin-bottom:16px">Add a question to your form</p>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'text')">📝 Text Answer</button>
+              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'multiple_choice')">&#9673; Multiple Choice</button>
+              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'yes_no')">✓ Yes / No</button>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+function renderFormQuestionsList(questions, formStatus) {
+  if (questions.length === 0) {
+    return `<div class="card"><div class="card-body"><div class="empty-state"><h3>No questions yet</h3><p>Add questions below to build your form.</p></div></div></div>`;
+  }
+  return questions.map((q, idx) => `
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-body" style="display:flex;align-items:flex-start;gap:12px">
+        <span style="background:var(--gray-100);color:var(--gray-500);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0">${idx + 1}</span>
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:4px">${q.question_text} ${q.required ? '<span style="color:#ef4444;font-size:0.75rem">*required</span>' : ''}</div>
+          <div style="font-size:0.78rem;color:var(--gray-400)">
+            ${q.question_type === 'text' ? '📝 Text answer' : q.question_type === 'yes_no' ? '✓ Yes / No' : '&#9673; ' + (q.options || []).join(' &middot; ')}
+          </div>
+        </div>
+        ${formStatus === 'draft' ? `
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-outline" onclick="showEditQuestionModal(${q.form_id},${q.id})">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteFormQuestion(${q.form_id},${q.id})">✕</button>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function showAddQuestionModal(formId, questionType) {
+  const typeLabel = { text: '📝 Text Answer', multiple_choice: '&#9673; Multiple Choice', yes_no: '✓ Yes / No' };
+  const optionsHTML = questionType === 'multiple_choice' ? `
+    <div class="form-group">
+      <label>Options <span style="color:var(--gray-400);font-weight:400">(at least 2)</span></label>
+      <div id="mcOptions">
+        <div class="mc-option-row" style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" class="form-control mc-option-input" placeholder="Option 1" style="flex:1">
+          <button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>
+        </div>
+        <div class="mc-option-row" style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" class="form-control mc-option-input" placeholder="Option 2" style="flex:1">
+          <button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline" style="margin-top:4px" onclick="addMcOption()">+ Add option</button>
+    </div>
+  ` : '';
+  openModal(`
+    <div class="modal-header"><h3>${typeLabel[questionType]}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Question *</label>
+        <input type="text" class="form-control" id="newQText" placeholder="e.g. What topic would you like more time on?">
+      </div>
+      ${optionsHTML}
+      <div class="form-group" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="newQRequired" checked style="width:16px;height:16px">
+        <label for="newQRequired" style="margin:0;cursor:pointer">Required question</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addFormQuestion(${formId},'${questionType}')">Add Question</button>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('newQText')?.focus(), 50);
+}
+
+function addMcOption() {
+  const container = document.getElementById('mcOptions');
+  const idx = container.querySelectorAll('.mc-option-row').length + 1;
+  const row = document.createElement('div');
+  row.className = 'mc-option-row';
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
+  row.innerHTML = `<input type="text" class="form-control mc-option-input" placeholder="Option ${idx}" style="flex:1"><button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>`;
+  container.appendChild(row);
+}
+function removeMcOption(btn) {
+  const container = document.getElementById('mcOptions');
+  if (container.querySelectorAll('.mc-option-row').length <= 2) return toast('Need at least 2 options', 'error');
+  btn.closest('.mc-option-row').remove();
+}
+
+async function addFormQuestion(formId, questionType) {
+  const question_text = document.getElementById('newQText').value.trim();
+  const required = document.getElementById('newQRequired').checked;
+  if (!question_text) return toast('Question text is required', 'error');
+  let options;
+  if (questionType === 'multiple_choice') {
+    options = [...document.querySelectorAll('.mc-option-input')].map(i => i.value.trim()).filter(Boolean);
+    if (options.length < 2) return toast('Add at least 2 options', 'error');
+  }
+  try {
+    await API.post(`/forms/${formId}/questions`, { question_text, question_type: questionType, options, required });
+    closeModal();
+    toast('Question added');
+    openFormBuilder(formId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showEditQuestionModal(formId, questionId) {
+  try {
+    const form = await API.get(`/forms/${formId}`);
+    const q = form.questions.find(q => q.id === questionId);
+    if (!q) return toast('Question not found', 'error');
+    const optionsHTML = q.question_type === 'multiple_choice' ? `
+      <div class="form-group">
+        <label>Options</label>
+        <div id="mcOptions">
+          ${(q.options || []).map((opt, i) => `
+            <div class="mc-option-row" style="display:flex;gap:6px;margin-bottom:6px">
+              <input type="text" class="form-control mc-option-input" value="${opt}" placeholder="Option ${i+1}" style="flex:1">
+              <button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>
+            </div>
+          `).join('')}
+        </div>
+        <button type="button" class="btn btn-sm btn-outline" style="margin-top:4px" onclick="addMcOption()">+ Add option</button>
+      </div>
+    ` : '';
+    openModal(`
+      <div class="modal-header"><h3>Edit Question</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Question *</label>
+          <input type="text" class="form-control" id="editQText" value="${q.question_text.replace(/"/g, '&quot;')}">
+        </div>
+        ${optionsHTML}
+        <div class="form-group" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="editQRequired" ${q.required ? 'checked' : ''} style="width:16px;height:16px">
+          <label for="editQRequired" style="margin:0;cursor:pointer">Required question</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditQuestion(${formId},${questionId},'${q.question_type}')">Save</button>
+      </div>
+    `);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function saveEditQuestion(formId, questionId, questionType) {
+  const question_text = document.getElementById('editQText').value.trim();
+  const required = document.getElementById('editQRequired').checked;
+  if (!question_text) return toast('Question text is required', 'error');
+  let options;
+  if (questionType === 'multiple_choice') {
+    options = [...document.querySelectorAll('.mc-option-input')].map(i => i.value.trim()).filter(Boolean);
+    if (options.length < 2) return toast('Add at least 2 options', 'error');
+  }
+  try {
+    await API.put(`/forms/${formId}/questions/${questionId}`, { question_text, options, required });
+    closeModal();
+    toast('Question updated');
+    openFormBuilder(formId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteFormQuestion(formId, questionId) {
+  const confirmed = await confirmDialog('Delete this question?', 'Delete', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.delete(`/forms/${formId}/questions/${questionId}`);
+    toast('Question deleted');
+    openFormBuilder(formId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function setFormStatus(formId, status) {
+  const labels = { active: 'activate', closed: 'close' };
+  const confirmed = await confirmDialog(`Are you sure you want to ${labels[status] || status} this form?`, 'Confirm', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.patch(`/forms/${formId}`, { status });
+    toast(`Form ${status === 'active' ? 'activated — students can now fill it out' : 'closed'}`);
+    renderTeacherForms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteForm(formId, title) {
+  const confirmed = await confirmDialog(`Delete form "${title}"?`, 'Delete', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.delete(`/forms/${formId}`);
+    toast('Form deleted');
+    renderTeacherForms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function openFormResults(formId) {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = `<div class="empty-state"><p>Loading results...</p></div>`;
+  try {
+    const data = await API.get(`/forms/${formId}/results`);
+    const { form, total_responses, results } = data;
+
+    const renderResult = r => {
+      if (r.question_type === 'text') {
+        return `
+          <div class="card" style="margin-bottom:12px">
+            <div class="card-header"><strong>${r.question_text}</strong> <span style="color:var(--gray-400);font-size:0.8rem">(${r.total_answers} response${r.total_answers !== 1 ? 's' : ''})</span></div>
+            <div class="card-body">
+              ${r.answers.length === 0
+                ? '<p style="color:var(--gray-400);font-style:italic">No text answers yet.</p>'
+                : r.answers.map(a => `<div style="padding:8px 12px;background:var(--gray-50);border-radius:8px;margin-bottom:6px;font-size:0.88rem">"${a}"</div>`).join('')}
+            </div>
+          </div>`;
+      }
+      const entries = Object.entries(r.counts);
+      const total = entries.reduce((s, [, c]) => s + c, 0) || 1;
+      return `
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-header"><strong>${r.question_text}</strong> <span style="color:var(--gray-400);font-size:0.8rem">(${r.total_answers} response${r.total_answers !== 1 ? 's' : ''})</span></div>
+          <div class="card-body">
+            ${entries.map(([label, count]) => {
+              const pct = Math.round((count / total) * 100);
+              const barColor = label === 'Yes' ? '#16a34a' : label === 'No' ? '#ef4444' : '#2563eb';
+              return `
+                <div style="margin-bottom:10px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.88rem">
+                    <span>${label}</span>
+                    <span style="font-weight:600">${count} <span style="color:var(--gray-400)">(${pct}%)</span></span>
+                  </div>
+                  <div style="background:var(--gray-100);border-radius:4px;height:10px;overflow:hidden">
+                    <div style="width:${pct}%;background:${barColor};height:100%;border-radius:4px;transition:width 0.5s"></div>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    };
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('teacher-forms')">&larr; Back to Forms</button>
+        <div style="flex:1">
+          <h2 style="margin:0">${form.title} — Results</h2>
+          <span style="font-size:0.82rem;color:var(--gray-500)">${total_responses} total response${total_responses !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      ${results.length === 0
+        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No questions</h3></div></div></div>'
+        : results.map(renderResult).join('')}
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
   }
 }
 

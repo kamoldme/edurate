@@ -596,4 +596,56 @@ try {
   console.error('Migration error (org invite_code):', err.message);
 }
 
+// Migration: Add custom questionnaire forms tables
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS forms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+      classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'closed')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_forms_teacher ON forms(teacher_id);
+    CREATE INDEX IF NOT EXISTS idx_forms_classroom ON forms(classroom_id);
+    CREATE INDEX IF NOT EXISTS idx_forms_status ON forms(status);
+
+    CREATE TABLE IF NOT EXISTS form_questions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      form_id INTEGER NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+      question_text TEXT NOT NULL,
+      question_type TEXT NOT NULL CHECK(question_type IN ('text', 'multiple_choice', 'yes_no')),
+      options TEXT,
+      required INTEGER NOT NULL DEFAULT 1,
+      order_index INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_form_questions_form ON form_questions(form_id);
+
+    CREATE TABLE IF NOT EXISTS form_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      form_id INTEGER NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+      student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(form_id, student_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_form_responses_form ON form_responses(form_id);
+    CREATE INDEX IF NOT EXISTS idx_form_responses_student ON form_responses(student_id);
+
+    CREATE TABLE IF NOT EXISTS form_answers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      response_id INTEGER NOT NULL REFERENCES form_responses(id) ON DELETE CASCADE,
+      question_id INTEGER NOT NULL REFERENCES form_questions(id) ON DELETE CASCADE,
+      answer_text TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_form_answers_response ON form_answers(response_id);
+    CREATE INDEX IF NOT EXISTS idx_form_answers_question ON form_answers(question_id);
+  `);
+} catch (err) {
+  console.error('Migration error (forms tables):', err.message);
+}
+
 module.exports = db;
