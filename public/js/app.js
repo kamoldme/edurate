@@ -1260,7 +1260,7 @@ async function renderTeacherClassrooms() {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
       <p style="color:var(--gray-500)">${t('teacher.manage_classrooms')}</p>
-      <button class="btn btn-primary" onclick="showCreateClassroom()">${t('teacher.create_classroom')}</button>
+      <button class="btn btn-primary" onclick="showCreateClassroomTeacher()">${t('teacher.create_classroom')}</button>
     </div>
     ${data.classrooms.length === 0
       ? `<div class="empty-state" style="margin-top:40px">
@@ -1293,7 +1293,7 @@ async function renderTeacherClassrooms() {
   `;
 }
 
-function showCreateClassroom() {
+function showCreateClassroomTeacher() {
   openModal(`
     <div class="modal-header"><h3>${t('teacher.create_classroom_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
@@ -1308,12 +1308,12 @@ function showCreateClassroom() {
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
-      <button class="btn btn-primary" onclick="createClassroom()">${t('common.create')}</button>
+      <button class="btn btn-primary" onclick="createClassroomTeacher()">${t('common.create')}</button>
     </div>
   `);
 }
 
-async function createClassroom() {
+async function createClassroomTeacher() {
   const subject = document.getElementById('newSubject').value.trim();
   const grade_level = document.getElementById('newGradeLevel').value.trim();
   if (!subject || !grade_level) return toast(t('teacher.fill_all_fields'), 'error');
@@ -1756,7 +1756,7 @@ async function renderHeadClassrooms() {
                 <td><strong>${c.subject}</strong></td>
                 <td>${c.teacher_name}</td>
                 <td>${c.grade_level}</td>
-                <td>${c.term_name}</td>
+                <td>${c.term_name || '—'}</td>
                 <td>${c.student_count}</td>
               </tr>
             `).join('')}
@@ -2384,7 +2384,7 @@ async function renderAdminClassrooms() {
                 ${orgColumn}
                 <td>${c.teacher_name || '-'}</td>
                 <td>${c.grade_level}</td>
-                <td>${c.term_name}</td>
+                <td>${c.term_name || '—'}</td>
                 <td><a href="#" onclick="event.preventDefault();viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')" style="color:var(--primary);font-weight:600">${c.student_count || 0}</a></td>
                 <td><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px">${c.join_code}</code></td>
                 <td>
