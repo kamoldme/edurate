@@ -1191,18 +1191,27 @@ async function openStudentForm(formId) {
   try {
     const form = await API.get(`/forms/${formId}`);
 
+    const clearBtn = (qId, type) =>
+      `<button type="button" onclick="clearFormAnswer(${qId},'${type}')" style="font-size:0.75rem;color:var(--gray-400);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;line-height:1" title="Clear answer">Clear</button>`;
+
     const renderQuestion = (q, idx) => {
       if (q.question_type === 'text') {
         return `
           <div class="form-group" style="margin-bottom:20px">
-            <label style="font-weight:600">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+              <label style="font-weight:600">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+              ${!q.required ? clearBtn(q.id, 'text') : ''}
+            </div>
             <textarea class="form-control" id="qa_${q.id}" rows="3" placeholder="Your answer..."></textarea>
           </div>`;
       }
       if (q.question_type === 'yes_no') {
         return `
           <div class="form-group" style="margin-bottom:20px">
-            <label style="font-weight:600;display:block;margin-bottom:10px">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+              <label style="font-weight:600">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+              ${!q.required ? clearBtn(q.id, 'radio') : ''}
+            </div>
             <div style="display:flex;gap:12px">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:2px solid var(--gray-200);border-radius:8px;font-weight:500;transition:all 0.15s">
                 <input type="radio" name="qa_${q.id}" value="Yes" style="width:16px;height:16px"> Yes
@@ -1216,7 +1225,10 @@ async function openStudentForm(formId) {
       // multiple_choice
       return `
         <div class="form-group" style="margin-bottom:20px">
-          <label style="font-weight:600;display:block;margin-bottom:10px">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+            <label style="font-weight:600">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
+            ${!q.required ? clearBtn(q.id, 'radio') : ''}
+          </div>
           <div style="display:flex;flex-direction:column;gap:8px">
             ${(q.options || []).map(opt => `
               <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border:2px solid var(--gray-200);border-radius:8px;font-weight:500;transition:all 0.15s">
@@ -1249,6 +1261,15 @@ async function openStudentForm(formId) {
       </div>`;
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+function clearFormAnswer(qId, type) {
+  if (type === 'text') {
+    const el = document.getElementById(`qa_${qId}`);
+    if (el) el.value = '';
+  } else {
+    document.querySelectorAll(`input[name="qa_${qId}"]`).forEach(r => r.checked = false);
   }
 }
 
