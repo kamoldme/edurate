@@ -90,7 +90,11 @@ router.post('/users', authenticate, authorize('super_admin', 'org_admin'), autho
     }
 
     // Determine org_id for the new user
-    const userOrgId = role === 'super_admin' ? null : (req.orgId || null);
+    // super_admin can pass org_id in the body when creating school_head/org_admin for a specific org
+    let userOrgId = role === 'super_admin' ? null : (req.orgId || null);
+    if (req.user.role === 'super_admin' && !userOrgId && req.body.org_id) {
+      userOrgId = parseInt(req.body.org_id) || null;
+    }
 
     const hashedPassword = bcrypt.hashSync(password, 12);
     const result = db.prepare(`

@@ -2091,7 +2091,16 @@ async function renderAdminUsers(refetch = true) {
   `;
 }
 
-function showCreateUser() {
+async function showCreateUser() {
+  // Fetch org list for super_admin so they can assign org to school_head / org_admin
+  let orgOptions = '';
+  if (currentUser && currentUser.role === 'super_admin') {
+    try {
+      const orgs = await API.get('/organizations');
+      orgOptions = orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+    } catch (_) {}
+  }
+
   openModal(`
     <div class="modal-header"><h3>Create User</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
@@ -2109,12 +2118,21 @@ function showCreateUser() {
       </div>
       <div class="form-group">
         <label>Role</label>
-        <select class="form-control" id="newUserRole" onchange="document.getElementById('teacherFields').style.display=this.value==='teacher'?'block':'none'">
+        <select class="form-control" id="newUserRole" onchange="onNewUserRoleChange(this.value)">
           <option value="student">Student</option>
           <option value="teacher">Teacher</option>
           <option value="school_head">School Head</option>
-          <option value="admin">Admin</option>
+          <option value="org_admin">Organization Admin</option>
         </select>
+      </div>
+      <div id="orgFields" style="display:none">
+        <div class="form-group">
+          <label>Organization <span style="color:var(--danger)">*</span></label>
+          <select class="form-control" id="newUserOrgId">
+            <option value="">Select organization...</option>
+            ${orgOptions}
+          </select>
+        </div>
       </div>
       <div class="form-group">
         <label>Grade / Position</label>
@@ -2133,6 +2151,14 @@ function showCreateUser() {
   `);
 }
 
+function onNewUserRoleChange(role) {
+  document.getElementById('teacherFields').style.display = role === 'teacher' ? 'block' : 'none';
+  const orgFields = document.getElementById('orgFields');
+  if (orgFields) {
+    orgFields.style.display = (role === 'school_head' || role === 'org_admin') ? 'block' : 'none';
+  }
+}
+
 async function createUser() {
   const body = {
     full_name: document.getElementById('newUserName').value,
@@ -2145,6 +2171,13 @@ async function createUser() {
     body.subject = document.getElementById('newTeacherSubject').value;
     body.department = document.getElementById('newTeacherDept').value;
     body.experience_years = parseInt(document.getElementById('newTeacherExp').value) || 0;
+  }
+  const orgSelect = document.getElementById('newUserOrgId');
+  if (orgSelect && orgSelect.value) {
+    body.org_id = parseInt(orgSelect.value);
+  }
+  if ((body.role === 'school_head' || body.role === 'org_admin') && !body.org_id) {
+    return toast('Please select an organization for this role', 'error');
   }
   if (!body.full_name || !body.email || !body.password) return toast('Fill required fields', 'error');
   try {
