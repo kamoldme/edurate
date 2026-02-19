@@ -1921,12 +1921,20 @@ async function renderAdminOrgs() {
   `;
 }
 
-async function renderAdminUsers() {
-  const users = await API.get('/admin/users');
+async function renderAdminUsers(refetch = true) {
+  if (refetch) {
+    window._allUsers = await API.get('/admin/users');
+  }
   const el = document.getElementById('contentArea');
+  const search = (window._userSearch || '').toLowerCase();
+  const users = (window._allUsers || []).filter(u => {
+    const roleMatch = !window._userFilter || (window._userFilter === 'admin' ? ['org_admin', 'super_admin'].includes(u.role) : u.role === window._userFilter);
+    const searchMatch = !search || u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+    return roleMatch && searchMatch;
+  });
 
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="display:flex;gap:8px">
         <button class="btn btn-sm ${!window._userFilter ? 'btn-primary' : 'btn-outline'}" onclick="window._userFilter=null;renderAdminUsers()">${t('common.all')}</button>
         ${[{key: 'student', label: t('common.student')}, {key: 'teacher', label: t('common.teacher')}, {key: 'school_head', label: t('common.school_head')}, {key: 'admin', label: t('common.admin')}].map(r =>
@@ -1935,12 +1943,19 @@ async function renderAdminUsers() {
       </div>
       <button class="btn btn-primary" onclick="showCreateUser()">${t('admin.add_user')}</button>
     </div>
+    <div style="margin-bottom:16px">
+      <input type="text" class="form-control" placeholder="Search by name or email…"
+        style="max-width:320px"
+        value="${window._userSearch || ''}"
+        oninput="window._userSearch=this.value;renderAdminUsers(false)">
+    </div>
     <div class="card">
       <div class="table-container">
         <table>
           <thead><tr><th>${t('common.name')}</th><th>${t('common.email')}</th><th>${t('common.role')}</th><th>${t('admin.grade_position')}</th><th>${t('common.status')}</th><th>${t('common.actions')}</th></tr></thead>
           <tbody>
-            ${users.filter(u => !window._userFilter || (window._userFilter === 'admin' ? ['org_admin', 'super_admin'].includes(u.role) : u.role === window._userFilter)).map(u => `
+            ${users.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px">No users found</td></tr>` :
+            users.map(u => `
               <tr>
                 <td><strong>${u.full_name}</strong></td>
                 <td style="font-size:0.8rem;color:var(--gray-500)">${u.email}</td>
