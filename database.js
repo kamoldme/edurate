@@ -648,4 +648,62 @@ try {
   console.error('Migration error (forms tables):', err.message);
 }
 
+// Migration: extend forms for admin multi-classroom support
+try {
+  const hasCreatorRole = db.prepare("SELECT COUNT(*) as c FROM pragma_table_info('forms') WHERE name='creator_role'").get();
+  if (!hasCreatorRole.c) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE forms_v2 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        classroom_id INTEGER REFERENCES classrooms(id) ON DELETE CASCADE,
+        creator_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        creator_role TEXT NOT NULL DEFAULT 'teacher',
+        org_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'closed')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO forms_v2 (id, teacher_id, classroom_id, creator_role, title, description, status, created_at)
+        SELECT id, teacher_id, classroom_id, 'teacher', title, description, status, created_at FROM forms;
+      DROP TABLE forms;
+      ALTER TABLE forms_v2 RENAME TO forms;
+      CREATE INDEX IF NOT EXISTS idx_forms_teacher ON forms(teacher_id);
+      CREATE INDEX IF NOT EXISTS idx_forms_status ON forms(status);
+      CREATE INDEX IF NOT EXISTS idx_forms_org ON forms(org_id);
+      CREATE INDEX IF NOT EXISTS idx_forms_creator ON forms(creator_user_id);
+    `);
+    // Backfill creator_user_id and org_id from the linked teacher records
+    db.prepare(`
+      UPDATE forms SET
+        creator_user_id = (SELECT user_id FROM teachers WHERE id = forms.teacher_id),
+        org_id = (SELECT org_id FROM teachers WHERE id = forms.teacher_id)
+      WHERE teacher_id IS NOT NULL
+    `).run();
+    db.pragma('foreign_keys = ON');
+  }
+
+  // form_classrooms junction table (form → many classrooms)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS form_classrooms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      form_id INTEGER NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+      classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+      UNIQUE(form_id, classroom_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_form_classrooms_form ON form_classrooms(form_id);
+    CREATE INDEX IF NOT EXISTS idx_form_classrooms_classroom ON form_classrooms(classroom_id);
+  `);
+
+  // Backfill existing teacher forms into form_classrooms
+  db.prepare(`
+    INSERT OR IGNORE INTO form_classrooms (form_id, classroom_id)
+    SELECT id, classroom_id FROM forms WHERE classroom_id IS NOT NULL AND teacher_id IS NOT NULL
+  `).run();
+} catch (err) {
+  console.error('Migration error (forms multi-classroom):', err.message);
+}
+
 module.exports = db;

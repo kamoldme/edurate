@@ -205,6 +205,7 @@ function buildNavigation() {
       { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
+      { id: 'admin-forms', label: 'Forms', icon: 'review' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -217,6 +218,7 @@ function buildNavigation() {
       { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
+      { id: 'admin-forms', label: 'Forms', icon: 'review' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -331,6 +333,7 @@ function navigateTo(view) {
     'admin-flagged': renderAdminFlagged,
     'admin-support': renderAdminSupport,
     'admin-audit': renderAdminAudit,
+    'admin-forms': renderAdminForms,
     'account': renderAccount
   };
 
@@ -1816,7 +1819,7 @@ async function renderTeacherForms() {
               <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
                 <div>
                   <h3 style="margin:0 0 4px">${f.title}</h3>
-                  <span style="font-size:0.8rem;color:var(--gray-500)">${f.classroom_subject} &middot; ${f.grade_level}</span>
+                  <span style="font-size:0.8rem;color:var(--gray-500)">${f.classroom_label || '—'}</span>
                 </div>
                 ${statusBadge(f.status)}
               </div>
@@ -1832,7 +1835,7 @@ async function renderTeacherForms() {
                 ${f.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="setFormStatus(${f.id},'active')">Activate</button>` : ''}
                 ${f.status === 'active' ? `<button class="btn btn-sm btn-outline" onclick="setFormStatus(${f.id},'closed')">Close</button>` : ''}
                 ${f.response_count > 0 || f.status !== 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormResults(${f.id})">Results</button>` : ''}
-                ${f.status === 'draft' ? `<button class="btn btn-sm btn-danger" onclick="deleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">Delete</button>` : ''}
+                ${f.status !== 'active' ? `<button class="btn btn-sm btn-danger" onclick="deleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">Delete</button>` : ''}
               </div>
             </div>
           `).join('')}
@@ -1904,10 +1907,10 @@ async function openFormBuilder(formId) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <button class="btn btn-sm btn-outline" onclick="navigateTo('teacher-forms')">&larr; Back to Forms</button>
+        <button class="btn btn-sm btn-outline" onclick="navigateTo(currentUser.role === 'teacher' ? 'teacher-forms' : 'admin-forms')">&larr; Back to Forms</button>
         <div style="flex:1">
           <h2 style="margin:0">${form.title}</h2>
-          <span style="font-size:0.82rem;color:var(--gray-500)">${form.classroom_subject} &middot; ${form.grade_level}</span>
+          <span style="font-size:0.82rem;color:var(--gray-500)">${form.classrooms && form.classrooms.length > 1 ? form.classrooms.map(c => c.subject + ' ' + c.grade_level).join(', ') : (form.classroom_subject + ' · ' + form.grade_level)}</span>
         </div>
         <span style="background:${statusBadgeColor[form.status]};color:#fff;padding:3px 12px;border-radius:12px;font-size:0.8rem;font-weight:600">${form.status}</span>
       </div>
@@ -2171,7 +2174,7 @@ async function openFormResults(formId) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <button class="btn btn-sm btn-outline" onclick="navigateTo('teacher-forms')">&larr; Back to Forms</button>
+        <button class="btn btn-sm btn-outline" onclick="navigateTo(currentUser.role === 'teacher' ? 'teacher-forms' : 'admin-forms')">&larr; Back to Forms</button>
         <div style="flex:1">
           <h2 style="margin:0">${form.title} — Results</h2>
           <span style="font-size:0.82rem;color:var(--gray-500)">${total_responses} total response${total_responses !== 1 ? 's' : ''}</span>
@@ -2417,6 +2420,232 @@ async function renderHeadAnalytics() {
       </div>
     </div>
   `;
+}
+
+// ============ ADMIN FORMS ============
+async function renderAdminForms() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  try {
+    const [forms, orgs] = await Promise.all([
+      API.get('/forms'),
+      currentUser.role === 'super_admin' ? API.get('/admin/orgs') : Promise.resolve([])
+    ]);
+
+    const statusBadge = s => `<span class="badge badge-${s === 'active' ? 'success' : s === 'closed' ? 'gray' : 'warning'}">${s}</span>`;
+
+    const orgFilterHTML = currentUser.role === 'super_admin' ? `
+      <select id="adminFormOrgFilter" class="form-control" style="width:220px" onchange="filterAdminFormsByOrg(this.value)">
+        <option value="">All Organizations</option>
+        ${orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('')}
+      </select>
+    ` : '';
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <h2 style="margin:0">Forms</h2>
+          ${orgFilterHTML}
+        </div>
+        <button class="btn btn-primary" onclick="showAdminCreateFormModal()">+ Create Form</button>
+      </div>
+      <div id="adminFormsList">
+        ${renderAdminFormCards(forms)}
+      </div>
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+function renderAdminFormCards(forms) {
+  if (!forms.length) return `<div class="empty-state"><h3>No forms yet</h3><p>Create your first form to send questionnaires to classrooms</p></div>`;
+  const statusBadge = s => `<span class="badge badge-${s === 'active' ? 'success' : s === 'closed' ? 'gray' : 'warning'}">${s}</span>`;
+  return `<div class="grid grid-2">
+    ${forms.map(f => `
+      <div class="card">
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:1rem;margin-bottom:4px">${f.title}</div>
+              ${f.org_name ? `<div style="font-size:0.78rem;color:var(--primary);margin-bottom:2px">🏢 ${f.org_name}</div>` : ''}
+              <div style="font-size:0.82rem;color:var(--gray-500)">${f.classroom_label || '—'}</div>
+              ${f.creator_name ? `<div style="font-size:0.78rem;color:var(--gray-400);margin-top:2px">by ${f.creator_name}</div>` : ''}
+            </div>
+            ${statusBadge(f.status)}
+          </div>
+          <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--gray-500);margin-bottom:12px">
+            <span>📋 ${f.question_count} question${f.question_count !== 1 ? 's' : ''}</span>
+            <span>💬 ${f.response_count} response${f.response_count !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <div class="card-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px">
+          ${f.status === 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormBuilder(${f.id})">Edit Questions</button>` : ''}
+          ${f.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="adminSetFormStatus(${f.id},'active')">Activate</button>` : ''}
+          ${f.status === 'active' ? `<button class="btn btn-sm btn-outline" onclick="adminSetFormStatus(${f.id},'closed')">Close</button>` : ''}
+          ${f.response_count > 0 || f.status !== 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormResults(${f.id})">Results</button>` : ''}
+          ${f.status !== 'active' ? `<button class="btn btn-sm btn-danger" onclick="adminDeleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">Delete</button>` : ''}
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+async function filterAdminFormsByOrg(orgId) {
+  const el = document.getElementById('adminFormsList');
+  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  try {
+    const url = orgId ? `/forms?org_id=${orgId}` : '/forms';
+    const forms = await API.get(url);
+    el.innerHTML = renderAdminFormCards(forms);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function adminSetFormStatus(formId, status) {
+  try {
+    await API.patch(`/forms/${formId}`, { status });
+    toast(`Form ${status}`);
+    renderAdminForms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function adminDeleteForm(formId, title) {
+  const confirmed = await confirmDialog(`Delete form "${title}"?`, 'Delete', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.delete(`/forms/${formId}`);
+    toast('Form deleted');
+    renderAdminForms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ─── Admin Create Form Modal ──────────────────────────────────────────────────
+
+async function showAdminCreateFormModal() {
+  let orgs = [];
+  if (currentUser.role === 'super_admin') {
+    try { orgs = await API.get('/admin/orgs'); } catch (e) { orgs = []; }
+  }
+
+  const orgPickerHTML = currentUser.role === 'super_admin' ? `
+    <div class="form-group">
+      <label class="form-label">Organization <span style="color:#ef4444">*</span></label>
+      <select class="form-control" id="adminFormOrg" onchange="loadClassroomsForAdminForm(this.value)">
+        <option value="">Select organization…</option>
+        ${orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('')}
+      </select>
+    </div>
+  ` : '';
+
+  openModal('Create Form', `
+    <div class="form-group">
+      <label class="form-label">Title <span style="color:#ef4444">*</span></label>
+      <input class="form-control" id="adminFormTitle" placeholder="e.g. End-of-term Student Survey" maxlength="200">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description <span style="color:var(--gray-400)">(optional)</span></label>
+      <textarea class="form-control" id="adminFormDesc" rows="2" placeholder="Briefly describe the purpose of this form"></textarea>
+    </div>
+    ${orgPickerHTML}
+    <div class="form-group">
+      <label class="form-label">Classrooms <span style="color:#ef4444">*</span></label>
+      <div id="adminClassroomPickerWrap">
+        ${currentUser.role === 'org_admin' ? '<div class="loading" style="padding:12px"><div class="spinner"></div></div>' : '<div style="color:var(--gray-400);font-size:0.88rem;padding:8px 0">Select an organization first</div>'}
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createAdminForm()">Create Form</button>
+    </div>
+  `);
+
+  if (currentUser.role === 'org_admin') {
+    loadClassroomsForAdminForm(null);
+  }
+}
+
+async function loadClassroomsForAdminForm(orgId) {
+  const wrap = document.getElementById('adminClassroomPickerWrap');
+  if (!wrap) return;
+  const targetOrgId = orgId || (currentUser.role === 'org_admin' ? '' : '');
+  const url = targetOrgId ? `/forms/admin/classrooms?org_id=${targetOrgId}` : '/forms/admin/classrooms';
+  wrap.innerHTML = `<div class="loading" style="padding:12px"><div class="spinner"></div></div>`;
+  try {
+    const classrooms = await API.get(url);
+    if (!classrooms.length) {
+      wrap.innerHTML = `<div style="color:var(--gray-400);font-size:0.88rem;padding:8px 0">No classrooms found</div>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <input type="text" id="adminClSearch" class="form-control" style="flex:1;padding:7px 10px;font-size:0.88rem" placeholder="Search by class, grade or teacher…" oninput="filterAdminClassroomPicker(this.value)">
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllAdminClassrooms(true)">All</button>
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllAdminClassrooms(false)">None</button>
+        </div>
+        <div id="adminClList" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+          ${classrooms.map(c => `
+            <label class="admin-cl-item" data-search="${(c.subject + ' ' + c.grade_level + ' ' + (c.teacher_name || '') + ' ' + (c.org_name || '')).toLowerCase()}" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;cursor:pointer;user-select:none" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+              <input type="checkbox" class="admin-cl-cb" value="${c.id}" onchange="updateAdminClCount()" style="width:15px;height:15px;cursor:pointer">
+              <div style="min-width:0">
+                <div style="font-weight:500;font-size:0.88rem">${c.subject} <span style="color:var(--gray-500)">${c.grade_level}</span></div>
+                ${c.teacher_name ? `<div style="font-size:0.76rem;color:var(--gray-400)">${c.teacher_name}${c.org_name ? ' · ' + c.org_name : ''}</div>` : ''}
+              </div>
+            </label>
+          `).join('')}
+        </div>
+        <div id="adminClCount" style="font-size:0.8rem;color:var(--gray-500);margin-top:8px;padding-top:8px;border-top:1px solid var(--gray-100)">0 classrooms selected</div>
+      </div>
+    `;
+  } catch (err) {
+    wrap.innerHTML = `<div style="color:#ef4444;font-size:0.88rem">${err.message}</div>`;
+  }
+}
+
+function filterAdminClassroomPicker(q) {
+  const term = q.toLowerCase().trim();
+  document.querySelectorAll('.admin-cl-item').forEach(item => {
+    item.style.display = !term || item.dataset.search.includes(term) ? '' : 'none';
+  });
+}
+
+function selectAllAdminClassrooms(checked) {
+  document.querySelectorAll('.admin-cl-cb').forEach(cb => {
+    const item = cb.closest('.admin-cl-item');
+    if (!item || item.style.display !== 'none') cb.checked = checked;
+  });
+  updateAdminClCount();
+}
+
+function updateAdminClCount() {
+  const total = document.querySelectorAll('.admin-cl-cb:checked').length;
+  const el = document.getElementById('adminClCount');
+  if (el) el.textContent = `${total} classroom${total !== 1 ? 's' : ''} selected`;
+}
+
+async function createAdminForm() {
+  const title = document.getElementById('adminFormTitle')?.value?.trim();
+  if (!title) return toast('Title is required', 'error');
+
+  const desc = document.getElementById('adminFormDesc')?.value?.trim() || null;
+
+  const checkedBoxes = [...document.querySelectorAll('.admin-cl-cb:checked')];
+  if (!checkedBoxes.length) return toast('Select at least one classroom', 'error');
+  const classroom_ids = checkedBoxes.map(cb => parseInt(cb.value));
+
+  const body = { title, description: desc, classroom_ids };
+  if (currentUser.role === 'super_admin') {
+    const orgEl = document.getElementById('adminFormOrg');
+    if (!orgEl?.value) return toast('Select an organization', 'error');
+    body.org_id = parseInt(orgEl.value);
+  }
+
+  try {
+    await API.post('/forms', body);
+    closeModal();
+    toast('Form created');
+    renderAdminForms();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 // ============ ADMIN VIEWS ============

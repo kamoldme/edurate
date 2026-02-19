@@ -509,6 +509,9 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 .badge-flagged { background: #fef3c7; color: #92400e; }
 .badge-active { background: var(--success-bg); color: var(--success); }
 .badge-inactive { background: var(--gray-100); color: var(--gray-500); }
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-warning { background: var(--warning-bg); color: #b45309; }
+.badge-gray { background: var(--gray-100); color: var(--gray-500); }
 
 /* ============ TABLE ============ */
 .table-container {
