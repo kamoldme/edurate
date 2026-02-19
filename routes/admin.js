@@ -1103,7 +1103,7 @@ router.get('/submission-tracking', authenticate, authorize('super_admin', 'org_a
         total_students: total,
         submitted: submitted,
         not_submitted: total - submitted,
-        completion_rate: total > 0 ? Math.round((submitted / total) * 100) : 0
+        completion_rate: total > 0 ? Math.round((submitted / total) * 100) : 100
       }
     });
   } catch (err) {
@@ -1146,7 +1146,7 @@ router.get('/submission-overview', authenticate, authorize('super_admin', 'org_a
     const classroomsWithRates = classrooms.map(c => ({
       ...c,
       not_submitted: c.total_students - c.submitted_count,
-      completion_rate: c.total_students > 0 ? Math.round((c.submitted_count / c.total_students) * 100) : 0
+      completion_rate: c.total_students > 0 ? Math.round((c.submitted_count / c.total_students) * 100) : 100
     }));
 
     const period = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(feedback_period_id);
@@ -1162,7 +1162,7 @@ router.get('/submission-overview', authenticate, authorize('super_admin', 'org_a
         total_students: totalStudents,
         total_submitted: totalSubmitted,
         total_not_submitted: totalStudents - totalSubmitted,
-        overall_completion_rate: totalStudents > 0 ? Math.round((totalSubmitted / totalStudents) * 100) : 0
+        overall_completion_rate: totalStudents > 0 ? Math.round((totalSubmitted / totalStudents) * 100) : 100
       }
     });
   } catch (err) {

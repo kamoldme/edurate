@@ -131,7 +131,7 @@ function getClassroomCompletionRate(classroomId, feedbackPeriodId) {
   return {
     total: totalStudents,
     submitted: submittedStudents,
-    rate: totalStudents > 0 ? Math.round((submittedStudents / totalStudents) * 100) : 0
+    rate: totalStudents > 0 ? Math.round((submittedStudents / totalStudents) * 100) : 100
   };
 }
 
