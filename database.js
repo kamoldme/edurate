@@ -526,22 +526,24 @@ try {
   const orgCols = db.pragma('table_info(organizations)').map(c => c.name);
   if (!orgCols.includes('invite_code')) {
     db.exec('ALTER TABLE organizations ADD COLUMN invite_code TEXT UNIQUE');
+    console.log('✅ Migration: Added invite_code column to organizations');
+  }
 
-    // Generate unique codes for all existing orgs
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    function genInviteCode() {
-      let code = '';
-      for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
-      return code;
-    }
-
-    const orgs = db.prepare('SELECT id FROM organizations').all();
-    for (const org of orgs) {
-      let code;
-      do { code = genInviteCode(); } while (db.prepare('SELECT id FROM organizations WHERE invite_code = ?').get(code));
-      db.prepare('UPDATE organizations SET invite_code = ? WHERE id = ?').run(code, org.id);
-    }
-    console.log('✅ Migration: Added invite_code to organizations');
+  // Generate codes for any org still missing one (handles first-run and any existing NULLs)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  function genInviteCode() {
+    let code = '';
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+  const orgsWithoutCode = db.prepare('SELECT id FROM organizations WHERE invite_code IS NULL').all();
+  for (const org of orgsWithoutCode) {
+    let code;
+    do { code = genInviteCode(); } while (db.prepare('SELECT id FROM organizations WHERE invite_code = ?').get(code));
+    db.prepare('UPDATE organizations SET invite_code = ? WHERE id = ?').run(code, org.id);
+  }
+  if (orgsWithoutCode.length > 0) {
+    console.log(`✅ Migration: Generated invite codes for ${orgsWithoutCode.length} organization(s)`);
   }
 } catch (err) {
   console.error('Migration error (org invite_code):', err.message);

@@ -1815,36 +1815,6 @@ async function renderAdminHome() {
     </div>
   `;
 
-  // Invite code card for org_admin
-  if (currentUser.role === 'org_admin') {
-    const inviteCard = document.createElement('div');
-    inviteCard.id = 'inviteCodeCard';
-    inviteCard.className = 'card';
-    inviteCard.style.cssText = 'margin-bottom:28px;padding:20px 24px';
-    inviteCard.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-        <div>
-          <div style="font-weight:600;color:var(--gray-800);margin-bottom:4px">Teacher Invite Code</div>
-          <div style="font-size:0.82rem;color:var(--gray-500)">Share this code with teachers so they can self-register and join your organization</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <code id="inviteCodeDisplay" style="font-size:1.3rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:8px 16px;border-radius:8px;color:var(--gray-800)">Loading...</code>
-          <button class="btn btn-sm btn-outline" id="copyInviteBtn" onclick="copyInviteCode()">Copy</button>
-          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateInviteCode()">Regenerate</button>
-        </div>
-      </div>
-      <div style="margin-top:10px;font-size:0.78rem;color:var(--gray-400)">
-        Teachers go to <strong>/join</strong> on this site and enter the code above to register and join your organization instantly.
-      </div>
-    `;
-    el.insertBefore(inviteCard, el.firstChild);
-
-    API.get('/admin/invite-code').then(data => {
-      const display = document.getElementById('inviteCodeDisplay');
-      if (display) display.textContent = data.invite_code;
-    }).catch(() => {});
-  }
-
   // Users breakdown doughnut chart
   const usersCtx = document.getElementById('adminUsersChart');
   if (usersCtx) {
@@ -2760,7 +2730,28 @@ async function renderAdminTeachers() {
   const teachers = await API.get('/admin/teachers');
   const el = document.getElementById('contentArea');
 
+  // Invite code card for org_admin
+  let inviteCodeHTML = '';
+  if (currentUser.role === 'org_admin') {
+    inviteCodeHTML = `
+      <div class="card" style="margin-bottom:20px;padding:18px 24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-weight:600;color:var(--gray-800);margin-bottom:3px">Teacher Invite Code</div>
+            <div style="font-size:0.82rem;color:var(--gray-500)">Share with teachers so they can self-register at <strong>/join</strong></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">Loading...</code>
+            <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">Copy</button>
+            <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateInviteCode()">Regenerate</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   el.innerHTML = `
+    ${inviteCodeHTML}
     <div class="card">
       <div class="card-header"><h3>All Teachers (${teachers.length})</h3></div>
       <div class="card-body">
@@ -2794,6 +2785,13 @@ async function renderAdminTeachers() {
       </div>
     </div>
   `;
+
+  if (currentUser.role === 'org_admin') {
+    API.get('/admin/invite-code').then(data => {
+      const display = document.getElementById('inviteCodeDisplay');
+      if (display) display.textContent = data.invite_code;
+    }).catch(() => {});
+  }
 }
 
 async function viewTeacherFeedback(teacherId) {
