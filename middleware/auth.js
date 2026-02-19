@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'edurate-secret-key-change-in-production-2025';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = '24h';
 
 const ROLE_HIERARCHY = {

@@ -58,7 +58,7 @@ router.get('/users', authenticate, authorize('super_admin', 'org_admin'), author
 });
 
 // POST /api/admin/users - create user (any role)
-router.post('/users', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+router.post('/users', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, async (req, res) => {
   try {
     const { full_name, email, password, role, grade_or_position, subject, department, experience_years, bio } = req.body;
 
@@ -96,7 +96,7 @@ router.post('/users', authenticate, authorize('super_admin', 'org_admin'), autho
       userOrgId = parseInt(req.body.org_id) || null;
     }
 
-    const hashedPassword = bcrypt.hashSync(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const result = db.prepare(`
       INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, org_id, verified_status)
       VALUES (?, ?, ?, ?, ?, ?, ?, 1)
@@ -213,7 +213,7 @@ router.put('/users/:id', authenticate, authorize('super_admin', 'org_admin'), au
 });
 
 // POST /api/admin/users/:id/reset-password - admin resets user password
-router.post('/users/:id/reset-password', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+router.post('/users/:id/reset-password', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, async (req, res) => {
   try {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -233,7 +233,7 @@ router.post('/users/:id/reset-password', authenticate, authorize('super_admin', 
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    const hashedPassword = bcrypt.hashSync(new_password, 12);
+    const hashedPassword = await bcrypt.hash(new_password, 12);
     db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, req.params.id);
 
     logAuditEvent({

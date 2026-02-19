@@ -119,14 +119,6 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
       return res.status(400).json({ error: 'No active feedback period' });
     }
 
-    // Check for duplicate
-    const existing = db.prepare(
-      'SELECT id FROM reviews WHERE teacher_id = ? AND student_id = ? AND feedback_period_id = ?'
-    ).get(teacher_id, req.user.id, activePeriod.id);
-    if (existing) {
-      return res.status(409).json({ error: 'You already submitted a review for this teacher in this period' });
-    }
-
     // Validate tags
     let validatedTags = [];
     if (tags && Array.isArray(tags)) {
@@ -138,28 +130,40 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
     const moderation = moderateText(feedback_text || '');
 
     let flaggedStatus = 'pending';
-    if (moderation.shouldAutoReject) {
-      flaggedStatus = 'flagged';
-    } else if (moderation.flagged) {
+    if (moderation.shouldAutoReject || moderation.flagged) {
       flaggedStatus = 'flagged';
     }
 
     // Use the classroom's org_id for the review
     const reviewOrgId = classroom.org_id;
 
-    const result = db.prepare(`
-      INSERT INTO reviews (
-        teacher_id, classroom_id, student_id, school_id, org_id, term_id, feedback_period_id,
+    // Wrap duplicate-check + INSERT in a transaction to prevent race conditions
+    const insertReview = db.transaction(() => {
+      // Re-check for duplicate inside transaction (TOCTOU protection)
+      const dup = db.prepare(
+        'SELECT id FROM reviews WHERE teacher_id = ? AND student_id = ? AND feedback_period_id = ?'
+      ).get(teacher_id, req.user.id, activePeriod.id);
+      if (dup) return null;
+
+      return db.prepare(`
+        INSERT INTO reviews (
+          teacher_id, classroom_id, student_id, school_id, org_id, term_id, feedback_period_id,
+          overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating,
+          preparation_rating, workload_rating,
+          feedback_text, tags, flagged_status, approved_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      `).run(
+        teacher_id, classroom_id, req.user.id, reviewOrgId || 1, reviewOrgId, activePeriod.term_id, activePeriod.id,
         overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating,
         preparation_rating, workload_rating,
-        feedback_text, tags, flagged_status, approved_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-    `).run(
-      teacher_id, classroom_id, req.user.id, reviewOrgId || 1, reviewOrgId, activePeriod.term_id, activePeriod.id,
-      overall_rating, clarity_rating, engagement_rating, fairness_rating, supportiveness_rating,
-      preparation_rating, workload_rating,
-      sanitized, JSON.stringify(validatedTags), flaggedStatus
-    );
+        sanitized, JSON.stringify(validatedTags), flaggedStatus
+      );
+    });
+
+    const result = insertReview();
+    if (!result) {
+      return res.status(409).json({ error: 'You already submitted a review for this teacher in this period' });
+    }
 
     const review = db.prepare('SELECT * FROM reviews WHERE id = ?').get(result.lastInsertRowid);
 

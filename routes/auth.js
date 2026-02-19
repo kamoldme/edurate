@@ -70,7 +70,7 @@ router.post('/send-code', async (req, res) => {
 });
 
 // POST /api/auth/register
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { full_name, email, password, grade_or_position, code } = req.body;
 
@@ -104,7 +104,7 @@ router.post('/register', (req, res) => {
     // Mark code as used
     db.prepare('UPDATE verification_codes SET used = 1 WHERE id = ?').run(storedCode.id);
 
-    const hashedPassword = bcrypt.hashSync(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const sanitizedName = sanitizeInput(full_name);
 
     // Students register globally with org_id = NULL (they join orgs via classrooms)
@@ -120,7 +120,7 @@ router.post('/register', (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
@@ -246,7 +246,7 @@ router.post('/register-teacher', async (req, res) => {
     }
     db.prepare('UPDATE verification_codes SET used = 1 WHERE id = ?').run(storedCode.id);
 
-    const hashedPassword = bcrypt.hashSync(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const sanitizedName = sanitizeInput(full_name.trim());
 
     const result = db.prepare(`
@@ -265,7 +265,7 @@ router.post('/register-teacher', async (req, res) => {
     const user = db.prepare('SELECT id, full_name, email, role, org_id, verified_status, avatar_url, language FROM users WHERE id = ?').get(userId);
     const token = generateToken(user);
 
-    res.cookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 });
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 });
 
     logAuditEvent({
       userId: user.id, userRole: 'teacher', userName: sanitizedName,
@@ -283,7 +283,7 @@ router.post('/register-teacher', async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -303,7 +303,7 @@ router.post('/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    if (!bcrypt.compareSync(password, user.password)) {
+    if (!await bcrypt.compare(password, user.password)) {
       logAuditEvent({
         userId: user.id, userRole: user.role, userName: user.full_name,
         actionType: 'login_failed',
@@ -333,7 +333,7 @@ router.post('/login', (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
@@ -388,7 +388,7 @@ router.get('/me', authenticate, (req, res) => {
 });
 
 // PUT /api/auth/change-password
-router.put('/change-password', authenticate, (req, res) => {
+router.put('/change-password', authenticate, async (req, res) => {
   try {
     const { current_password, new_password } = req.body;
 
@@ -404,11 +404,11 @@ router.put('/change-password', authenticate, (req, res) => {
     }
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-    if (!bcrypt.compareSync(current_password, user.password)) {
+    if (!await bcrypt.compare(current_password, user.password)) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
-    const hashed = bcrypt.hashSync(new_password, 12);
+    const hashed = await bcrypt.hash(new_password, 12);
     db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, req.user.id);
 
     logAuditEvent({
