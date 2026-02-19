@@ -2727,28 +2727,27 @@ async function saveTeacherEdit(teacherId) {
 
 // ============ ADMIN: TEACHER FEEDBACK VIEWER ============
 async function renderAdminTeachers() {
-  const teachers = await API.get('/admin/teachers');
+  const [teachers, inviteData] = await Promise.all([
+    API.get('/admin/teachers'),
+    currentUser.role === 'org_admin' ? API.get('/admin/invite-code').catch(() => null) : Promise.resolve(null)
+  ]);
   const el = document.getElementById('contentArea');
 
-  // Invite code card for org_admin
-  let inviteCodeHTML = '';
-  if (currentUser.role === 'org_admin') {
-    inviteCodeHTML = `
-      <div class="card" style="margin-bottom:20px;padding:18px 24px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-          <div>
-            <div style="font-weight:600;color:var(--gray-800);margin-bottom:3px">Teacher Invite Code</div>
-            <div style="font-size:0.82rem;color:var(--gray-500)">Share with teachers so they can self-register at <strong>/join</strong></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">Loading...</code>
-            <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">Copy</button>
-            <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateInviteCode()">Regenerate</button>
-          </div>
+  const inviteCodeHTML = inviteData ? `
+    <div class="card" style="margin-bottom:20px;padding:18px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-weight:600;color:var(--gray-800);margin-bottom:3px">Teacher Invite Code</div>
+          <div style="font-size:0.82rem;color:var(--gray-500)">Share with teachers so they can self-register at <strong>/join</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">${inviteData.invite_code || '—'}</code>
+          <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">Copy</button>
+          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="confirmRegenerateInviteCode()">Regenerate</button>
         </div>
       </div>
-    `;
-  }
+    </div>
+  ` : '';
 
   el.innerHTML = `
     ${inviteCodeHTML}
@@ -2785,13 +2784,6 @@ async function renderAdminTeachers() {
       </div>
     </div>
   `;
-
-  if (currentUser.role === 'org_admin') {
-    API.get('/admin/invite-code').then(data => {
-      const display = document.getElementById('inviteCodeDisplay');
-      if (display) display.textContent = data.invite_code;
-    }).catch(() => {});
-  }
 }
 
 async function viewTeacherFeedback(teacherId) {
@@ -3764,7 +3756,7 @@ function copySuperInviteCode() {
 }
 
 async function regenerateSuperInviteCode(orgId) {
-  if (!confirm('Regenerate the invite code for this organization? The old code will stop working.')) return;
+  if (!await confirmDialog('Regenerate the invite code for this organization? The old code will stop working immediately.', 'Regenerate')) return;
   const savedOrg = currentOrg;
   currentOrg = orgId;
   try {
@@ -3855,12 +3847,13 @@ async function viewOrgMembers(orgId, orgName) {
 
 function copyInviteCode() {
   const code = document.getElementById('inviteCodeDisplay')?.textContent;
-  if (!code || code === 'Loading...') return;
+  if (!code || code === '—') return;
   navigator.clipboard.writeText(code).then(() => toast('Invite code copied!', 'success')).catch(() => toast('Copy failed', 'error'));
 }
 
-async function regenerateInviteCode() {
-  if (!confirm('Regenerate the invite code? The old code will stop working immediately.')) return;
+async function confirmRegenerateInviteCode() {
+  const ok = await confirmDialog('The current invite code will stop working immediately. Teachers who haven\'t joined yet will need the new code.', 'Regenerate');
+  if (!ok) return;
   try {
     const data = await API.post('/admin/regenerate-invite-code', {});
     const display = document.getElementById('inviteCodeDisplay');

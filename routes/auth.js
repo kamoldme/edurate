@@ -143,8 +143,8 @@ router.post('/register', (req, res) => {
   }
 });
 
-// POST /api/auth/register-teacher - public self-registration via org invite code
-router.post('/register-teacher', async (req, res) => {
+// POST /api/auth/send-teacher-code - validate invite code then send email verification
+router.post('/send-teacher-code', async (req, res) => {
   try {
     const { full_name, email, password, invite_code } = req.body;
 
@@ -172,7 +172,62 @@ router.post('/register-teacher', async (req, res) => {
     if (!org) {
       return res.status(400).json({ error: 'Invalid invite code' });
     }
+    if (org.subscription_status === 'suspended') {
+      return res.status(403).json({ error: 'This organization is currently suspended' });
+    }
 
+    // Rate limit: max 3 codes per email per 15 minutes
+    const recentCodes = db.prepare(
+      "SELECT COUNT(*) as count FROM verification_codes WHERE email = ? AND created_at > datetime('now', '-15 minutes')"
+    ).get(email.toLowerCase());
+    if (recentCodes.count >= 3) {
+      return res.status(429).json({ error: 'Too many attempts. Please wait before requesting a new code.' });
+    }
+
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    db.prepare("UPDATE verification_codes SET used = 1 WHERE email = ? AND used = 0").run(email.toLowerCase());
+    db.prepare('INSERT INTO verification_codes (email, code, expires_at) VALUES (?, ?, ?)').run(email.toLowerCase(), code, expiresAt);
+
+    await sendVerificationCode(email, code);
+
+    res.json({ message: 'Verification code sent to your email' });
+  } catch (err) {
+    console.error('Send teacher code error:', err.message);
+    res.status(500).json({ error: 'Failed to send verification code. Please try again.' });
+  }
+});
+
+// POST /api/auth/register-teacher - complete teacher self-registration via org invite code + email verification
+router.post('/register-teacher', async (req, res) => {
+  try {
+    const { full_name, email, password, invite_code, code } = req.body;
+
+    if (!full_name || !email || !password || !invite_code || !code) {
+      return res.status(400).json({ error: 'All fields including verification code are required' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain uppercase, lowercase, and a number' });
+    }
+
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+    if (existing) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const org = db.prepare('SELECT * FROM organizations WHERE invite_code = ?').get(invite_code.trim().toUpperCase());
+    if (!org) {
+      return res.status(400).json({ error: 'Invalid invite code' });
+    }
     if (org.subscription_status === 'suspended') {
       return res.status(403).json({ error: 'This organization is currently suspended' });
     }
@@ -181,6 +236,15 @@ router.post('/register-teacher', async (req, res) => {
     if (teacherCount.count >= org.max_teachers) {
       return res.status(400).json({ error: 'This organization has reached its teacher limit' });
     }
+
+    // Verify email code
+    const storedCode = db.prepare(
+      "SELECT * FROM verification_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime('now') ORDER BY created_at DESC LIMIT 1"
+    ).get(email.toLowerCase(), code);
+    if (!storedCode) {
+      return res.status(400).json({ error: 'Invalid or expired verification code' });
+    }
+    db.prepare('UPDATE verification_codes SET used = 1 WHERE id = ?').run(storedCode.id);
 
     const hashedPassword = bcrypt.hashSync(password, 12);
     const sanitizedName = sanitizeInput(full_name.trim());
@@ -192,10 +256,8 @@ router.post('/register-teacher', async (req, res) => {
 
     const userId = result.lastInsertRowid;
 
-    db.prepare(`
-      INSERT INTO teachers (user_id, full_name, school_id, org_id)
-      VALUES (?, ?, 1, ?)
-    `).run(userId, sanitizedName, org.id);
+    db.prepare(`INSERT INTO teachers (user_id, full_name, school_id, org_id) VALUES (?, ?, 1, ?)`)
+      .run(userId, sanitizedName, org.id);
 
     db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)')
       .run(userId, org.id, 'teacher');
