@@ -2529,36 +2529,40 @@ async function showAdminCreateFormModal() {
 
   const orgPickerHTML = currentUser.role === 'super_admin' ? `
     <div class="form-group">
-      <label class="form-label">Organization <span style="color:#ef4444">*</span></label>
+      <label>Organization *</label>
       <select class="form-control" id="adminFormOrg" onchange="loadClassroomsForAdminForm(this.value)">
-        <option value="">Select organization…</option>
+        <option value="">-- Select organization --</option>
         ${orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('')}
       </select>
     </div>
   ` : '';
 
-  openModal('Create Form', `
-    <div class="form-group">
-      <label class="form-label">Title <span style="color:#ef4444">*</span></label>
-      <input class="form-control" id="adminFormTitle" placeholder="e.g. End-of-term Student Survey" maxlength="200">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Description <span style="color:var(--gray-400)">(optional)</span></label>
-      <textarea class="form-control" id="adminFormDesc" rows="2" placeholder="Briefly describe the purpose of this form"></textarea>
-    </div>
-    ${orgPickerHTML}
-    <div class="form-group">
-      <label class="form-label">Classrooms <span style="color:#ef4444">*</span></label>
-      <div id="adminClassroomPickerWrap">
-        ${currentUser.role === 'org_admin' ? '<div class="loading" style="padding:12px"><div class="spinner"></div></div>' : '<div style="color:var(--gray-400);font-size:0.88rem;padding:8px 0">Select an organization first</div>'}
+  openModal(`
+    <div class="modal-header"><h3>New Form</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" class="form-control" id="adminFormTitle" placeholder="e.g. End-of-term Student Survey" maxlength="200">
+      </div>
+      <div class="form-group">
+        <label>Description <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+        <textarea class="form-control" id="adminFormDesc" rows="2" placeholder="What is this form about?"></textarea>
+      </div>
+      ${orgPickerHTML}
+      <div class="form-group">
+        <label>Classrooms *</label>
+        <div id="adminClassroomPickerWrap">
+          ${currentUser.role === 'org_admin' ? '<div class="loading" style="padding:12px"><div class="spinner"></div></div>' : '<div style="color:var(--gray-400);font-size:0.88rem;padding:4px 0">Select an organization first</div>'}
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+    <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="createAdminForm()">Create Form</button>
     </div>
   `);
 
+  setTimeout(() => document.getElementById('adminFormTitle')?.focus(), 50);
   if (currentUser.role === 'org_admin') {
     loadClassroomsForAdminForm(null);
   }
@@ -2641,10 +2645,14 @@ async function createAdminForm() {
   }
 
   try {
-    await API.post('/forms', body);
+    const created = await API.post('/forms', body);
     closeModal();
-    toast('Form created');
-    renderAdminForms();
+    toast('Form created! Now add your questions.');
+    if (created?.id) {
+      openFormBuilder(created.id);
+    } else {
+      renderAdminForms();
+    }
   } catch (err) { toast(err.message, 'error'); }
 }
 
