@@ -98,7 +98,7 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
     const recentReviews = db.prepare(`
       SELECT r.overall_rating, r.clarity_rating, r.engagement_rating,
         r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
-        r.feedback_text, r.tags,
+        r.feedback_text, r.tags, r.approved_status,
         r.created_at,
         fp.name as period_name, t.name as term_name, c.subject as classroom_subject,
         c.grade_level
