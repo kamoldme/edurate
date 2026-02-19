@@ -2729,7 +2729,7 @@ async function saveTeacherEdit(teacherId) {
 async function renderAdminTeachers() {
   const [teachers, inviteData] = await Promise.all([
     API.get('/admin/teachers'),
-    currentUser.role === 'org_admin' ? API.get('/admin/invite-code').catch(() => null) : Promise.resolve(null)
+    currentUser.role === 'org_admin' ? API.get('/admin/invite-code').catch(e => ({ error: e.message })) : Promise.resolve(null)
   ]);
   const el = document.getElementById('contentArea');
 
@@ -2741,9 +2741,11 @@ async function renderAdminTeachers() {
           <div style="font-size:0.82rem;color:var(--gray-500)">Share with teachers so they can self-register at <strong>/join</strong></div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">${inviteData.invite_code || '—'}</code>
-          <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">Copy</button>
-          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="confirmRegenerateInviteCode()">Regenerate</button>
+          <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">${inviteData.invite_code || (inviteData.error ? 'Error' : '—')}</code>
+          ${inviteData.invite_code ? `
+            <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">Copy</button>
+            <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="confirmRegenerateInviteCode()">Regenerate</button>
+          ` : ''}
         </div>
       </div>
     </div>
@@ -3735,7 +3737,7 @@ function editOrganization(orgIndex) {
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200)">
         <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;color:var(--gray-700)">Teacher Invite Code</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <code id="superInviteCode" style="font-size:1.1rem;font-weight:700;letter-spacing:3px;background:var(--gray-100);padding:6px 14px;border-radius:8px;color:var(--gray-800)">${org.invite_code || 'N/A'}</code>
+          <code id="superInviteCode" style="font-size:1.1rem;font-weight:700;letter-spacing:3px;background:var(--gray-100);padding:6px 14px;border-radius:8px;color:var(--gray-800)">Loading...</code>
           <button class="btn btn-sm btn-outline" onclick="copySuperInviteCode()">Copy</button>
           <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateSuperInviteCode(${org.id})">Regenerate</button>
         </div>
@@ -3747,30 +3749,37 @@ function editOrganization(orgIndex) {
       <button class="btn btn-primary" onclick="saveOrganizationEdit(${org.id})">Save Changes</button>
     </div>
   `);
+
+  // Fetch invite code fresh with explicit org_id
+  fetch(`/api/admin/invite-code?org_id=${org.id}`, {
+    headers: { 'Authorization': 'Bearer ' + (API.token || ''), 'Content-Type': 'application/json' },
+    credentials: 'include'
+  }).then(r => r.json()).then(data => {
+    const el = document.getElementById('superInviteCode');
+    if (el) el.textContent = data.invite_code || '—';
+  }).catch(() => {
+    const el = document.getElementById('superInviteCode');
+    if (el) el.textContent = 'Error';
+  });
 }
 
 function copySuperInviteCode() {
   const code = document.getElementById('superInviteCode')?.textContent;
-  if (!code || code === 'N/A') return;
+  if (!code || code === 'N/A' || code === 'Loading...' || code === 'Error' || code === '—') return;
   navigator.clipboard.writeText(code).then(() => toast('Invite code copied!', 'success')).catch(() => toast('Copy failed', 'error'));
 }
 
 async function regenerateSuperInviteCode(orgId) {
   if (!await confirmDialog('Regenerate the invite code for this organization? The old code will stop working immediately.', 'Regenerate')) return;
-  const savedOrg = currentOrg;
-  currentOrg = orgId;
   try {
-    const data = await API.post('/admin/regenerate-invite-code', {});
+    const data = await API.post('/admin/regenerate-invite-code', { org_id: orgId });
     const display = document.getElementById('superInviteCode');
     if (display) display.textContent = data.invite_code;
-    // Update cached org
     const cached = cachedOrgs.find(o => o.id === orgId);
     if (cached) cached.invite_code = data.invite_code;
     toast('Invite code regenerated', 'success');
   } catch (err) {
     toast(err.message || 'Failed to regenerate', 'error');
-  } finally {
-    currentOrg = savedOrg;
   }
 }
 

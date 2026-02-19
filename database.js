@@ -522,24 +522,26 @@ try {
 }
 
 // Migration: Add invite_code to organizations for teacher self-registration
+// Note: SQLite does not support UNIQUE in ALTER TABLE ADD COLUMN — use separate index instead
 try {
   const orgCols = db.pragma('table_info(organizations)').map(c => c.name);
   if (!orgCols.includes('invite_code')) {
-    db.exec('ALTER TABLE organizations ADD COLUMN invite_code TEXT UNIQUE');
+    db.exec('ALTER TABLE organizations ADD COLUMN invite_code TEXT');
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_invite_code ON organizations(invite_code)');
     console.log('✅ Migration: Added invite_code column to organizations');
   }
 
   // Generate codes for any org still missing one (handles first-run and any existing NULLs)
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  function genInviteCode() {
+  const _invChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  function _genInviteCode() {
     let code = '';
-    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    for (let i = 0; i < 8; i++) code += _invChars[Math.floor(Math.random() * _invChars.length)];
     return code;
   }
   const orgsWithoutCode = db.prepare('SELECT id FROM organizations WHERE invite_code IS NULL').all();
   for (const org of orgsWithoutCode) {
     let code;
-    do { code = genInviteCode(); } while (db.prepare('SELECT id FROM organizations WHERE invite_code = ?').get(code));
+    do { code = _genInviteCode(); } while (db.prepare('SELECT id FROM organizations WHERE invite_code = ?').get(code));
     db.prepare('UPDATE organizations SET invite_code = ? WHERE id = ?').run(code, org.id);
   }
   if (orgsWithoutCode.length > 0) {

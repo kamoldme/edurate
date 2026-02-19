@@ -1603,20 +1603,22 @@ router.delete('/applications/:id', authenticate, authorize('super_admin'), (req,
 });
 
 // GET /api/admin/invite-code - get org's teacher invite code
-router.get('/invite-code', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
-  if (!req.orgId) {
-    return res.status(400).json({ error: 'Organization context required' });
-  }
-  const org = db.prepare('SELECT id, name, invite_code FROM organizations WHERE id = ?').get(req.orgId);
+router.get('/invite-code', authenticate, authorize('super_admin', 'org_admin'), (req, res) => {
+  const orgId = req.user.role === 'super_admin'
+    ? (req.query.org_id ? parseInt(req.query.org_id) : null)
+    : req.user.org_id;
+  if (!orgId) return res.status(400).json({ error: 'Organization context required' });
+  const org = db.prepare('SELECT id, name, invite_code FROM organizations WHERE id = ?').get(orgId);
   if (!org) return res.status(404).json({ error: 'Organization not found' });
   res.json({ invite_code: org.invite_code, org_name: org.name });
 });
 
 // POST /api/admin/regenerate-invite-code - regenerate org's teacher invite code
-router.post('/regenerate-invite-code', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
-  if (!req.orgId) {
-    return res.status(400).json({ error: 'Organization context required' });
-  }
+router.post('/regenerate-invite-code', authenticate, authorize('super_admin', 'org_admin'), (req, res) => {
+  const orgId = req.user.role === 'super_admin'
+    ? (req.body.org_id ? parseInt(req.body.org_id) : (req.query.org_id ? parseInt(req.query.org_id) : null))
+    : req.user.org_id;
+  if (!orgId) return res.status(400).json({ error: 'Organization context required' });
 
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   function genCode() {
@@ -1628,14 +1630,14 @@ router.post('/regenerate-invite-code', authenticate, authorize('super_admin', 'o
   let code;
   do { code = genCode(); } while (db.prepare('SELECT id FROM organizations WHERE invite_code = ?').get(code));
 
-  db.prepare('UPDATE organizations SET invite_code = ? WHERE id = ?').run(code, req.orgId);
+  db.prepare('UPDATE organizations SET invite_code = ? WHERE id = ?').run(code, orgId);
 
   logAuditEvent({
     userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
     actionType: 'invite_code_regenerate',
     actionDescription: 'Regenerated teacher invite code',
-    targetType: 'organization', targetId: req.orgId,
-    orgId: req.orgId, ipAddress: req.ip
+    targetType: 'organization', targetId: orgId,
+    orgId: orgId, ipAddress: req.ip
   });
 
   res.json({ invite_code: code });
