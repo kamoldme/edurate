@@ -2123,11 +2123,9 @@ async function renderAdminTerms() {
         </div>
         <div class="card-body">
           ${term.periods.length > 0 ? `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:2px solid ${term.periods[0].active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px">
-              <div>
-                <span style="font-weight:600">Feedback Period</span>
-                <span class="badge ${term.periods[0].active_status ? 'badge-active' : 'badge-inactive'}" style="margin-left:10px">${term.periods[0].active_status ? 'Open' : 'Closed'}</span>
-              </div>
+            <div style="display:inline-flex;align-items:center;gap:16px;padding:10px 16px;border:2px solid ${term.periods[0].active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px">
+              <span style="font-weight:600">Feedback Period</span>
+              <span class="badge ${term.periods[0].active_status ? 'badge-active' : 'badge-inactive'}">${term.periods[0].active_status ? 'Open' : 'Closed'}</span>
               ${term.periods[0].active_status
                 ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${term.periods[0].id}, 0)">Close Feedback</button>`
                 : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${term.periods[0].id}, 1)">Open Feedback</button>`}

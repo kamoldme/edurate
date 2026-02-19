@@ -136,7 +136,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER,
     user_role TEXT NOT NULL,
     user_name TEXT NOT NULL,
     action_type TEXT NOT NULL,
@@ -146,7 +146,7 @@ db.exec(`
     metadata TEXT,
     ip_address TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
   );
 
   CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
@@ -477,5 +477,50 @@ try {
 try {
   db.prepare("UPDATE feedback_periods SET name = 'Feedback Period' WHERE name IN ('1st Half', '2nd Half')").run();
 } catch (err) { /* ignore */ }
+
+// Migration: Rebuild audit_logs to remove ON DELETE CASCADE (replace with SET NULL)
+// so logs are preserved when users are deleted instead of being wiped
+try {
+  const auditDef = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='audit_logs'").get();
+  if (auditDef && auditDef.sql.includes('ON DELETE CASCADE')) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE audit_logs_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        user_role TEXT NOT NULL,
+        user_name TEXT NOT NULL,
+        action_type TEXT NOT NULL,
+        action_description TEXT NOT NULL,
+        target_type TEXT,
+        target_id INTEGER,
+        metadata TEXT,
+        ip_address TEXT,
+        org_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+      INSERT INTO audit_logs_new
+        (id, user_id, user_role, user_name, action_type, action_description,
+         target_type, target_id, metadata, ip_address, org_id, created_at)
+      SELECT
+        id, user_id, user_role, user_name, action_type, action_description,
+        target_type, target_id, metadata, ip_address, org_id, created_at
+      FROM audit_logs;
+      DROP TABLE audit_logs;
+      ALTER TABLE audit_logs_new RENAME TO audit_logs;
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_user    ON audit_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_action  ON audit_logs(action_type);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_target  ON audit_logs(target_type, target_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_org     ON audit_logs(org_id);
+    `);
+    db.pragma('foreign_keys = ON');
+    console.log('✅ Migration: audit_logs ON DELETE CASCADE → SET NULL');
+  }
+} catch (err) {
+  db.pragma('foreign_keys = ON');
+  console.error('Migration error (audit_logs cascade):', err.message);
+}
 
 module.exports = db;

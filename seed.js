@@ -3,7 +3,7 @@ const db = require('./database');
 
 console.log('Seeding EduRate database with multi-organization data...\n');
 
-// Clear existing data
+// Clear existing data (audit_logs intentionally excluded — logs must survive reseeds)
 db.exec(`
   DELETE FROM teacher_responses;
   DELETE FROM reviews;
