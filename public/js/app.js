@@ -2429,7 +2429,7 @@ async function renderAdminForms() {
   try {
     const [forms, orgs] = await Promise.all([
       API.get('/forms'),
-      currentUser.role === 'super_admin' ? API.get('/admin/orgs') : Promise.resolve([])
+      currentUser.role === 'super_admin' ? API.get('/organizations') : Promise.resolve([])
     ]);
 
     const statusBadge = s => `<span class="badge badge-${s === 'active' ? 'success' : s === 'closed' ? 'gray' : 'warning'}">${s}</span>`;
@@ -2524,7 +2524,7 @@ async function adminDeleteForm(formId, title) {
 async function showAdminCreateFormModal() {
   let orgs = [];
   if (currentUser.role === 'super_admin') {
-    try { orgs = await API.get('/admin/orgs'); } catch (e) { orgs = []; }
+    try { orgs = await API.get('/organizations'); } catch (e) { orgs = []; }
   }
 
   const orgPickerHTML = currentUser.role === 'super_admin' ? `
