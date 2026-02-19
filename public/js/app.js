@@ -136,6 +136,8 @@ async function loadOrganizations() {
   } catch (err) {
     console.error('Failed to load organizations:', err);
   }
+
+  startInactivityTimer();
 }
 
 function switchOrg(orgId) {
@@ -539,10 +541,76 @@ function fmtScore(val) {
 }
 
 function logout() {
+  stopInactivityTimer();
   localStorage.removeItem('edurate_token');
   localStorage.removeItem('edurate_user');
   fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
   window.location.href = '/';
+}
+
+// ============ INACTIVITY AUTO-LOGOUT ============
+const INACTIVITY_MS = 20 * 60 * 1000;  // 20 minutes
+const WARN_BEFORE_MS = 60 * 1000;       // warn 1 minute before
+
+let _inactivityTimer = null;
+let _warningTimer = null;
+let _warningVisible = false;
+
+function startInactivityTimer() {
+  const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+  events.forEach(e => document.addEventListener(e, resetInactivityTimer, { passive: true }));
+  resetInactivityTimer();
+}
+
+function stopInactivityTimer() {
+  clearTimeout(_inactivityTimer);
+  clearTimeout(_warningTimer);
+  _dismissWarning();
+}
+
+function resetInactivityTimer() {
+  clearTimeout(_inactivityTimer);
+  clearTimeout(_warningTimer);
+  if (_warningVisible) _dismissWarning();
+
+  _warningTimer = setTimeout(_showWarning, INACTIVITY_MS - WARN_BEFORE_MS);
+  _inactivityTimer = setTimeout(() => {
+    _dismissWarning();
+    logout();
+  }, INACTIVITY_MS);
+}
+
+function _showWarning() {
+  _warningVisible = true;
+  const overlay = document.createElement('div');
+  overlay.id = 'inactivityWarning';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:32px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="font-size:2.2rem;margin-bottom:12px">⏱</div>
+      <h3 style="margin:0 0 8px;font-size:1.15rem;color:#0f172a">Still there?</h3>
+      <p style="margin:0 0 24px;color:#64748b;font-size:0.92rem">You'll be signed out in <strong id="inactivityCountdown">60</strong> seconds due to inactivity.</p>
+      <button onclick="resetInactivityTimer()" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:0.95rem;font-weight:600;cursor:pointer;width:100%">Stay Signed In</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  let secs = Math.round(WARN_BEFORE_MS / 1000);
+  overlay._interval = setInterval(() => {
+    secs--;
+    const el = document.getElementById('inactivityCountdown');
+    if (el) el.textContent = secs;
+    if (secs <= 0) clearInterval(overlay._interval);
+  }, 1000);
+}
+
+function _dismissWarning() {
+  _warningVisible = false;
+  const overlay = document.getElementById('inactivityWarning');
+  if (overlay) {
+    clearInterval(overlay._interval);
+    overlay.remove();
+  }
 }
 
 // ============ STUDENT VIEWS ============
