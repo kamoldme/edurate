@@ -448,10 +448,10 @@ function confirmWithText(message, requiredText, warningMessage = '') {
       if (input && btn) {
         input.focus();
         input.addEventListener('input', (e) => {
-          btn.disabled = e.target.value !== '${requiredText}';
+          btn.disabled = e.target.value !== requiredText;
         });
         input.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter' && e.target.value === '${requiredText}') {
+          if (e.key === 'Enter' && e.target.value === requiredText) {
             window.confirmTextResolve(true);
             closeModal();
           }
@@ -1930,7 +1930,6 @@ function _buildUserRows(users) {
       (currentUser.role === 'org_admin' && !['super_admin', 'org_admin'].includes(u.role))
     );
     const safeName = u.full_name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const userJson = JSON.stringify(u).replace(/'/g, '&#39;');
     return `
     <tr>
       <td><strong>${u.full_name}</strong></td>
@@ -1942,7 +1941,7 @@ function _buildUserRows(users) {
         <div class="action-dropdown" id="dropdown-${u.id}">
           <button class="action-dropdown-trigger" onclick="toggleActionMenu(${u.id}, event)" title="Actions">⋮</button>
           <div class="action-dropdown-menu" id="dropdown-menu-${u.id}">
-            <button class="action-dropdown-item" onclick="closeActionMenus();editUser(${userJson})">Edit</button>
+            <button class="action-dropdown-item" onclick="closeActionMenus();editUserById(${u.id})">Edit</button>
             <button class="action-dropdown-item" onclick="closeActionMenus();resetPassword(${u.id}, '${safeName}')">Reset Password</button>
             ${!isSelf ? `<button class="action-dropdown-item" onclick="closeActionMenus();toggleSuspend(${u.id})">${u.suspended ? 'Unsuspend' : 'Suspend'}</button>` : ''}
             ${canDelete ? `<button class="action-dropdown-item danger" onclick="closeActionMenus();deleteUser(${u.id}, '${safeName}')">Delete Account</button>` : ''}
@@ -2082,6 +2081,11 @@ async function createUser() {
     closeModal();
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
+}
+
+function editUserById(id) {
+  const user = (window._allUsers || []).find(u => u.id === id);
+  if (user) editUser(user);
 }
 
 function editUser(user) {

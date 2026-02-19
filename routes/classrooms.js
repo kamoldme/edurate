@@ -255,7 +255,7 @@ router.delete('/:id/leave', authenticate, authorize('student'), (req, res) => {
 });
 
 // GET /api/classrooms/:id/members - get members
-router.get('/:id/members', authenticate, authorize('teacher', 'admin', 'school_head'), (req, res) => {
+router.get('/:id/members', authenticate, authorize('teacher', 'super_admin', 'org_admin', 'school_head'), (req, res) => {
   try {
     const members = db.prepare(`
       SELECT cm.id, cm.joined_at, u.id as student_id, u.full_name, u.email, u.grade_or_position
@@ -273,7 +273,7 @@ router.get('/:id/members', authenticate, authorize('teacher', 'admin', 'school_h
 });
 
 // DELETE /api/classrooms/:id/members/:studentId - remove student from classroom (teacher/admin)
-router.delete('/:id/members/:studentId', authenticate, authorize('teacher', 'admin'), (req, res) => {
+router.delete('/:id/members/:studentId', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
