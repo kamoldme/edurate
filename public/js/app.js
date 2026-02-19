@@ -1921,6 +1921,37 @@ async function renderAdminOrgs() {
   `;
 }
 
+function _buildUserRows(users) {
+  if (users.length === 0) return `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px">No users found</td></tr>`;
+  return users.map(u => `
+    <tr>
+      <td><strong>${u.full_name}</strong></td>
+      <td style="font-size:0.8rem;color:var(--gray-500)">${u.email}</td>
+      <td><span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${u.role.replace('_', ' ')}</span></td>
+      <td>${u.grade_or_position || '-'}</td>
+      <td>${u.suspended ? '<span class="badge badge-rejected">Suspended</span>' : '<span class="badge badge-approved">Active</span>'}</td>
+      <td>
+        <button class="btn btn-sm btn-outline" onclick='editUser(${JSON.stringify(u)})'>Edit</button>
+        <button class="btn btn-sm btn-outline" onclick="resetPassword(${u.id}, '${u.full_name}')">Reset PW</button>
+        <button class="btn btn-sm ${u.suspended ? 'btn-success' : 'btn-danger'}" onclick="toggleSuspend(${u.id})" ${u.id === currentUser.id ? 'disabled' : ''}>
+          ${u.suspended ? 'Unsuspend' : 'Suspend'}
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function _filterUserTable() {
+  const search = (window._userSearch || '').toLowerCase();
+  const filtered = (window._allUsers || []).filter(u => {
+    const roleMatch = !window._userFilter || (window._userFilter === 'admin' ? ['org_admin', 'super_admin'].includes(u.role) : u.role === window._userFilter);
+    const searchMatch = !search || u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+    return roleMatch && searchMatch;
+  });
+  const tbody = document.getElementById('userTableBody');
+  if (tbody) tbody.innerHTML = _buildUserRows(filtered);
+}
+
 async function renderAdminUsers(refetch = true) {
   if (refetch) {
     window._allUsers = await API.get('/admin/users');
@@ -1944,33 +1975,17 @@ async function renderAdminUsers(refetch = true) {
       <button class="btn btn-primary" onclick="showCreateUser()">${t('admin.add_user')}</button>
     </div>
     <div style="margin-bottom:16px">
-      <input type="text" class="form-control" placeholder="Search by name or email…"
+      <input type="text" class="form-control" id="userSearchInput" placeholder="Search by name or email…"
         style="max-width:320px"
         value="${window._userSearch || ''}"
-        oninput="window._userSearch=this.value;renderAdminUsers(false)">
+        oninput="window._userSearch=this.value;_filterUserTable()">
     </div>
     <div class="card">
       <div class="table-container">
         <table>
           <thead><tr><th>${t('common.name')}</th><th>${t('common.email')}</th><th>${t('common.role')}</th><th>${t('admin.grade_position')}</th><th>${t('common.status')}</th><th>${t('common.actions')}</th></tr></thead>
-          <tbody>
-            ${users.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px">No users found</td></tr>` :
-            users.map(u => `
-              <tr>
-                <td><strong>${u.full_name}</strong></td>
-                <td style="font-size:0.8rem;color:var(--gray-500)">${u.email}</td>
-                <td><span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${u.role.replace('_', ' ')}</span></td>
-                <td>${u.grade_or_position || '-'}</td>
-                <td>${u.suspended ? '<span class="badge badge-rejected">Suspended</span>' : '<span class="badge badge-approved">Active</span>'}</td>
-                <td>
-                  <button class="btn btn-sm btn-outline" onclick='editUser(${JSON.stringify(u)})'>Edit</button>
-                  <button class="btn btn-sm btn-outline" onclick="resetPassword(${u.id}, '${u.full_name}')">Reset PW</button>
-                  <button class="btn btn-sm ${u.suspended ? 'btn-success' : 'btn-danger'}" onclick="toggleSuspend(${u.id})" ${u.id === currentUser.id ? 'disabled' : ''}>
-                    ${u.suspended ? 'Unsuspend' : 'Suspend'}
-                  </button>
-                </td>
-              </tr>
-            `).join('')}
+          <tbody id="userTableBody">
+            ${_buildUserRows(users)}
           </tbody>
         </table>
       </div>

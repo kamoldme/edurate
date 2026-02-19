@@ -145,8 +145,7 @@ db.exec(`
     target_id INTEGER,
     metadata TEXT,
     ip_address TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
@@ -478,11 +477,11 @@ try {
   db.prepare("UPDATE feedback_periods SET name = 'Feedback Period' WHERE name IN ('1st Half', '2nd Half')").run();
 } catch (err) { /* ignore */ }
 
-// Migration: Rebuild audit_logs to remove ON DELETE CASCADE (replace with SET NULL)
-// so logs are preserved when users are deleted instead of being wiped
+// Migration: Rebuild audit_logs to remove ALL foreign key constraints.
+// Audit logs are historical records and must never fail due to FK violations.
 try {
   const auditDef = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='audit_logs'").get();
-  if (auditDef && auditDef.sql.includes('ON DELETE CASCADE')) {
+  if (auditDef && auditDef.sql.toUpperCase().includes('FOREIGN KEY')) {
     db.pragma('foreign_keys = OFF');
     db.exec(`
       CREATE TABLE audit_logs_new (
@@ -497,8 +496,7 @@ try {
         metadata TEXT,
         ip_address TEXT,
         org_id INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       INSERT INTO audit_logs_new
         (id, user_id, user_role, user_name, action_type, action_description,
@@ -516,11 +514,11 @@ try {
       CREATE INDEX IF NOT EXISTS idx_audit_logs_org     ON audit_logs(org_id);
     `);
     db.pragma('foreign_keys = ON');
-    console.log('✅ Migration: audit_logs ON DELETE CASCADE → SET NULL');
+    console.log('✅ Migration: audit_logs foreign key constraint removed');
   }
 } catch (err) {
   db.pragma('foreign_keys = ON');
-  console.error('Migration error (audit_logs cascade):', err.message);
+  console.error('Migration error (audit_logs fk removal):', err.message);
 }
 
 module.exports = db;
