@@ -196,6 +196,70 @@ router.post('/join', authenticate, authorize('student'), (req, res) => {
   }
 });
 
+// PATCH /api/classrooms/:id - edit classroom (teacher owns it, or admin)
+router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+  try {
+    const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
+    if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    if (req.user.role === 'teacher') {
+      const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(req.user.id);
+      if (!teacher || classroom.teacher_id !== teacher.id) {
+        return res.status(403).json({ error: 'Not your classroom' });
+      }
+    }
+
+    const subject = req.body.subject?.trim() || classroom.subject;
+    const grade_level = req.body.grade_level?.trim() || classroom.grade_level;
+
+    db.prepare('UPDATE classrooms SET subject = ?, grade_level = ? WHERE id = ?')
+      .run(subject, grade_level, req.params.id);
+
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'classroom_edit',
+      actionDescription: `Edited classroom: ${subject} (${grade_level})`,
+      targetType: 'classroom', targetId: parseInt(req.params.id),
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Classroom updated', subject, grade_level });
+  } catch (err) {
+    console.error('Edit classroom error:', err);
+    res.status(500).json({ error: 'Failed to update classroom' });
+  }
+});
+
+// DELETE /api/classrooms/:id - delete classroom (teacher owns it, or admin)
+router.delete('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+  try {
+    const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
+    if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+
+    if (req.user.role === 'teacher') {
+      const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(req.user.id);
+      if (!teacher || classroom.teacher_id !== teacher.id) {
+        return res.status(403).json({ error: 'Not your classroom' });
+      }
+    }
+
+    db.prepare('DELETE FROM classrooms WHERE id = ?').run(req.params.id);
+
+    logAuditEvent({
+      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
+      actionType: 'classroom_delete',
+      actionDescription: `Deleted classroom: ${classroom.subject} (${classroom.grade_level})`,
+      targetType: 'classroom', targetId: parseInt(req.params.id),
+      ipAddress: req.ip
+    });
+
+    res.json({ message: 'Classroom deleted' });
+  } catch (err) {
+    console.error('Delete classroom error:', err);
+    res.status(500).json({ error: 'Failed to delete classroom' });
+  }
+});
+
 // POST /api/classrooms/:id/regenerate-code - teacher regenerates join code
 router.post('/:id/regenerate-code', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {

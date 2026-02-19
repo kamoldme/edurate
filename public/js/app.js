@@ -29,6 +29,7 @@ const API = {
   get(path) { return this.request(path); },
   post(path, body) { return this.request(path, { method: 'POST', body }); },
   put(path, body) { return this.request(path, { method: 'PUT', body }); },
+  patch(path, body) { return this.request(path, { method: 'PATCH', body }); },
   delete(path) { return this.request(path, { method: 'DELETE' }); }
 };
 
@@ -1282,8 +1283,10 @@ async function renderTeacherClassrooms() {
               <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">${t('teacher.join_code')}</div>
               <span class="join-code">${c.join_code}</span>
             </div>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="btn btn-sm btn-outline" onclick="regenerateCode(${c.id})">${t('teacher.new_code')}</button>
+              <button class="btn btn-sm btn-outline" onclick="editClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}', '${c.grade_level.replace(/'/g, "\\'")}')">Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Delete</button>
               <button class="btn btn-sm btn-primary" onclick="viewClassroomMembers(${c.id}, '${c.subject}')">${t('teacher.members')}</button>
             </div>
           </div>
@@ -1321,6 +1324,48 @@ async function createClassroomTeacher() {
     const data = await API.post('/classrooms', { subject, grade_level });
     toast(`Classroom created! Join code: ${data.join_code}`);
     closeModal();
+    navigateTo('teacher-classrooms');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function editClassroomTeacher(id, subject, gradeLevel) {
+  openModal(`
+    <div class="modal-header"><h3>Edit Classroom</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>${t('common.subject')}</label>
+        <input type="text" class="form-control" id="editSubject" value="${subject}">
+      </div>
+      <div class="form-group">
+        <label>${t('common.grade')}</label>
+        <input type="text" class="form-control" id="editGradeLevel" value="${gradeLevel}">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="saveClassroomTeacher(${id})">Save</button>
+    </div>
+  `);
+}
+
+async function saveClassroomTeacher(id) {
+  const subject = document.getElementById('editSubject').value.trim();
+  const grade_level = document.getElementById('editGradeLevel').value.trim();
+  if (!subject || !grade_level) return toast(t('teacher.fill_all_fields'), 'error');
+  try {
+    await API.patch(`/classrooms/${id}`, { subject, grade_level });
+    toast('Classroom updated');
+    closeModal();
+    navigateTo('teacher-classrooms');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteClassroomTeacher(id, subject) {
+  const confirmed = await confirmDialog(`Delete "${subject}"? This will also remove all students and reviews.`, 'Delete', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.delete(`/classrooms/${id}`);
+    toast('Classroom deleted');
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
 }
