@@ -251,6 +251,57 @@ router.post('/users/:id/reset-password', authenticate, authorize('super_admin', 
   }
 });
 
+// DELETE /api/admin/users/:id - permanently delete a user
+router.delete('/users/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Cannot delete yourself
+    if (user.id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
+    }
+
+    // org_admin restrictions
+    if (req.user.role === 'org_admin') {
+      // Must be in their org
+      const inOrg = db.prepare('SELECT id FROM user_organizations WHERE user_id = ? AND org_id = ?').get(user.id, req.orgId);
+      if (!inOrg && user.org_id !== req.orgId) {
+        return res.status(403).json({ error: 'User is not in your organization' });
+      }
+      // Cannot delete super_admin or org_admin accounts
+      if (['super_admin', 'org_admin'].includes(user.role)) {
+        return res.status(403).json({ error: 'You cannot delete users with this role' });
+      }
+    }
+
+    const userName = user.full_name;
+    const userEmail = user.email;
+    const userRole = user.role;
+
+    // Delete cascades via foreign keys: teachers, classrooms, reviews, classroom_members, user_organizations, support_messages
+    db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'user_delete',
+      actionDescription: `Permanently deleted ${userRole} account: ${userName} (${userEmail})`,
+      targetType: 'user',
+      targetId: parseInt(req.params.id),
+      metadata: { deleted_email: userEmail, deleted_role: userRole, deleted_name: userName },
+      ipAddress: req.ip,
+      orgId: req.orgId || null
+    });
+
+    res.json({ message: 'User permanently deleted' });
+  } catch (err) {
+    console.error('Delete user error:', err);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 // PUT /api/admin/users/:id/suspend
 router.put('/users/:id/suspend', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {

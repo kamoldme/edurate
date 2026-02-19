@@ -1923,7 +1923,15 @@ async function renderAdminOrgs() {
 
 function _buildUserRows(users) {
   if (users.length === 0) return `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px">No users found</td></tr>`;
-  return users.map(u => `
+  return users.map(u => {
+    const isSelf = u.id === currentUser.id;
+    const canDelete = !isSelf && (
+      currentUser.role === 'super_admin' ||
+      (currentUser.role === 'org_admin' && !['super_admin', 'org_admin'].includes(u.role))
+    );
+    const safeName = u.full_name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const userJson = JSON.stringify(u).replace(/'/g, '&#39;');
+    return `
     <tr>
       <td><strong>${u.full_name}</strong></td>
       <td style="font-size:0.8rem;color:var(--gray-500)">${u.email}</td>
@@ -1931,15 +1939,34 @@ function _buildUserRows(users) {
       <td>${u.grade_or_position || '-'}</td>
       <td>${u.suspended ? '<span class="badge badge-rejected">Suspended</span>' : '<span class="badge badge-approved">Active</span>'}</td>
       <td>
-        <button class="btn btn-sm btn-outline" onclick='editUser(${JSON.stringify(u)})'>Edit</button>
-        <button class="btn btn-sm btn-outline" onclick="resetPassword(${u.id}, '${u.full_name}')">Reset PW</button>
-        <button class="btn btn-sm ${u.suspended ? 'btn-success' : 'btn-danger'}" onclick="toggleSuspend(${u.id})" ${u.id === currentUser.id ? 'disabled' : ''}>
-          ${u.suspended ? 'Unsuspend' : 'Suspend'}
-        </button>
+        <div class="action-dropdown" id="dropdown-${u.id}">
+          <button class="action-dropdown-trigger" onclick="toggleActionMenu(${u.id}, event)" title="Actions">⋮</button>
+          <div class="action-dropdown-menu" id="dropdown-menu-${u.id}">
+            <button class="action-dropdown-item" onclick="closeActionMenus();editUser(${userJson})">Edit</button>
+            <button class="action-dropdown-item" onclick="closeActionMenus();resetPassword(${u.id}, '${safeName}')">Reset Password</button>
+            ${!isSelf ? `<button class="action-dropdown-item" onclick="closeActionMenus();toggleSuspend(${u.id})">${u.suspended ? 'Unsuspend' : 'Suspend'}</button>` : ''}
+            ${canDelete ? `<button class="action-dropdown-item danger" onclick="closeActionMenus();deleteUser(${u.id}, '${safeName}')">Delete Account</button>` : ''}
+          </div>
+        </div>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
+
+function toggleActionMenu(userId, event) {
+  event.stopPropagation();
+  const menu = document.getElementById(`dropdown-menu-${userId}`);
+  const isOpen = menu.classList.contains('open');
+  closeActionMenus();
+  if (!isOpen) menu.classList.add('open');
+}
+
+function closeActionMenus() {
+  document.querySelectorAll('.action-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+}
+
+// Close dropdowns when clicking anywhere outside
+document.addEventListener('click', closeActionMenus);
 
 function _filterUserTable() {
   const search = (window._userSearch || '').toLowerCase();
@@ -2124,6 +2151,20 @@ async function toggleSuspend(userId) {
   try {
     const data = await API.put(`/admin/users/${userId}/suspend`);
     toast(data.message);
+    renderAdminUsers();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteUser(userId, userName) {
+  const confirmed = await confirmWithText(
+    `Permanently delete the account of <strong>${userName}</strong>? This cannot be undone.`,
+    userName,
+    'All their reviews, classroom memberships, and data will be permanently removed.'
+  );
+  if (!confirmed) return;
+  try {
+    await API.delete(`/admin/users/${userId}`);
+    toast(`${userName} has been permanently deleted`);
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
 }
