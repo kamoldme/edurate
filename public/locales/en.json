@@ -54,6 +54,7 @@
   "common.cancel": "Cancel",
   "common.close": "Close",
   "common.save": "Save Changes",
+  "common.save_changes": "Save Changes",
   "common.create": "Create",
   "common.edit": "Edit",
   "common.delete": "Delete",

@@ -52,6 +52,7 @@
   "common.cancel": "Отмена",
   "common.close": "Закрыть",
   "common.save": "Сохранить изменения",
+  "common.save_changes": "Сохранить изменения",
   "common.create": "Создать",
   "common.edit": "Редактировать",
   "common.delete": "Удалить",

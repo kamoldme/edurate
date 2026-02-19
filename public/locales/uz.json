@@ -52,6 +52,7 @@
   "common.cancel": "Bekor qilish",
   "common.close": "Yopish",
   "common.save": "O'zgarishlarni saqlash",
+  "common.save_changes": "O'zgarishlarni saqlash",
   "common.create": "Yaratish",
   "common.edit": "Tahrirlash",
   "common.delete": "O'chirish",
