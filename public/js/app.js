@@ -1258,7 +1258,7 @@ async function renderTeacherClassrooms() {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
       <p style="color:var(--gray-500)">${t('teacher.manage_classrooms')}</p>
-      <button class="btn btn-primary" onclick="showCreateClassroom(${JSON.stringify(data.active_term?.id || null).replace(/"/g, '&quot;')})">${t('teacher.create_classroom')}</button>
+      <button class="btn btn-primary" onclick="showCreateClassroom(${JSON.stringify(data.all_terms || []).replace(/"/g, '&quot;')}, ${data.active_term?.id || 'null'})">${t('teacher.create_classroom')}</button>
     </div>
     ${data.classrooms.length === 0
       ? `<div class="empty-state" style="margin-top:40px">
@@ -1291,7 +1291,10 @@ async function renderTeacherClassrooms() {
   `;
 }
 
-function showCreateClassroom(termId) {
+function showCreateClassroom(terms, defaultTermId) {
+  const termOptions = terms && terms.length > 0
+    ? terms.map(term => `<option value="${term.id}" ${term.id === defaultTermId ? 'selected' : ''}>${term.name}</option>`).join('')
+    : '<option value="" disabled>No terms available — ask your admin to create one</option>';
   openModal(`
     <div class="modal-header"><h3>${t('teacher.create_classroom_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
@@ -1303,17 +1306,24 @@ function showCreateClassroom(termId) {
         <label>${t('common.grade')}</label>
         <input type="text" class="form-control" id="newGradeLevel" placeholder="${t('teacher.grade_placeholder')}">
       </div>
+      <div class="form-group">
+        <label>Term</label>
+        <select class="form-control" id="newTermId" ${!terms || terms.length === 0 ? 'disabled' : ''}>
+          ${termOptions}
+        </select>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
-      <button class="btn btn-primary" onclick="createClassroom(${termId})">${t('common.create')}</button>
+      <button class="btn btn-primary" onclick="createClassroom()" ${!terms || terms.length === 0 ? 'disabled' : ''}>${t('common.create')}</button>
     </div>
   `);
 }
 
-async function createClassroom(termId) {
+async function createClassroom() {
   const subject = document.getElementById('newSubject').value.trim();
   const grade_level = document.getElementById('newGradeLevel').value.trim();
+  const termId = parseInt(document.getElementById('newTermId').value);
   if (!subject || !grade_level) return toast(t('teacher.fill_all_fields'), 'error');
   if (!termId) return toast(t('teacher.no_active_term'), 'error');
   try {

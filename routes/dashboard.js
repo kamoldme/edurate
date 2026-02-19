@@ -69,12 +69,13 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
       ORDER BY c.created_at DESC
     `).all(teacher.id);
 
-    const activeTerm = db.prepare('SELECT * FROM terms WHERE active_status = 1 LIMIT 1').get();
+    const activeTerm = db.prepare('SELECT * FROM terms WHERE active_status = 1 AND org_id = ? LIMIT 1').get(teacher.org_id);
     const activePeriod = db.prepare(`
       SELECT fp.* FROM feedback_periods fp
       WHERE fp.active_status = 1 ${activeTerm ? 'AND fp.term_id = ' + activeTerm.id : ''}
       LIMIT 1
     `).get();
+    const allTerms = db.prepare('SELECT id, name FROM terms WHERE org_id = ? ORDER BY start_date DESC').all(teacher.org_id);
 
     // Overall scores
     const overallScores = getTeacherScores(teacher.id);
@@ -136,6 +137,7 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
       classrooms,
       active_term: activeTerm,
       active_period: activePeriod,
+      all_terms: allTerms,
       overall_scores: overallScores,
       term_scores: termScores,
       trend,
