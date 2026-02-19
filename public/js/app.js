@@ -1274,7 +1274,7 @@ async function renderTeacherClassrooms() {
           <div style="display:flex;justify-content:space-between;align-items:start">
             <div>
               <div class="class-subject">${c.subject}</div>
-              <div class="class-meta">${c.grade_level} &middot; ${c.term_name} &middot; ${c.student_count} ${t('common.students').toLowerCase()}</div>
+              <div class="class-meta">${c.grade_level}${c.term_name ? ' &middot; ' + c.term_name : ''} &middot; ${c.student_count} ${t('common.students').toLowerCase()}</div>
             </div>
           </div>
           <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
@@ -1294,36 +1294,21 @@ async function renderTeacherClassrooms() {
 }
 
 function showCreateClassroom() {
-  const terms = window._teacherTerms || [];
-  const activeTermId = window._teacherActiveTerm?.id || null;
-  const hasTerms = terms.length > 0;
-  const termOptions = hasTerms
-    ? terms.map(term => `<option value="${term.id}" ${term.id === activeTermId ? 'selected' : ''}>${term.name}</option>`).join('')
-    : '<option value="">No terms available — ask your admin to create one</option>';
   openModal(`
     <div class="modal-header"><h3>${t('teacher.create_classroom_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      ${!hasTerms ? `<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:0.875rem;color:#854d0e">
-        No academic terms exist for your organization yet. Ask your admin to create a term before adding classrooms.
-      </div>` : ''}
       <div class="form-group">
         <label>${t('common.subject')}</label>
-        <input type="text" class="form-control" id="newSubject" placeholder="${t('teacher.subject_placeholder')}" ${!hasTerms ? 'disabled' : ''}>
+        <input type="text" class="form-control" id="newSubject" placeholder="${t('teacher.subject_placeholder')}">
       </div>
       <div class="form-group">
         <label>${t('common.grade')}</label>
-        <input type="text" class="form-control" id="newGradeLevel" placeholder="${t('teacher.grade_placeholder')}" ${!hasTerms ? 'disabled' : ''}>
-      </div>
-      <div class="form-group">
-        <label>Term</label>
-        <select class="form-control" id="newTermId" ${!hasTerms ? 'disabled' : ''}>
-          ${termOptions}
-        </select>
+        <input type="text" class="form-control" id="newGradeLevel" placeholder="${t('teacher.grade_placeholder')}">
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
-      <button class="btn btn-primary" onclick="createClassroom()" ${!hasTerms ? 'disabled' : ''}>${t('common.create')}</button>
+      <button class="btn btn-primary" onclick="createClassroom()">${t('common.create')}</button>
     </div>
   `);
 }
@@ -1331,11 +1316,9 @@ function showCreateClassroom() {
 async function createClassroom() {
   const subject = document.getElementById('newSubject').value.trim();
   const grade_level = document.getElementById('newGradeLevel').value.trim();
-  const termId = parseInt(document.getElementById('newTermId').value);
   if (!subject || !grade_level) return toast(t('teacher.fill_all_fields'), 'error');
-  if (!termId) return toast(t('teacher.no_active_term'), 'error');
   try {
-    const data = await API.post('/classrooms', { subject, grade_level, term_id: termId });
+    const data = await API.post('/classrooms', { subject, grade_level });
     toast(`Classroom created! Join code: ${data.join_code}`);
     closeModal();
     navigateTo('teacher-classrooms');

@@ -400,6 +400,51 @@ try {
   console.error('Migration error (multi-tenancy):', err.message);
 }
 
+// Migration: Make classrooms.term_id nullable — classrooms persist across terms
+try {
+  const classroomCols = db.prepare("PRAGMA table_info(classrooms)").all();
+  const termIdCol = classroomCols.find(c => c.name === 'term_id');
+
+  if (termIdCol && termIdCol.notnull === 1) {
+    console.log('🔄 Migration: Making classrooms.term_id nullable...');
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      BEGIN TRANSACTION;
+
+      CREATE TABLE classrooms_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id INTEGER NOT NULL,
+        subject TEXT NOT NULL,
+        grade_level TEXT NOT NULL,
+        term_id INTEGER,
+        join_code TEXT UNIQUE NOT NULL,
+        active_status INTEGER DEFAULT 1,
+        org_id INTEGER REFERENCES organizations(id),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
+      );
+
+      INSERT INTO classrooms_new (id, teacher_id, subject, grade_level, term_id, join_code, active_status, org_id, created_at)
+        SELECT id, teacher_id, subject, grade_level, term_id, join_code, active_status, org_id, created_at
+        FROM classrooms;
+
+      DROP TABLE classrooms;
+      ALTER TABLE classrooms_new RENAME TO classrooms;
+
+      CREATE INDEX IF NOT EXISTS idx_classrooms_teacher  ON classrooms(teacher_id);
+      CREATE INDEX IF NOT EXISTS idx_classrooms_join_code ON classrooms(join_code);
+      CREATE INDEX IF NOT EXISTS idx_classrooms_org       ON classrooms(org_id);
+
+      COMMIT;
+    `);
+    db.pragma('foreign_keys = ON');
+    console.log('✅ Migration: classrooms.term_id is now nullable — classrooms persist across terms');
+  }
+} catch (err) {
+  db.pragma('foreign_keys = ON');
+  console.error('Migration error (classrooms term_id nullable):', err.message);
+}
+
 // Migration: Remove CHECK constraint from feedback_periods.name to allow custom names
 try {
   const fpCols = db.prepare("PRAGMA table_info(feedback_periods)").all();

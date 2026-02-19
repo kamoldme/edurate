@@ -861,7 +861,7 @@ router.get('/classrooms', authenticate, authorize('super_admin', 'org_admin', 's
         (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       LEFT JOIN organizations o ON c.org_id = o.id
       ${where}
       ORDER BY c.created_at DESC
@@ -1057,7 +1057,7 @@ router.get('/submission-tracking', authenticate, authorize('super_admin', 'org_a
       SELECT c.*, te.full_name as teacher_name, t.name as term_name
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       WHERE c.id = ?
     `).get(classroom_id);
 
@@ -1138,7 +1138,7 @@ router.get('/submission-overview', authenticate, authorize('super_admin', 'org_a
         (SELECT COUNT(DISTINCT student_id) FROM reviews WHERE classroom_id = c.id AND feedback_period_id = ?) as submitted_count
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       ${where}
       ORDER BY c.subject, c.grade_level
     `).all(...params);

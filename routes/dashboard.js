@@ -15,7 +15,7 @@ router.get('/student', authenticate, authorize('student'), (req, res) => {
       FROM classroom_members cm
       JOIN classrooms c ON cm.classroom_id = c.id
       JOIN teachers te ON c.teacher_id = te.id
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       WHERE cm.student_id = ?
       ORDER BY c.created_at DESC
     `).all(req.user.id);
@@ -64,7 +64,7 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
       SELECT c.*, t.name as term_name,
         (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
       FROM classrooms c
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       WHERE c.teacher_id = ?
       ORDER BY c.created_at DESC
     `).all(teacher.id);
@@ -234,7 +234,7 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
         (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       ${orgId ? 'WHERE c.org_id = ?' : ''}
       ORDER BY c.created_at DESC
     `).all(...(orgId ? [orgId] : []));
@@ -272,7 +272,7 @@ router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 's
       SELECT c.*, t.name as term_name,
         (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
       FROM classrooms c
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       WHERE c.teacher_id = ?
     `).all(teacher.id);
 

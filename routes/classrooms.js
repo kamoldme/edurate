@@ -23,7 +23,7 @@ router.get('/', authenticate, (req, res) => {
         SELECT c.*, t.name as term_name,
           (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
         FROM classrooms c
-        JOIN terms t ON c.term_id = t.id
+        LEFT JOIN terms t ON c.term_id = t.id
         WHERE c.teacher_id = ?
         ORDER BY c.created_at DESC
       `).all(teacher.id);
@@ -33,7 +33,7 @@ router.get('/', authenticate, (req, res) => {
           te.avatar_url as teacher_avatar_url, cm.joined_at
         FROM classroom_members cm
         JOIN classrooms c ON cm.classroom_id = c.id
-        JOIN terms t ON c.term_id = t.id
+        LEFT JOIN terms t ON c.term_id = t.id
         JOIN teachers te ON c.teacher_id = te.id
         WHERE cm.student_id = ?
         ORDER BY cm.joined_at DESC
@@ -45,7 +45,7 @@ router.get('/', authenticate, (req, res) => {
           te.avatar_url as teacher_avatar_url,
           (SELECT COUNT(*) FROM classroom_members WHERE classroom_id = c.id) as student_count
         FROM classrooms c
-        JOIN terms t ON c.term_id = t.id
+        LEFT JOIN terms t ON c.term_id = t.id
         JOIN teachers te ON c.teacher_id = te.id
         ORDER BY c.created_at DESC
       `).all();
@@ -63,8 +63,8 @@ router.post('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'),
   try {
     const { subject, grade_level, term_id } = req.body;
 
-    if (!subject || !grade_level || !term_id) {
-      return res.status(400).json({ error: 'Subject, grade level, and term are required' });
+    if (!subject || !grade_level) {
+      return res.status(400).json({ error: 'Subject and grade level are required' });
     }
 
     let teacherId;
@@ -82,15 +82,15 @@ router.post('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'),
       orgId = teacher?.org_id;
     }
 
-    const term = db.prepare('SELECT id FROM terms WHERE id = ?').get(term_id);
-    if (!term) return res.status(404).json({ error: 'Term not found' });
+    // term_id is optional — classrooms persist across terms
+    const resolvedTermId = term_id || null;
 
     const join_code = generateJoinCode();
 
     const result = db.prepare(`
       INSERT INTO classrooms (teacher_id, subject, grade_level, term_id, join_code, org_id)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(teacherId, subject, grade_level, term_id, join_code, orgId);
+    `).run(teacherId, subject, grade_level, resolvedTermId, join_code, orgId);
 
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(result.lastInsertRowid);
 
@@ -121,7 +121,7 @@ router.get('/:id', authenticate, (req, res) => {
       SELECT c.*, t.name as term_name, te.full_name as teacher_name, te.subject as teacher_subject,
         te.avatar_url as teacher_avatar_url
       FROM classrooms c
-      JOIN terms t ON c.term_id = t.id
+      LEFT JOIN terms t ON c.term_id = t.id
       JOIN teachers te ON c.teacher_id = te.id
       WHERE c.id = ?
     `).get(req.params.id);
