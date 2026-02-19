@@ -98,6 +98,13 @@ function setupUI() {
     `;
     loadOrganizations();
     loadApplicationBadge();
+  } else if (u.org_name) {
+    topBarActions.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--gray-100);border-radius:8px;border:1px solid var(--gray-200)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span style="font-size:0.82rem;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${u.org_name}</span>
+      </div>
+    `;
   } else {
     topBarActions.innerHTML = '';
   }
@@ -1136,7 +1143,7 @@ async function renderTeacherHome() {
     <div class="grid grid-4" style="margin-bottom:28px">
       <div class="stat-card">
         <div class="stat-label">${t('teacher.overall_rating')}</div>
-        <div class="stat-value" style="color:${scoreColor(s.avg_overall || 0)}">${fmtScore(s.avg_overall)}</div>
+        <div class="stat-value" style="color:${s.review_count > 0 ? scoreColor(s.avg_overall || 0) : 'var(--gray-400)'}">${s.review_count > 0 ? fmtScore(s.avg_overall) : '0.00'}</div>
         <div class="stat-change">${t('teacher.total_reviews', {count: s.review_count})}</div>
       </div>
       <div class="stat-card">
@@ -1150,7 +1157,7 @@ async function renderTeacherHome() {
       </div>
       <div class="stat-card">
         <div class="stat-label">${t('teacher.trend')}</div>
-        <div class="stat-value">${data.trend ? trendArrow(data.trend.trend) : 'N/A'}</div>
+        <div class="stat-value" style="font-size:${data.trend ? '2rem' : '1.2rem'};color:${data.trend ? '' : 'var(--gray-400)'}">${data.trend ? trendArrow(data.trend.trend) : '—'}</div>
         <div class="stat-change ${data.trend?.trend === 'improving' ? 'up' : data.trend?.trend === 'declining' ? 'down' : 'stable'}">${data.trend?.trend || t('teacher.no_data')}</div>
       </div>
     </div>
@@ -1166,7 +1173,7 @@ async function renderTeacherHome() {
               <span style="font-weight:500;display:flex;align-items:center;gap:4px">${capName}${criteriaInfoIcon(capName)}</span>
               <div style="display:flex;align-items:center;gap:8px">
                 ${starsHTML(s[`avg_${cat}`] || 0)}
-                <span style="font-weight:600;color:${scoreColor(s[`avg_${cat}`] || 0)}">${fmtScore(s[`avg_${cat}`])}</span>
+                <span style="font-weight:600;color:${s.review_count > 0 ? scoreColor(s[`avg_${cat}`] || 0) : 'var(--gray-400)'}">${s.review_count > 0 ? fmtScore(s[`avg_${cat}`]) : '0.00'}</span>
               </div>
             </div>`;
           }).join('')}
@@ -1253,7 +1260,13 @@ async function renderTeacherClassrooms() {
       <p style="color:var(--gray-500)">${t('teacher.manage_classrooms')}</p>
       <button class="btn btn-primary" onclick="showCreateClassroom(${JSON.stringify(data.active_term?.id || null).replace(/"/g, '&quot;')})">${t('teacher.create_classroom')}</button>
     </div>
-    <div class="grid grid-2">
+    ${data.classrooms.length === 0
+      ? `<div class="empty-state" style="margin-top:40px">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray-300);margin-bottom:12px"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          <h3 style="color:var(--gray-500);margin-bottom:6px">No classrooms yet</h3>
+          <p style="color:var(--gray-400);font-size:0.875rem">Create your first classroom to get started</p>
+        </div>`
+      : `<div class="grid grid-2">
       ${data.classrooms.map(c => `
         <div class="classroom-card">
           <div style="display:flex;justify-content:space-between;align-items:start">
@@ -1274,7 +1287,7 @@ async function renderTeacherClassrooms() {
           </div>
         </div>
       `).join('')}
-    </div>
+    </div>`}
   `;
 }
 
@@ -1406,20 +1419,24 @@ async function renderTeacherFeedback() {
         <div class="card-header"><h3>Overall Performance</h3></div>
         <div class="card-body">
           <div style="text-align:center;padding:20px 0">
-            <div style="font-size:3rem;font-weight:700;color:${scoreColor(data.overall_scores.avg_overall || 0)};margin-bottom:16px">
-              ${fmtScore(data.overall_scores.avg_overall)}
+            <div style="font-size:3rem;font-weight:700;color:${data.overall_scores.review_count > 0 ? scoreColor(data.overall_scores.avg_overall || 0) : 'var(--gray-300)'};margin-bottom:16px">
+              ${data.overall_scores.review_count > 0 ? fmtScore(data.overall_scores.avg_overall) : '0.00'}
             </div>
             ${starsHTML(data.overall_scores.avg_overall || 0, 'large')}
             <div style="color:var(--gray-500);margin-top:16px;font-size:1rem">${data.overall_scores.review_count} total reviews</div>
+            ${data.overall_scores.review_count === 0 ? '<div style="margin-top:8px;font-size:0.8rem;color:var(--gray-400)">Scores will appear once students submit and reviews are approved</div>' : ''}
           </div>
           <div style="margin-top:24px">
             ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'].map((name, i, arr) => {
               const key = 'avg_' + name.toLowerCase();
               const val = data.overall_scores[key] || 0;
+              const hasReviews = data.overall_scores.review_count > 0;
               const border = i < arr.length - 1 ? 'border-bottom:1px solid var(--gray-100)' : '';
               return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;${border}">
                 <span style="display:flex;align-items:center;gap:4px">${name}${criteriaInfoIcon(name)}</span>
-                <span style="font-weight:600;color:${scoreColor(val)}">${fmtScore(data.overall_scores[key])} ${starsHTML(val)}</span>
+                <span style="font-weight:600;color:${hasReviews ? scoreColor(val) : 'var(--gray-300)'}">
+                  ${hasReviews ? fmtScore(data.overall_scores[key]) : '0.00'} ${starsHTML(hasReviews ? val : 0)}
+                </span>
               </div>`;
             }).join('')}
           </div>
@@ -1479,7 +1496,16 @@ async function renderTeacherAnalytics() {
       </div>
       <div class="card">
         <div class="card-header"><h3>Category Breakdown</h3></div>
-        <div class="card-body"><div class="chart-container"><canvas id="radarChart"></canvas></div></div>
+        <div class="card-body">
+          ${data.overall_scores.review_count > 0
+            ? '<div class="chart-container"><canvas id="radarChart"></canvas></div>'
+            : `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;text-align:center;color:var(--gray-400)">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <p style="font-weight:500;margin-bottom:4px">No data yet</p>
+                <p style="font-size:0.82rem">Category breakdown will appear here once students submit reviews and they are approved</p>
+              </div>`
+          }
+        </div>
       </div>
     </div>
   `;
