@@ -2122,7 +2122,7 @@ async function renderAdminTerms() {
       <button class="btn btn-primary" onclick="showCreateTerm()">+ Create Term</button>
     </div>
     ${terms.map(term => `
-      <div class="card" style="margin-bottom:20px">
+      <div class="card" style="margin-bottom:20px;max-width:620px">
         <div class="card-header">
           <div>
             ${currentUser.role === 'super_admin' && term.org_name ? `<div style="font-size:0.72rem;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">${term.org_name}</div>` : ''}
@@ -2138,9 +2138,11 @@ async function renderAdminTerms() {
         </div>
         <div class="card-body">
           ${term.periods.length > 0 ? `
-            <div style="display:inline-flex;align-items:center;gap:16px;padding:10px 16px;border:2px solid ${term.periods[0].active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px">
-              <span style="font-weight:600">Feedback Period</span>
-              <span class="badge ${term.periods[0].active_status ? 'badge-active' : 'badge-inactive'}">${term.periods[0].active_status ? 'Open' : 'Closed'}</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border:2px solid ${term.periods[0].active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-weight:600">Feedback Period</span>
+                <span class="badge ${term.periods[0].active_status ? 'badge-active' : 'badge-inactive'}">${term.periods[0].active_status ? 'Open' : 'Closed'}</span>
+              </div>
               ${term.periods[0].active_status
                 ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${term.periods[0].id}, 0)">Close Feedback</button>`
                 : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${term.periods[0].id}, 1)">Open Feedback</button>`}
