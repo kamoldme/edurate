@@ -1426,6 +1426,49 @@ router.get('/stats', authenticate, authorize('super_admin', 'org_admin', 'school
   }
 });
 
+// GET /api/admin/org-period-trend — per-feedback-period avg ratings for an org
+router.get('/org-period-trend', authenticate, authorize('super_admin', 'org_admin'), (req, res) => {
+  try {
+    const orgId = req.user.role === 'org_admin'
+      ? req.user.org_id
+      : (req.query.org_id ? parseInt(req.query.org_id) : null);
+
+    if (!orgId) return res.status(400).json({ error: 'org_id is required for super_admin' });
+
+    const periods = db.prepare(`
+      SELECT
+        fp.id, fp.name as period_name, t.id as term_id, t.name as term_name,
+        COUNT(r.id) as review_count,
+        ROUND((
+          AVG(NULLIF(r.clarity_rating,0)) +
+          AVG(NULLIF(r.engagement_rating,0)) +
+          AVG(NULLIF(r.fairness_rating,0)) +
+          AVG(NULLIF(r.supportiveness_rating,0)) +
+          AVG(NULLIF(r.preparation_rating,0)) +
+          AVG(NULLIF(r.workload_rating,0))
+        ) / 6, 2) as avg_overall,
+        ROUND(AVG(NULLIF(r.clarity_rating,0)), 2) as avg_clarity,
+        ROUND(AVG(NULLIF(r.engagement_rating,0)), 2) as avg_engagement,
+        ROUND(AVG(NULLIF(r.fairness_rating,0)), 2) as avg_fairness,
+        ROUND(AVG(NULLIF(r.supportiveness_rating,0)), 2) as avg_supportiveness,
+        ROUND(AVG(NULLIF(r.preparation_rating,0)), 2) as avg_preparation,
+        ROUND(AVG(NULLIF(r.workload_rating,0)), 2) as avg_workload
+      FROM feedback_periods fp
+      JOIN terms t ON fp.term_id = t.id
+      LEFT JOIN reviews r ON r.feedback_period_id = fp.id
+        AND r.approved_status = 1 AND r.org_id = ?
+      WHERE t.org_id = ?
+      GROUP BY fp.id
+      ORDER BY t.start_date ASC, fp.id ASC
+    `).all(orgId, orgId);
+
+    res.json(periods);
+  } catch (err) {
+    console.error('Org period trend error:', err);
+    res.status(500).json({ error: 'Failed to fetch period trend' });
+  }
+});
+
 // ============ SUPPORT MESSAGES MANAGEMENT ============
 
 // GET /api/admin/support/messages

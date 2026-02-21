@@ -1704,81 +1704,153 @@ async function renderTeacherAnalytics() {
   const data = await API.get('/dashboard/teacher');
   const el = document.getElementById('contentArea');
 
+  const periods = data.trend?.periods || [];
+  const trendLabel = data.trend?.trend || 'stable';
+  const trendMeta = {
+    improving: { color: '#16a34a', bg: '#dcfce7', icon: '↑', text: 'Improving' },
+    declining:  { color: '#dc2626', bg: '#fee2e2', icon: '↓', text: 'Declining' },
+    stable:     { color: '#6b7280', bg: '#f3f4f6', icon: '→', text: 'Stable' }
+  }[trendLabel];
+
+  // Per-period delta rows
+  const periodRows = periods.map((p, i) => {
+    const prev = periods[i - 1];
+    const hasScore = p.score !== null && p.score !== undefined;
+    const delta = (prev && hasScore && prev.score !== null) ? (p.score - prev.score) : null;
+    const deltaHtml = delta === null ? '<span style="color:var(--gray-400)">—</span>'
+      : delta > 0 ? `<span style="color:#16a34a;font-weight:600">+${delta.toFixed(2)} ↑</span>`
+      : delta < 0 ? `<span style="color:#dc2626;font-weight:600">${delta.toFixed(2)} ↓</span>`
+      : `<span style="color:var(--gray-500)">0.00 →</span>`;
+    return `<tr>
+      <td>${p.name || 'Period ' + (i+1)}</td>
+      <td style="font-weight:600;color:${hasScore ? scoreColor(p.score) : 'var(--gray-400)'}">${hasScore ? p.score.toFixed(2) : '—'}</td>
+      <td>${p.review_count || 0}</td>
+      <td>${deltaHtml}</td>
+    </tr>`;
+  }).join('');
+
   el.innerHTML = `
-    <div style="margin-bottom:16px;padding:12px 16px;background:var(--primary-light);border-left:4px solid var(--primary);border-radius:8px">
-      <strong>Current Term:</strong> ${data.active_term?.name || 'No active term'}
-      <span style="color:var(--gray-600);margin-left:12px;font-size:0.9rem">Analytics shown below are for the active term only</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div style="padding:10px 16px;background:var(--primary-light);border-left:4px solid var(--primary);border-radius:8px;font-size:0.92rem">
+        <strong>Current Term:</strong> ${data.active_term?.name || 'No active term'}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:${trendMeta.bg};border-radius:20px">
+        <span style="font-size:1.1rem;font-weight:700;color:${trendMeta.color}">${trendMeta.icon}</span>
+        <span style="font-weight:600;color:${trendMeta.color}">${trendMeta.text}</span>
+        <span style="color:var(--gray-500);font-size:0.82rem">this term</span>
+      </div>
     </div>
-    <div class="grid grid-2" style="margin-bottom:28px">
+
+    <div class="grid grid-2" style="margin-bottom:24px">
       <div class="card">
-        <div class="card-header"><h3>Score Trend</h3></div>
-        <div class="card-body"><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
+        <div class="card-header"><h3>Score Trend by Period</h3></div>
+        <div class="card-body">
+          ${periods.length > 0
+            ? '<div class="chart-container"><canvas id="trendChart"></canvas></div>'
+            : '<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">No feedback periods in this term yet</p></div>'}
+        </div>
       </div>
       <div class="card">
         <div class="card-header"><h3>Category Breakdown</h3></div>
         <div class="card-body">
           ${data.overall_scores.review_count > 0
             ? '<div class="chart-container"><canvas id="radarChart"></canvas></div>'
-            : `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;text-align:center;color:var(--gray-400)">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <p style="font-weight:500;margin-bottom:4px">No data yet</p>
-                <p style="font-size:0.82rem">Category breakdown will appear here once students submit reviews and they are approved</p>
-              </div>`
-          }
+            : '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;text-align:center;color:var(--gray-400)"><p style="font-weight:500;margin-bottom:4px">No data yet</p><p style="font-size:0.82rem">Appears once students submit and reviews are approved</p></div>'}
         </div>
       </div>
     </div>
+
+    ${periods.length > 0 ? `
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><h3>Period-by-Period Progress</h3></div>
+      <div class="card-body" style="padding:0">
+        <table>
+          <thead>
+            <tr>
+              <th>Feedback Period</th>
+              <th>Avg Score</th>
+              <th>Reviews</th>
+              <th>Change vs Previous</th>
+            </tr>
+          </thead>
+          <tbody>${periodRows}</tbody>
+        </table>
+      </div>
+    </div>
+    ` : ''}
   `;
 
   // Trend chart
-  if (data.trend?.periods) {
+  if (periods.length > 0) {
     const ctx = document.getElementById('trendChart');
-    chartInstances.trend = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: data.trend.periods.map(p => p.name),
-        datasets: [{
-          label: 'Score',
-          data: data.trend.periods.map(p => p.score),
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.1)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 6,
-          pointBackgroundColor: '#3b82f6'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { min: 0, max: 5, beginAtZero: true } },
-        plugins: { legend: { display: false } }
-      }
-    });
+    if (ctx) {
+      const pointColors = periods.map((p, i) => {
+        if (i === 0 || p.score === null) return '#3b82f6';
+        return p.score > (periods[i-1].score || 0) ? '#16a34a' : p.score < (periods[i-1].score || 0) ? '#dc2626' : '#6b7280';
+      });
+      chartInstances.trend = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: periods.map(p => p.name),
+          datasets: [{
+            label: 'Score',
+            data: periods.map(p => p.score),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.08)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 7,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { min: 0, max: 5, ticks: { stepSize: 1 } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                afterLabel: (ctx) => {
+                  const p = periods[ctx.dataIndex];
+                  return `Reviews: ${p.review_count || 0}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
   }
 
   // Radar chart
   const s = data.overall_scores;
   if (s.review_count > 0) {
     const ctx2 = document.getElementById('radarChart');
-    chartInstances.radar = new Chart(ctx2, {
-      type: 'radar',
-      data: {
-        labels: ['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'],
-        datasets: [{
-          label: 'Your Scores',
-          data: [s.avg_clarity, s.avg_engagement, s.avg_fairness, s.avg_supportiveness, s.avg_preparation, s.avg_workload],
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.2)',
-          pointBackgroundColor: '#3b82f6'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { r: { min: 0, max: 5, beginAtZero: true } }
-      }
-    });
+    if (ctx2) {
+      chartInstances.radar = new Chart(ctx2, {
+        type: 'radar',
+        data: {
+          labels: ['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'],
+          datasets: [{
+            label: 'Your Scores',
+            data: [s.avg_clarity, s.avg_engagement, s.avg_fairness, s.avg_supportiveness, s.avg_preparation, s.avg_workload],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.15)',
+            pointBackgroundColor: '#3b82f6'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { r: { min: 0, max: 5, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
   }
 }
 
@@ -2658,8 +2730,24 @@ async function createAdminForm() {
 
 // ============ ADMIN VIEWS ============
 async function renderAdminHome() {
-  const stats = await API.get('/admin/stats');
+  const [stats, periodTrend] = await Promise.all([
+    API.get('/admin/stats'),
+    API.get('/admin/org-period-trend').catch(() => [])
+  ]);
   const el = document.getElementById('contentArea');
+
+  const hasTrend = periodTrend && periodTrend.length > 0;
+  const withData = hasTrend ? periodTrend.filter(p => p.review_count > 0) : [];
+
+  // Trend direction
+  let trendHtml = '';
+  if (withData.length >= 2) {
+    const diff = withData[withData.length - 1].avg_overall - withData[0].avg_overall;
+    const dir = diff > 0.1 ? { icon: '↑', text: 'Improving', color: '#16a34a', bg: '#dcfce7' }
+      : diff < -0.1 ? { icon: '↓', text: 'Declining', color: '#dc2626', bg: '#fee2e2' }
+      : { icon: '→', text: 'Stable', color: '#6b7280', bg: '#f3f4f6' };
+    trendHtml = `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${dir.bg};border-radius:16px;font-size:0.82rem;font-weight:600;color:${dir.color}">${dir.icon} ${dir.text}</span>`;
+  }
 
   el.innerHTML = `
     <div class="grid grid-4" style="margin-bottom:28px">
@@ -2686,7 +2774,7 @@ async function renderAdminHome() {
         <div class="stat-value">${fmtScore(stats.average_rating)}</div>
       </div>
     </div>
-    <div class="grid grid-2">
+    <div class="grid grid-2" style="margin-bottom:24px">
       <div class="card">
         <div class="card-header"><h3>${t('admin.users_breakdown')}</h3></div>
         <div class="card-body" style="display:flex;justify-content:center;align-items:center;min-height:280px">
@@ -2699,6 +2787,40 @@ async function renderAdminHome() {
           <canvas id="adminReviewsChart"></canvas>
         </div>
       </div>
+    </div>
+    <div class="card">
+      <div class="card-header" style="display:flex;align-items:center;gap:12px">
+        <h3 style="margin:0">Organization Average — Feedback Period Trend</h3>
+        ${trendHtml}
+      </div>
+      <div class="card-body">
+        ${hasTrend
+          ? '<div class="chart-container"><canvas id="orgPeriodChart"></canvas></div>'
+          : '<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">No feedback periods found. Create terms and feedback periods to see trends here.</p></div>'}
+      </div>
+      ${hasTrend ? `
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Term</th><th>Period</th><th>Avg Score</th><th>Reviews</th><th>Change</th></tr></thead>
+          <tbody>
+            ${periodTrend.map((p, i) => {
+              const prev = periodTrend[i - 1];
+              const delta = (prev && p.avg_overall !== null && prev.avg_overall !== null) ? (p.avg_overall - prev.avg_overall) : null;
+              const deltaHtml = delta === null ? '<span style="color:var(--gray-400)">—</span>'
+                : delta > 0 ? `<span style="color:#16a34a;font-weight:600">+${delta.toFixed(2)} ↑</span>`
+                : delta < 0 ? `<span style="color:#dc2626;font-weight:600">${delta.toFixed(2)} ↓</span>`
+                : `<span style="color:var(--gray-500)">0.00 →</span>`;
+              return `<tr>
+                <td style="color:var(--gray-500);font-size:0.85rem">${p.term_name}</td>
+                <td>${p.period_name}</td>
+                <td style="font-weight:600;color:${p.avg_overall ? scoreColor(p.avg_overall) : 'var(--gray-400)'}">${p.avg_overall !== null ? p.avg_overall.toFixed(2) : '—'}</td>
+                <td>${p.review_count}</td>
+                <td>${deltaHtml}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
     </div>
   `;
 
@@ -2749,6 +2871,51 @@ async function renderAdminHome() {
       }
     });
   }
+
+  // Org period trend line chart
+  if (hasTrend) {
+    const periodCtx = document.getElementById('orgPeriodChart');
+    if (periodCtx) {
+      const labels = periodTrend.map(p => p.period_name);
+      const scores = periodTrend.map(p => p.avg_overall);
+      const pointColors = scores.map((s, i) => {
+        if (i === 0 || s === null) return '#3b82f6';
+        return s > (scores[i-1] || 0) ? '#16a34a' : s < (scores[i-1] || 0) ? '#dc2626' : '#6b7280';
+      });
+      chartInstances.orgPeriod = new Chart(periodCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Org Average',
+            data: scores,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.08)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 7,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            spanGaps: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { min: 0, max: 5, ticks: { stepSize: 1 } } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                afterLabel: (ctx) => `Reviews: ${periodTrend[ctx.dataIndex]?.review_count || 0}`
+              }
+            }
+          }
+        }
+      });
+    }
+  }
 }
 
 // Store orgs globally for editing
@@ -2798,6 +2965,7 @@ async function renderAdminOrgs() {
                 <td>
                   <button class="btn btn-sm btn-outline" onclick="editOrganization(${index})">Edit</button>
                   <button class="btn btn-sm btn-outline" onclick="viewOrgMembers(${org.id}, '${org.name.replace(/'/g, "\\'")}')">Members</button>
+                  <button class="btn btn-sm btn-outline" onclick="viewOrgStats(${org.id}, '${org.name.replace(/'/g, "\\'")}')">Stats</button>
                   <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="deleteOrganization(${org.id}, '${org.name.replace(/'/g, "\\'")}', ${org.total_members || 0})">Delete</button>
                 </td>
               </tr>
@@ -2806,6 +2974,95 @@ async function renderAdminOrgs() {
       </table>
     </div>
   `;
+}
+
+async function viewOrgStats(orgId, orgName) {
+  openModal(`
+    <div class="modal-header"><h3>${orgName} — Period Trend</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="loading" style="padding:32px"><div class="spinner"></div></div>
+    </div>
+  `);
+
+  try {
+    const savedOrg = currentOrg;
+    currentOrg = null;
+    const periods = await fetch(`/api/admin/org-period-trend?org_id=${orgId}`, {
+      credentials: 'include',
+      headers: { 'Authorization': 'Bearer ' + API.token }
+    }).then(r => r.json());
+    currentOrg = savedOrg;
+
+    if (!Array.isArray(periods) || periods.length === 0) {
+      document.querySelector('#modalContent .modal-body').innerHTML =
+        '<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">No feedback periods found for this organization.</p></div>';
+      return;
+    }
+
+    const withData = periods.filter(p => p.review_count > 0);
+    let trendHtml = '';
+    if (withData.length >= 2) {
+      const diff = withData[withData.length-1].avg_overall - withData[0].avg_overall;
+      const dir = diff > 0.1 ? { icon: '↑', text: 'Improving', color: '#16a34a', bg: '#dcfce7' }
+        : diff < -0.1 ? { icon: '↓', text: 'Declining', color: '#dc2626', bg: '#fee2e2' }
+        : { icon: '→', text: 'Stable', color: '#6b7280', bg: '#f3f4f6' };
+      trendHtml = `<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:${dir.bg};border-radius:16px;font-size:0.82rem;font-weight:600;color:${dir.color}">${dir.icon} ${dir.text}</span>`;
+    }
+
+    const rows = periods.map((p, i) => {
+      const prev = periods[i - 1];
+      const delta = (prev && p.avg_overall !== null && prev.avg_overall !== null) ? (p.avg_overall - prev.avg_overall) : null;
+      const dHtml = delta === null ? '—'
+        : delta > 0 ? `<span style="color:#16a34a;font-weight:600">+${delta.toFixed(2)} ↑</span>`
+        : delta < 0 ? `<span style="color:#dc2626;font-weight:600">${delta.toFixed(2)} ↓</span>`
+        : '<span style="color:var(--gray-500)">0.00 →</span>';
+      return `<tr>
+        <td style="color:var(--gray-500);font-size:0.82rem">${p.term_name}</td>
+        <td>${p.period_name}</td>
+        <td style="font-weight:600;color:${p.avg_overall ? scoreColor(p.avg_overall) : 'var(--gray-400)'}">${p.avg_overall !== null ? p.avg_overall.toFixed(2) : '—'}</td>
+        <td>${p.review_count}</td>
+        <td>${dHtml}</td>
+      </tr>`;
+    }).join('');
+
+    document.querySelector('#modalContent .modal-body').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:0.88rem;color:var(--gray-500)">${periods.length} feedback period${periods.length !== 1 ? 's' : ''}</span>
+        ${trendHtml}
+      </div>
+      <div class="chart-container" style="margin-bottom:16px"><canvas id="orgStatsModalChart"></canvas></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Term</th><th>Period</th><th>Avg Score</th><th>Reviews</th><th>Change</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+
+    const ctx = document.getElementById('orgStatsModalChart');
+    if (ctx) {
+      const scores = periods.map(p => p.avg_overall);
+      const pointColors = scores.map((s, i) => {
+        if (i === 0 || s === null) return '#3b82f6';
+        return s > (scores[i-1] || 0) ? '#16a34a' : s < (scores[i-1] || 0) ? '#dc2626' : '#6b7280';
+      });
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: periods.map(p => p.period_name),
+          datasets: [{ label: 'Org Average', data: scores, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.3, pointRadius: 6, pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2, spanGaps: true }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: { y: { min: 0, max: 5, ticks: { stepSize: 1 } } },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: (c) => `Reviews: ${periods[c.dataIndex]?.review_count || 0}` } } }
+        }
+      });
+    }
+  } catch (err) {
+    document.querySelector('#modalContent .modal-body').innerHTML =
+      `<p style="color:#ef4444">${err.message}</p>`;
+  }
 }
 
 function _buildUserRows(users) {

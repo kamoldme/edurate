@@ -91,6 +91,16 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/register-teacher', authLimiter);
 app.use('/api/auth/send-teacher-code', authLimiter);
 
+// Maintenance mode — set MAINTENANCE_MODE=true in env to activate
+if (process.env.MAINTENANCE_MODE === 'true') {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return res.status(503).json({ error: 'Server is under maintenance. Please try again shortly.' });
+    }
+    res.status(503).sendFile(path.join(__dirname, 'public', 'maintenance.html'));
+  });
+}
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', classroomRoutes);
