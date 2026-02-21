@@ -399,6 +399,10 @@ function trendArrow(trend) {
   return '<span class="trend-arrow trend-stable">&#9654;</span>';
 }
 
+function escAttr(str) {
+  return String(str || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
 function toast(message, type = 'success') {
   const container = document.getElementById('toastContainer');
   const el = document.createElement('div');
@@ -3358,37 +3362,121 @@ async function renderAdminTerms() {
     <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
       <button class="btn btn-primary" onclick="showCreateTerm()">+ Create Term</button>
     </div>
+    ${terms.length === 0 ? '<p style="color:var(--gray-500);text-align:center;padding:40px">No terms yet. Create one to get started.</p>' : ''}
     ${terms.map(term => `
-      <div class="card" style="margin-bottom:20px;max-width:620px">
+      <div class="card" style="margin-bottom:20px;max-width:700px">
         <div class="card-header">
           <div>
             ${currentUser.role === 'super_admin' && term.org_name ? `<div style="font-size:0.72rem;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">${term.org_name}</div>` : ''}
             <h3>${term.name}</h3>
-            <span style="font-size:0.8rem;color:var(--gray-500)">${term.start_date} to ${term.end_date}</span>
+            <span style="font-size:0.8rem;color:var(--gray-500)">${term.start_date} → ${term.end_date}</span>
           </div>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span class="badge ${term.active_status ? 'badge-active' : 'badge-inactive'}">${term.active_status ? 'Active' : 'Inactive'}</span>
             <span class="badge ${term.feedback_visible ? 'badge-approved' : 'badge-flagged'}">${term.feedback_visible ? 'Feedback Visible' : 'Feedback Hidden'}</span>
-            <button class="btn btn-sm btn-outline" onclick="editTerm(${term.id}, '${term.name}', '${term.start_date}', '${term.end_date}', ${term.active_status}, ${term.feedback_visible})">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteTerm(${term.id}, '${term.name}')">Delete</button>
+            <button class="btn btn-sm btn-outline" onclick="editTerm(${term.id}, '${escAttr(term.name)}', '${term.start_date}', '${term.end_date}', ${term.active_status}, ${term.feedback_visible})">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTerm(${term.id}, '${escAttr(term.name)}')">Delete</button>
           </div>
         </div>
         <div class="card-body">
-          ${term.periods.length > 0 ? `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border:2px solid ${term.periods[0].active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px">
-              <div style="display:flex;align-items:center;gap:10px">
-                <span style="font-weight:600">Feedback Period</span>
-                <span class="badge ${term.periods[0].active_status ? 'badge-active' : 'badge-inactive'}">${term.periods[0].active_status ? 'Open' : 'Closed'}</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:0.85rem;font-weight:600;color:var(--gray-600)">Feedback Periods (${term.periods.length})</span>
+            <button class="btn btn-sm btn-outline" onclick="showAddPeriodModal(${term.id}, '${escAttr(term.name)}', '${term.start_date}', '${term.end_date}')">+ Add Period</button>
+          </div>
+          ${term.periods.length === 0
+            ? `<p style="font-size:0.85rem;color:var(--gray-400);padding:4px 0">No feedback periods. Add one to allow students to submit reviews.</p>`
+            : term.periods.map(p => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1.5px solid ${p.active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px;margin-bottom:8px;gap:8px">
+                <div style="min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span style="font-weight:600;font-size:0.9rem">${p.name}</span>
+                    <span class="badge ${p.active_status ? 'badge-active' : 'badge-inactive'}">${p.active_status ? 'Open' : 'Closed'}</span>
+                  </div>
+                  <div style="font-size:0.78rem;color:var(--gray-500);margin-top:3px">${p.start_date || '—'} → ${p.end_date || '—'}</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+                  ${p.active_status
+                    ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${p.id}, 0)">Close</button>`
+                    : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${p.id}, 1)">Open</button>`}
+                  <button class="btn btn-sm btn-outline" onclick="editPeriod(${p.id}, '${escAttr(p.name)}', '${p.start_date || ''}', '${p.end_date || ''}')">Edit</button>
+                  <button class="btn btn-sm btn-danger" onclick="deletePeriod(${p.id}, '${escAttr(p.name)}')">✕</button>
+                </div>
               </div>
-              ${term.periods[0].active_status
-                ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${term.periods[0].id}, 0)">Close Feedback</button>`
-                : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${term.periods[0].id}, 1)">Open Feedback</button>`}
-            </div>
-          ` : ''}
+            `).join('')}
         </div>
       </div>
     `).join('')}
   `;
+}
+
+function showAddPeriodModal(termId, termName, termStart, termEnd) {
+  openModal(`
+    <div class="modal-header"><h3>Add Feedback Period</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--gray-500);margin-bottom:16px">Term: <strong>${termName}</strong> (${termStart} → ${termEnd})</p>
+      <div class="form-group"><label>Period Name <span style="color:var(--gray-400);font-weight:400">(optional)</span></label><input type="text" class="form-control" id="newPeriodName" placeholder="e.g. Mid-term, End-of-term"></div>
+      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="newPeriodStart" min="${termStart}" max="${termEnd}"></div>
+      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="newPeriodEnd" min="${termStart}" max="${termEnd}"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createFeedbackPeriod(${termId})">Add Period</button>
+    </div>
+  `);
+}
+
+async function createFeedbackPeriod(termId) {
+  const name = document.getElementById('newPeriodName').value;
+  const start_date = document.getElementById('newPeriodStart').value;
+  const end_date = document.getElementById('newPeriodEnd').value;
+  if (!start_date || !end_date) return toast('Start date and end date are required', 'error');
+  try {
+    await API.post('/admin/feedback-periods', { term_id: termId, name, start_date, end_date });
+    toast('Feedback period added');
+    closeModal();
+    renderAdminTerms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function editPeriod(periodId, name, startDate, endDate) {
+  openModal(`
+    <div class="modal-header"><h3>Edit Feedback Period</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Period Name</label><input type="text" class="form-control" id="editPeriodName" value="${name}"></div>
+      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="editPeriodStart" value="${startDate}"></div>
+      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="editPeriodEnd" value="${endDate}"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="updatePeriod(${periodId})">Save</button>
+    </div>
+  `);
+}
+
+async function updatePeriod(periodId) {
+  const name = document.getElementById('editPeriodName').value;
+  const start_date = document.getElementById('editPeriodStart').value;
+  const end_date = document.getElementById('editPeriodEnd').value;
+  if (!name || !start_date || !end_date) return toast('All fields are required', 'error');
+  try {
+    await API.put(`/admin/feedback-periods/${periodId}`, { name, start_date, end_date });
+    toast('Period updated');
+    closeModal();
+    renderAdminTerms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deletePeriod(periodId, periodName) {
+  const confirmed = await confirmDialog(
+    `Delete feedback period "${periodName}"?<br><br>This cannot be done if any reviews have been submitted for this period.`,
+    'Delete', 'Cancel'
+  );
+  if (!confirmed) return;
+  try {
+    await API.delete(`/admin/feedback-periods/${periodId}`);
+    toast('Period deleted');
+    renderAdminTerms();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 function showCreateTerm() {

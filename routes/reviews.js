@@ -23,13 +23,15 @@ router.get('/tags', authenticate, (req, res) => {
 // GET /api/reviews/eligible-teachers - teachers student can review
 router.get('/eligible-teachers', authenticate, authorize('student'), (req, res) => {
   try {
-    // Get active feedback period
+    // Get active feedback period scoped to student's org
     const activePeriod = db.prepare(`
       SELECT fp.* FROM feedback_periods fp
       JOIN terms t ON fp.term_id = t.id
       WHERE fp.active_status = 1 AND t.active_status = 1
+        AND t.org_id = ?
+      ORDER BY fp.id ASC
       LIMIT 1
-    `).get();
+    `).get(req.user.org_id);
 
     if (!activePeriod) {
       return res.json({ period: null, teachers: [] });
@@ -108,13 +110,15 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
       return res.status(400).json({ error: 'Invalid classroom-teacher combination' });
     }
 
-    // Get active feedback period
+    // Get active feedback period scoped to student's org
     const activePeriod = db.prepare(`
       SELECT fp.* FROM feedback_periods fp
       JOIN terms t ON fp.term_id = t.id
       WHERE fp.active_status = 1 AND t.active_status = 1
+        AND t.org_id = ?
+      ORDER BY fp.id ASC
       LIMIT 1
-    `).get();
+    `).get(req.user.org_id);
     if (!activePeriod) {
       return res.status(400).json({ error: 'No active feedback period' });
     }

@@ -566,10 +566,67 @@ router.get('/feedback-periods', authenticate, authorize('super_admin', 'org_admi
   }
 });
 
+// POST /api/admin/feedback-periods
+router.post('/feedback-periods', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+  try {
+    const { term_id, name, start_date, end_date } = req.body;
+    if (!term_id || !start_date || !end_date) {
+      return res.status(400).json({ error: 'term_id, start_date, and end_date are required' });
+    }
+
+    const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(term_id);
+    if (!term) return res.status(404).json({ error: 'Term not found' });
+
+    if (req.user.role === 'org_admin' && term.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Term does not belong to your organization' });
+    }
+
+    if (start_date >= end_date) {
+      return res.status(400).json({ error: 'Start date must be before end date' });
+    }
+
+    // Validate period dates are within term dates
+    if (term.start_date && start_date < term.start_date) {
+      return res.status(400).json({ error: `Period start date cannot be before term start date (${term.start_date})` });
+    }
+    if (term.end_date && end_date > term.end_date) {
+      return res.status(400).json({ error: `Period end date cannot be after term end date (${term.end_date})` });
+    }
+
+    // Count existing periods to auto-name
+    const existingCount = db.prepare('SELECT COUNT(*) as c FROM feedback_periods WHERE term_id = ?').get(term_id).c;
+    const periodName = (name && name.trim()) || `Period ${existingCount + 1}`;
+
+    const result = db.prepare(
+      'INSERT INTO feedback_periods (term_id, name, start_date, end_date, active_status) VALUES (?, ?, ?, ?, 0)'
+    ).run(term_id, periodName, start_date, end_date);
+
+    const period = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(result.lastInsertRowid);
+
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'period_create',
+      actionDescription: `Created feedback period: ${periodName} for term "${term.name}"`,
+      targetType: 'feedback_period',
+      targetId: period.id,
+      metadata: { term_id, name, start_date, end_date },
+      ipAddress: req.ip,
+      orgId: req.orgId
+    });
+
+    res.status(201).json(period);
+  } catch (err) {
+    console.error('Create period error:', err);
+    res.status(500).json({ error: 'Failed to create feedback period' });
+  }
+});
+
 // PUT /api/admin/feedback-periods/:id
 router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const { active_status, start_date, end_date } = req.body;
+    const { active_status, name, start_date, end_date } = req.body;
     const period = db.prepare(`
       SELECT fp.*, t.org_id FROM feedback_periods fp JOIN terms t ON fp.term_id = t.id WHERE fp.id = ?
     `).get(req.params.id);
@@ -594,11 +651,12 @@ router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_
 
     db.prepare(`
       UPDATE feedback_periods SET
+        name = COALESCE(?, name),
         active_status = COALESCE(?, active_status),
         start_date = COALESCE(?, start_date),
         end_date = COALESCE(?, end_date)
       WHERE id = ?
-    `).run(active_status, start_date, end_date, req.params.id);
+    `).run(name || null, active_status, start_date, end_date, req.params.id);
 
     const updated = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(req.params.id);
 
@@ -610,7 +668,7 @@ router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_
       actionDescription: `${active_status === 1 ? 'Opened' : 'Updated'} feedback period: ${period.name}`,
       targetType: 'feedback_period',
       targetId: period.id,
-      metadata: { active_status, start_date, end_date },
+      metadata: { active_status, name, start_date, end_date },
       ipAddress: req.ip,
       orgId: req.orgId
     });
@@ -619,6 +677,46 @@ router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_
   } catch (err) {
     console.error('Update period error:', err);
     res.status(500).json({ error: 'Failed to update feedback period' });
+  }
+});
+
+// DELETE /api/admin/feedback-periods/:id
+router.delete('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+  try {
+    const period = db.prepare(`
+      SELECT fp.*, t.org_id, t.name as term_name FROM feedback_periods fp
+      JOIN terms t ON fp.term_id = t.id WHERE fp.id = ?
+    `).get(req.params.id);
+    if (!period) return res.status(404).json({ error: 'Feedback period not found' });
+
+    if (req.user.role === 'org_admin' && period.org_id !== req.orgId) {
+      return res.status(403).json({ error: 'Period does not belong to your organization' });
+    }
+
+    const reviewCount = db.prepare('SELECT COUNT(*) as count FROM reviews WHERE feedback_period_id = ?').get(req.params.id).count;
+    if (reviewCount > 0) {
+      return res.status(400).json({ error: `Cannot delete: ${reviewCount} review(s) exist for this period` });
+    }
+
+    db.prepare('DELETE FROM feedback_periods WHERE id = ?').run(req.params.id);
+
+    logAuditEvent({
+      userId: req.user.id,
+      userRole: req.user.role,
+      userName: req.user.full_name,
+      actionType: 'period_delete',
+      actionDescription: `Deleted feedback period: ${period.name} from term "${period.term_name}"`,
+      targetType: 'feedback_period',
+      targetId: period.id,
+      metadata: {},
+      ipAddress: req.ip,
+      orgId: req.orgId
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete period error:', err);
+    res.status(500).json({ error: 'Failed to delete feedback period' });
   }
 });
 
