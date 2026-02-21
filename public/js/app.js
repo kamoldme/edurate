@@ -2734,13 +2734,14 @@ async function createAdminForm() {
 
 // ============ ADMIN VIEWS ============
 async function renderAdminHome() {
+  const isOrgAdmin = currentUser.role === 'org_admin';
   const [stats, periodTrend] = await Promise.all([
     API.get('/admin/stats'),
-    API.get('/admin/org-period-trend').catch(() => [])
+    isOrgAdmin ? API.get('/admin/org-period-trend').catch(() => []) : Promise.resolve([])
   ]);
   const el = document.getElementById('contentArea');
 
-  const hasTrend = periodTrend && periodTrend.length > 0;
+  const hasTrend = isOrgAdmin && periodTrend && periodTrend.length > 0;
   const withData = hasTrend ? periodTrend.filter(p => p.review_count > 0) : [];
 
   // Trend direction
@@ -2792,6 +2793,7 @@ async function renderAdminHome() {
         </div>
       </div>
     </div>
+    ${isOrgAdmin ? `
     <div class="card">
       <div class="card-header" style="display:flex;align-items:center;gap:12px">
         <h3 style="margin:0">Organization Average — Feedback Period Trend</h3>
@@ -2825,7 +2827,7 @@ async function renderAdminHome() {
           </tbody>
         </table>
       </div>` : ''}
-    </div>
+    </div>` : ''}
   `;
 
   // Users breakdown doughnut chart
@@ -2876,8 +2878,8 @@ async function renderAdminHome() {
     });
   }
 
-  // Org period trend line chart
-  if (hasTrend) {
+  // Org period trend line chart (org_admin only)
+  if (isOrgAdmin && hasTrend) {
     const periodCtx = document.getElementById('orgPeriodChart');
     if (periodCtx) {
       const labels = periodTrend.map(p => p.period_name);
