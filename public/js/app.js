@@ -1453,7 +1453,7 @@ async function renderTeacherClassrooms() {
           <div style="display:flex;justify-content:space-between;align-items:start">
             <div>
               <div class="class-subject">${c.subject}</div>
-              <div class="class-meta">${c.grade_level}${c.term_name ? ' &middot; ' + c.term_name : ''} &middot; ${c.student_count} ${t('common.students').toLowerCase()}</div>
+              <div class="class-meta">${c.grade_level} &middot; ${c.student_count} ${t('common.students').toLowerCase()}</div>
             </div>
           </div>
           <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
@@ -2451,14 +2451,13 @@ async function renderHeadClassrooms() {
     <div class="card">
       <div class="table-container">
         <table>
-          <thead><tr><th>Subject</th><th>Teacher</th><th>Grade</th><th>Term</th><th>Students</th></tr></thead>
+          <thead><tr><th>Subject</th><th>Teacher</th><th>Grade</th><th>Students</th></tr></thead>
           <tbody>
             ${data.classrooms.map(c => `
               <tr>
                 <td><strong>${c.subject}</strong></td>
                 <td>${c.teacher_name}</td>
                 <td>${c.grade_level}</td>
-                <td>${c.term_name || '—'}</td>
                 <td>${c.student_count}</td>
               </tr>
             `).join('')}
@@ -3614,7 +3613,7 @@ async function renderAdminClassrooms() {
     <div class="card">
       <div class="table-container">
         <table>
-          <thead><tr><th>${t('common.subject')}</th>${orgColumnHeader}<th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.term')}</th><th>${t('common.students')}</th><th>${t('admin.join_code')}</th><th>${t('common.actions')}</th></tr></thead>
+          <thead><tr><th>${t('common.subject')}</th>${orgColumnHeader}<th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.students')}</th><th>${t('admin.join_code')}</th><th>${t('common.actions')}</th></tr></thead>
           <tbody>
             ${classrooms.map(c => {
               const orgColumn = isSuperAdmin ? `<td>${c.org_name || '-'}</td>` : '';
@@ -3624,7 +3623,6 @@ async function renderAdminClassrooms() {
                 ${orgColumn}
                 <td>${c.teacher_name || '-'}</td>
                 <td>${c.grade_level}</td>
-                <td>${c.term_name || '—'}</td>
                 <td><a href="#" onclick="event.preventDefault();viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')" style="color:var(--primary);font-weight:600">${c.student_count || 0}</a></td>
                 <td><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px">${c.join_code}</code></td>
                 <td>
@@ -3643,12 +3641,7 @@ async function renderAdminClassrooms() {
 }
 
 function showCreateClassroom() {
-  // Get teachers and terms for dropdown
-  Promise.all([
-    API.get('/admin/teachers'),
-    API.get('/admin/terms')
-  ]).then(([teachers, terms]) => {
-    const activeTerms = terms.filter(t => t.active_status === 1);
+  API.get('/admin/teachers').then(teachers => {
     openModal(`
       <div class="modal-header"><h3>Create Classroom</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
@@ -3667,13 +3660,6 @@ function showCreateClassroom() {
             ${teachers.map(t => `<option value="${t.id}">${t.full_name} - ${t.subject || 'No subject'}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
-          <label>Term *</label>
-          <select class="form-control" id="newClassroomTerm">
-            <option value="">Select term...</option>
-            ${terms.map(t => `<option value="${t.id}" ${t.active_status ? 'selected' : ''}>${t.name} ${t.active_status ? '(Active)' : ''}</option>`).join('')}
-          </select>
-        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -3687,10 +3673,9 @@ async function createClassroom() {
   const body = {
     subject: document.getElementById('newClassroomSubject').value,
     grade_level: document.getElementById('newClassroomGrade').value,
-    teacher_id: parseInt(document.getElementById('newClassroomTeacher').value),
-    term_id: parseInt(document.getElementById('newClassroomTerm').value)
+    teacher_id: parseInt(document.getElementById('newClassroomTeacher').value)
   };
-  if (!body.subject || !body.grade_level || !body.teacher_id || !body.term_id) {
+  if (!body.subject || !body.grade_level || !body.teacher_id) {
     return toast('All fields are required', 'error');
   }
   try {
@@ -3702,10 +3687,7 @@ async function createClassroom() {
 }
 
 function editClassroom(classroom) {
-  Promise.all([
-    API.get('/admin/teachers'),
-    API.get('/admin/terms')
-  ]).then(([teachers, terms]) => {
+  API.get('/admin/teachers').then(teachers => {
     openModal(`
       <div class="modal-header"><h3>Edit Classroom: ${classroom.subject}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
@@ -3723,12 +3705,6 @@ function editClassroom(classroom) {
             ${teachers.map(t => `<option value="${t.id}" ${t.id === classroom.teacher_id ? 'selected' : ''}>${t.full_name} - ${t.subject || 'No subject'}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
-          <label>Term</label>
-          <select class="form-control" id="editClassroomTerm">
-            ${terms.map(t => `<option value="${t.id}" ${t.id === classroom.term_id ? 'selected' : ''}>${t.name}</option>`).join('')}
-          </select>
-        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -3742,8 +3718,7 @@ async function saveClassroomEdit(classroomId) {
   const body = {
     subject: document.getElementById('editClassroomSubject').value,
     grade_level: document.getElementById('editClassroomGrade').value,
-    teacher_id: parseInt(document.getElementById('editClassroomTeacher').value),
-    term_id: parseInt(document.getElementById('editClassroomTerm').value)
+    teacher_id: parseInt(document.getElementById('editClassroomTeacher').value)
   };
   try {
     await API.put(`/admin/classrooms/${classroomId}`, body);
