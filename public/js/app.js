@@ -324,7 +324,10 @@ function navigateTo(view) {
     'head-analytics': t('title.analytics'),
     'admin-home': t('title.admin_dashboard'),
     'admin-orgs': t('title.organizations'),
-    'admin-applications': 'Organization Applications',
+    'admin-applications': t('title.organizations'),
+    'student-forms': t('nav.forms'),
+    'teacher-forms': t('nav.forms'),
+    'admin-forms': t('nav.forms'),
     'admin-users': t('title.user_management'),
     'admin-terms': t('title.terms_periods'),
     'admin-classrooms': t('title.classroom_management'),
@@ -334,9 +337,9 @@ function navigateTo(view) {
     'admin-flagged': t('title.flagged_reviews'),
     'admin-support': t('title.support_messages'),
     'admin-audit': t('title.audit_logs'),
-    'admin-announcements': 'Announcements',
-    'teacher-announcements': 'Announcements',
-    'head-announcements': 'Announcements',
+    'admin-announcements': t('title.announcements'),
+    'teacher-announcements': t('title.announcements'),
+    'head-announcements': t('title.announcements'),
     'account': t('title.account_details')
   };
   document.getElementById('pageTitle').textContent = titles[view] || t('common.dashboard');
@@ -3594,10 +3597,10 @@ async function renderAdminTerms() {
             <span style="font-size:0.8rem;color:var(--gray-500)">${term.start_date} → ${term.end_date}</span>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span class="badge ${term.active_status ? 'badge-active' : 'badge-inactive'}">${term.active_status ? 'Active' : 'Inactive'}</span>
-            <span class="badge ${term.feedback_visible ? 'badge-approved' : 'badge-flagged'}">${term.feedback_visible ? 'Feedback Visible' : 'Feedback Hidden'}</span>
-            <button class="btn btn-sm btn-outline" onclick="editTerm(${term.id}, '${escAttr(term.name)}', '${term.start_date}', '${term.end_date}', ${term.active_status}, ${term.feedback_visible})">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteTerm(${term.id}, '${escAttr(term.name)}')">Delete</button>
+            <span class="badge ${term.active_status ? 'badge-active' : 'badge-inactive'}">${term.active_status ? t('common.active') : t('common.inactive')}</span>
+            <span class="badge ${term.feedback_visible ? 'badge-approved' : 'badge-flagged'}">${term.feedback_visible ? t('admin.feedback_visible') : t('admin.feedback_hidden')}</span>
+            <button class="btn btn-sm btn-outline" onclick="editTerm(${term.id}, '${escAttr(term.name)}', '${term.start_date}', '${term.end_date}', ${term.active_status}, ${term.feedback_visible})">${t('common.edit')}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTerm(${term.id}, '${escAttr(term.name)}')">${t('common.delete')}</button>
           </div>
         </div>
         <div class="card-body">
@@ -3612,15 +3615,15 @@ async function renderAdminTerms() {
                 <div style="min-width:0">
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                     <span style="font-weight:600;font-size:0.9rem">${p.name}</span>
-                    <span class="badge ${p.active_status ? 'badge-active' : 'badge-inactive'}">${p.active_status ? 'Open' : 'Closed'}</span>
+                    <span class="badge ${p.active_status ? 'badge-active' : 'badge-inactive'}">${p.active_status ? t('status.open') : t('status.closed')}</span>
                   </div>
                   <div style="font-size:0.78rem;color:var(--gray-500);margin-top:3px">${p.start_date || '—'} → ${p.end_date || '—'}</div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
                   ${p.active_status
-                    ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${p.id}, 0)">Close</button>`
-                    : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${p.id}, 1)">Open</button>`}
-                  <button class="btn btn-sm btn-outline" onclick="editPeriod(${p.id}, '${escAttr(p.name)}', '${p.start_date || ''}', '${p.end_date || ''}')">Edit</button>
+                    ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${p.id}, 0)">${t('common.closed')}</button>`
+                    : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${p.id}, 1)">${t('status.open')}</button>`}
+                  <button class="btn btn-sm btn-outline" onclick="editPeriod(${p.id}, '${escAttr(p.name)}', '${p.start_date || ''}', '${p.end_date || ''}')">${t('common.edit')}</button>
                   <button class="btn btn-sm btn-danger" onclick="deletePeriod(${p.id}, '${escAttr(p.name)}')">✕</button>
                 </div>
               </div>
@@ -5062,11 +5065,11 @@ async function renderAccount() {
               <span class="badge badge-approved">Verified</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-              <span>Account Status</span>
-              <span class="badge ${u.suspended ? 'badge-rejected' : 'badge-approved'}">${u.suspended ? 'Suspended' : 'Active'}</span>
+              <span>${t('account.account_status_label')}</span>
+              <span class="badge ${u.suspended ? 'badge-rejected' : 'badge-approved'}">${u.suspended ? t('common.suspended') : t('common.active')}</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
-              <span>School ID</span>
+              <span>${t('account.school_id')}</span>
               <span style="font-weight:600">${u.school_id}</span>
             </div>
           </div>
