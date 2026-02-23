@@ -179,7 +179,7 @@ function buildNavigation() {
       { id: 'student-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'student-review', label: t('nav.write_review'), icon: 'review' },
       { id: 'student-my-reviews', label: t('nav.my_reviews'), icon: 'chart' },
-      { id: 'student-forms', label: 'Forms', icon: 'review' }
+      { id: 'student-forms', label: t('nav.forms'), icon: 'review' }
     ];
   } else if (role === 'teacher') {
     items = [
@@ -187,8 +187,8 @@ function buildNavigation() {
       { id: 'teacher-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'teacher-feedback', label: t('nav.feedback'), icon: 'review' },
       { id: 'teacher-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'teacher-forms', label: 'Forms', icon: 'review' },
-      { id: 'teacher-announcements', label: 'Announcements', icon: 'megaphone' }
+      { id: 'teacher-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'teacher-announcements', label: t('nav.announcements'), icon: 'megaphone' }
     ];
   } else if (role === 'school_head') {
     items = [
@@ -196,7 +196,7 @@ function buildNavigation() {
       { id: 'head-teachers', label: t('nav.teachers'), icon: 'users' },
       { id: 'head-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
       { id: 'head-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'head-announcements', label: 'Announcements', icon: 'megaphone' }
+      { id: 'head-announcements', label: t('nav.announcements'), icon: 'megaphone' }
     ];
   } else if (role === 'super_admin') {
     items = [
@@ -208,8 +208,8 @@ function buildNavigation() {
       { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
-      { id: 'admin-forms', label: 'Forms', icon: 'review' },
-      { id: 'admin-announcements', label: 'Announcements', icon: 'megaphone' },
+      { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'admin-announcements', label: t('nav.announcements'), icon: 'megaphone' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -222,8 +222,8 @@ function buildNavigation() {
       { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
-      { id: 'admin-forms', label: 'Forms', icon: 'review' },
-      { id: 'admin-announcements', label: 'Announcements', icon: 'megaphone' },
+      { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'admin-announcements', label: t('nav.announcements'), icon: 'megaphone' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -486,7 +486,7 @@ function confirmWithText(message, requiredText, warningMessage = '') {
   return new Promise((resolve) => {
     openModal(`
       <div class="modal-header">
-        <h2 style="color:#ef4444">⚠️ Confirm Dangerous Action</h2>
+        <h2 style="color:#ef4444">${t('dialog.dangerous_action')}</h2>
       </div>
       <div class="modal-body">
         <p style="font-size:1.1rem;margin-bottom:16px">${message}</p>
@@ -498,8 +498,8 @@ function confirmWithText(message, requiredText, warningMessage = '') {
           <input type="text" id="confirmTextInput" class="form-control" placeholder="${requiredText}" autocomplete="off">
         </div>
         <div style="display:flex;gap:12px;justify-content:flex-end">
-          <button class="btn btn-outline" onclick="window.confirmTextResolve(false);closeModal()">Cancel</button>
-          <button class="btn btn-danger" id="confirmTextBtn" disabled onclick="if(document.getElementById('confirmTextInput').value === '${requiredText}'){window.confirmTextResolve(true);closeModal();}">Confirm</button>
+          <button class="btn btn-outline" onclick="window.confirmTextResolve(false);closeModal()">${t('common.cancel')}</button>
+          <button class="btn btn-danger" id="confirmTextBtn" disabled onclick="if(document.getElementById('confirmTextInput').value === '${requiredText}'){window.confirmTextResolve(true);closeModal();}">${t('common.confirm')}</button>
         </div>
       </div>
     `);
@@ -650,9 +650,9 @@ function _showWarning() {
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:12px;padding:32px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="font-size:2.2rem;margin-bottom:12px">⏱</div>
-      <h3 style="margin:0 0 8px;font-size:1.15rem;color:#0f172a">Still there?</h3>
-      <p style="margin:0 0 24px;color:#64748b;font-size:0.92rem">You'll be signed out in <strong id="inactivityCountdown">60</strong> seconds due to inactivity.</p>
-      <button onclick="resetInactivityTimer()" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:0.95rem;font-weight:600;cursor:pointer;width:100%">Stay Signed In</button>
+      <h3 style="margin:0 0 8px;font-size:1.15rem;color:#0f172a">${t('inactivity.title')}</h3>
+      <p style="margin:0 0 24px;color:#64748b;font-size:0.92rem">${t('inactivity.message', {seconds: '<strong id="inactivityCountdown">60</strong>'})}</p>
+      <button onclick="resetInactivityTimer()" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:0.95rem;font-weight:600;cursor:pointer;width:100%">${t('inactivity.stay')}</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -723,7 +723,7 @@ async function renderStudentHome() {
                   <div class="class-meta" style="margin:0${currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'org_admin' || currentUser.role === 'school_head') ? ';cursor:pointer' : ''}" ${currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'org_admin' || currentUser.role === 'school_head') ? `onclick="viewTeacherProfile(${c.teacher_id})"` : ''}>${c.teacher_name}</div>
                   <div class="class-meta" style="margin:0">${c.grade_level}</div>
                 </div>
-                <span id="reviewed-${c.id}" style="display:none;font-size:0.78rem;color:var(--success);font-weight:600;white-space:nowrap">✓ Reviewed</span>
+                <span id="reviewed-${c.id}" style="display:none;font-size:0.78rem;color:var(--success);font-weight:600;white-space:nowrap">${t('review.reviewed_badge')}</span>
               </div>
             `).join('')}
         </div>
@@ -741,7 +741,7 @@ async function renderStudentHome() {
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   ${starsHTML(r.overall_rating)}
-                  ${r.approved_status === 1 ? '<span style="font-size:0.75rem;color:var(--success);font-weight:600;background:#dcfce7;padding:2px 7px;border-radius:10px">✓ Approved</span>' : badgeHTML(r.flagged_status)}
+                  ${r.approved_status === 1 ? `<span style="font-size:0.75rem;color:var(--success);font-weight:600;background:#dcfce7;padding:2px 7px;border-radius:10px">${t('review.approved_badge')}</span>` : badgeHTML(r.flagged_status)}
                 </div>
               </div>
             `).join('')}
@@ -855,7 +855,7 @@ async function renderStudentReview() {
             <strong>${t('student.active_period_label')}</strong> ${data.period.name}
             <span style="color:var(--gray-500);margin-left:12px">${t('student.anonymous_hint')}</span>
           </div>
-          <span class="badge badge-active">Open</span>
+          <span class="badge badge-active">${t('status.open')}</span>
         </div>
       </div>
 
@@ -887,7 +887,7 @@ async function renderStudentReview() {
               <div class="grid grid-2" style="margin-bottom:20px">
                 ${CRITERIA_INFO.map(cat => `
                   <div class="form-group" style="margin-bottom:12px">
-                    <label style="display:flex;align-items:center;gap:6px">${cat.name} Rating ${criteriaInfoIcon(cat.name)}</label>
+                    <label style="display:flex;align-items:center;gap:6px">${cat.name} ${criteriaInfoIcon(cat.name)}</label>
                     <div class="star-rating-input" data-name="${cat.name.toLowerCase()}_rating" data-form="review-${teacher.teacher_id}">
                       ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn" data-value="${i}" onclick="setRating(this)">\u2606</button>`).join('')}
                     </div>
@@ -912,7 +912,7 @@ async function renderStudentReview() {
 
       ${reviewed.length > 0 ? `
         <div class="card" style="margin-top:24px">
-          <div class="card-header"><h3>Already Reviewed (${reviewed.length})</h3></div>
+          <div class="card-header"><h3>${t('review.already_reviewed_section', {count: reviewed.length})}</h3></div>
           <div class="card-body">
             ${reviewed.map(teacher => `
               <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);gap:12px">
@@ -1064,7 +1064,7 @@ async function renderStudentMyReviews() {
 
   el.innerHTML = `
     <div class="card">
-      <div class="card-header"><h3>My Reviews (${reviews.length})</h3></div>
+      <div class="card-header"><h3>${t('student.my_reviews_count', {count: reviews.length})}</h3></div>
       <div class="card-body">
         ${reviews.length === 0
           ? `<div class="empty-state"><h3>${t('student.no_reviews')}</h3><p>${t('student.submit_during_active')}</p></div>`
@@ -1080,9 +1080,9 @@ async function renderStudentMyReviews() {
                   </div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-                  ${r.approved_status === 1 ? '<span class="badge" style="background:#16a34a;color:#fff">✓ Approved</span>' : badgeHTML(r.flagged_status)}
+                  ${r.approved_status === 1 ? `<span class="badge" style="background:#16a34a;color:#fff">${t('review.approved_badge')}</span>` : badgeHTML(r.flagged_status)}
                   <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
-                  ${r.approved_status !== 1 ? `<button class="btn btn-sm btn-outline" onclick="editMyReview(${r.id})">Edit</button>` : '<span style="font-size:0.75rem;color:var(--gray-400)">Cannot edit (approved)</span>'}
+                  ${r.approved_status !== 1 ? `<button class="btn btn-sm btn-outline" onclick="editMyReview(${r.id})">${t('common.edit')}</button>` : `<span style="font-size:0.75rem;color:var(--gray-400)">${t('review.cannot_edit')}</span>`}
                 </div>
               </div>
               <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
@@ -1104,38 +1104,38 @@ async function renderStudentMyReviews() {
 async function editMyReview(reviewId) {
   const reviews = await API.get('/reviews/my-reviews').catch(() => []);
   const review = reviews.find(r => r.id === reviewId);
-  if (!review) return toast('Review not found', 'error');
-  if (review.approved_status === 1) return toast('Cannot edit an approved review', 'error');
+  if (!review) return toast(t('review.not_found'), 'error');
+  if (review.approved_status === 1) return toast(t('review.cannot_edit_approved'), 'error');
 
   const tags = await API.get('/reviews/tags').catch(() => []);
   const currentTags = JSON.parse(review.tags || '[]');
 
   openModal(`
-    <div class="modal-header"><h3>Edit Review — ${review.teacher_name}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('review.edit_title', {teacher: review.teacher_name})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:16px">${review.classroom_subject} &middot; ${review.period_name}</p>
       ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => `
         <div class="form-group">
-          <label>${cat.charAt(0).toUpperCase() + cat.slice(1)}</label>
+          <label>${t('criteria.' + cat)}</label>
           <select class="form-control" id="edit_${cat}">
-            ${[1,2,3,4,5].map(v => `<option value="${v}" ${review[cat+'_rating'] == v ? 'selected' : ''}>${v} - ${['Very Poor','Poor','Average','Good','Excellent'][v-1]}</option>`).join('')}
+            ${[1,2,3,4,5].map(v => `<option value="${v}" ${review[cat+'_rating'] == v ? 'selected' : ''}>${v} - ${[t('rating.very_poor'),t('rating.poor'),t('rating.average'),t('rating.good'),t('rating.excellent')][v-1]}</option>`).join('')}
           </select>
         </div>
       `).join('')}
       <div class="form-group">
-        <label>Written Feedback <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+        <label>${t('review.written_feedback_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label>
         <textarea class="form-control" id="edit_feedback" rows="3" placeholder="Share your thoughts...">${review.feedback_text || ''}</textarea>
       </div>
       <div class="form-group">
-        <label>Tags</label>
+        <label>${t('review.tags_label')}</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${tags.map(tag => `<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="${escAttr(tag)}" ${currentTags.includes(tag) ? 'checked' : ''}> ${tag}</label>`).join('')}
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitReviewEdit(${reviewId})">Save Changes</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="submitReviewEdit(${reviewId})">${t('common.save_changes')}</button>
     </div>
   `);
 }
@@ -1153,7 +1153,7 @@ async function submitReviewEdit(reviewId) {
   };
   try {
     await API.put(`/reviews/${reviewId}`, body);
-    toast('Review updated. Awaiting re-approval.');
+    toast(t('review.updated'));
     closeModal();
     renderStudentMyReviews();
   } catch (err) { toast(err.message, 'error'); }
@@ -1179,41 +1179,41 @@ async function viewTeacherProfile(teacherId) {
       <div class="modal-body">
         ${teacher.bio ? `
           <div style="margin-bottom:24px;padding:16px;background:var(--gray-50);border-radius:8px">
-            <h4 style="margin:0 0 8px">About</h4>
+            <h4 style="margin:0 0 8px">${t('profile.about')}</h4>
             <p style="margin:0;color:var(--gray-700)">${teacher.bio}</p>
           </div>
         ` : ''}
 
         ${teacher.experience_years ? `
           <div style="margin-bottom:20px">
-            <strong>Experience:</strong> ${teacher.experience_years} years
+            <strong>${t('profile.experience')}</strong> ${t('profile.experience_years', {years: teacher.experience_years})}
           </div>
         ` : ''}
 
         ${data.reviews.length > 0 ? `
           <div style="margin-bottom:24px">
-            <h3>Overall Performance</h3>
+            <h3>${t('profile.overall_performance')}</h3>
             <div class="grid grid-2" style="gap:16px;margin-top:12px">
               <div class="stat-card">
-                <div class="stat-label">Overall Rating</div>
+                <div class="stat-label">${t('profile.overall_rating')}</div>
                 <div class="stat-value" style="display:flex;align-items:center;gap:8px">
                   ${starsHTML(scores.avg_overall || 0, 'large')}
                   <span style="font-size:1.5rem;font-weight:700">${fmtScore(scores.avg_overall)}</span>
                 </div>
               </div>
               <div class="stat-card">
-                <div class="stat-label">Total Reviews</div>
+                <div class="stat-label">${t('profile.total_reviews')}</div>
                 <div class="stat-value">${data.reviews.length}</div>
               </div>
             </div>
 
             <div style="margin-top:20px">
-              <h4>Category Ratings</h4>
+              <h4>${t('profile.category_ratings')}</h4>
               ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => {
                 const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
                 return `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-                  <span style="font-weight:500;display:flex;align-items:center;gap:4px">${capName}${criteriaInfoIcon(capName)}</span>
+                  <span style="font-weight:500;display:flex;align-items:center;gap:4px">${t('criteria.' + cat)}${criteriaInfoIcon(capName)}</span>
                   <div style="display:flex;align-items:center;gap:8px">
                     ${starsHTML(scores[`avg_${cat}`] || 0)}
                     <span style="font-weight:600">${fmtScore(scores[`avg_${cat}`])}</span>
@@ -1224,7 +1224,7 @@ async function viewTeacherProfile(teacherId) {
           </div>
 
           <div>
-            <h3>Recent Feedback</h3>
+            <h3>${t('profile.recent_feedback')}</h3>
             <div style="max-height:300px;overflow-y:auto">
               ${data.reviews.slice(0, 10).map(r => `
                 <div style="padding:12px;margin-bottom:12px;background:var(--gray-50);border-radius:8px">
@@ -1232,7 +1232,7 @@ async function viewTeacherProfile(teacherId) {
                     ${starsHTML(r.overall_rating)}
                     <span style="font-size:0.85rem;color:var(--gray-500)">${r.term_name ? r.term_name + ' &middot; ' : ''}${r.period_name ? r.period_name + ' &middot; ' : ''}${new Date(r.created_at).toLocaleDateString()}</span>
                   </div>
-                  ${r.feedback_text ? `<p style="margin:0;color:var(--gray-700)">${r.feedback_text}</p>` : '<p style="margin:0;color:var(--gray-400);font-style:italic">No written feedback</p>'}
+                  ${r.feedback_text ? `<p style="margin:0;color:var(--gray-700)">${r.feedback_text}</p>` : `<p style="margin:0;color:var(--gray-400);font-style:italic">${t('profile.no_written_feedback')}</p>`}
                   ${r.tags && r.tags !== '[]' ? `
                     <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
                       ${JSON.parse(r.tags).map(tag => `<span class="badge badge-pending">${tag}</span>`).join('')}
@@ -1244,38 +1244,38 @@ async function viewTeacherProfile(teacherId) {
           </div>
         ` : `
           <div class="empty-state">
-            <h3>No Reviews Yet</h3>
-            <p>This teacher hasn't received any feedback yet.</p>
+            <h3>${t('profile.no_reviews_title')}</h3>
+            <p>${t('profile.no_reviews_desc')}</p>
           </div>
         `}
       </div>
     `);
   } catch (err) {
-    toast('Failed to load teacher profile: ' + err.message, 'error');
+    toast(t('profile.load_failed') + err.message, 'error');
   }
 }
 
 // ============ STUDENT FORMS ============
 async function renderStudentForms() {
   const el = document.getElementById('contentArea');
-  el.innerHTML = `<div class="empty-state"><p>Loading forms...</p></div>`;
+  el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
     const forms = await API.get('/forms/student/available');
 
     if (forms.length === 0) {
       el.innerHTML = `
-        <h2 style="margin-bottom:24px">Forms</h2>
+        <h2 style="margin-bottom:24px">${t('forms.title')}</h2>
         <div class="card"><div class="card-body">
           <div class="empty-state">
-            <h3>No active forms</h3>
-            <p>Your teachers haven't shared any questionnaires yet. Check back later.</p>
+            <h3>${t('forms.no_active')}</h3>
+            <p>${t('forms.no_active_msg')}</p>
           </div>
         </div></div>`;
       return;
     }
 
     el.innerHTML = `
-      <h2 style="margin-bottom:24px">Forms <span style="font-size:1rem;color:var(--gray-400);font-weight:400">(${forms.length})</span></h2>
+      <h2 style="margin-bottom:24px">${t('forms.title_count', {count: forms.length})}</h2>
       <div style="display:flex;flex-direction:column;gap:12px">
         ${forms.map(f => `
           <div class="card" style="border-left:4px solid ${f.already_submitted ? 'var(--gray-300)' : 'var(--primary)'}">
@@ -1288,10 +1288,10 @@ async function renderStudentForms() {
                 ${f.description ? `<p style="font-size:0.85rem;color:var(--gray-600);margin:0">${f.description}</p>` : ''}
               </div>
               <div style="text-align:center;flex-shrink:0">
-                <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:6px">${f.question_count} question${f.question_count !== 1 ? 's' : ''}</div>
+                <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:6px">${t('forms.question_count', {count: f.question_count, s: f.question_count !== 1 ? 's' : ''})}</div>
                 ${f.already_submitted
-                  ? `<span style="background:#dcfce7;color:#15803d;padding:4px 12px;border-radius:12px;font-size:0.82rem;font-weight:600">✓ Submitted</span>`
-                  : `<button class="btn btn-primary btn-sm" onclick="openStudentForm(${f.id})">Fill Out</button>`}
+                  ? `<span style="background:#dcfce7;color:#15803d;padding:4px 12px;border-radius:12px;font-size:0.82rem;font-weight:600">${t('forms.submitted')}</span>`
+                  : `<button class="btn btn-primary btn-sm" onclick="openStudentForm(${f.id})">${t('forms.fill_out')}</button>`}
               </div>
             </div>
           </div>
@@ -1304,12 +1304,12 @@ async function renderStudentForms() {
 
 async function openStudentForm(formId) {
   const el = document.getElementById('contentArea');
-  el.innerHTML = `<div class="empty-state"><p>Loading form...</p></div>`;
+  el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
     const form = await API.get(`/forms/${formId}`);
 
     const clearBtn = (qId, type) =>
-      `<button type="button" onclick="clearFormAnswer(${qId},'${type}')" style="font-size:0.75rem;color:var(--gray-400);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;line-height:1" title="Clear answer">Clear</button>`;
+      `<button type="button" onclick="clearFormAnswer(${qId},'${type}')" style="font-size:0.75rem;color:var(--gray-400);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;line-height:1" title="${t('forms.clear')}">${t('forms.clear')}</button>`;
 
     const renderQuestion = (q, idx) => {
       if (q.question_type === 'text') {
@@ -1319,7 +1319,7 @@ async function openStudentForm(formId) {
               <label style="font-weight:600">${idx + 1}. ${q.question_text} ${q.required ? '<span style="color:#ef4444">*</span>' : ''}</label>
               ${!q.required ? clearBtn(q.id, 'text') : ''}
             </div>
-            <textarea class="form-control" id="qa_${q.id}" rows="3" placeholder="Your answer..."></textarea>
+            <textarea class="form-control" id="qa_${q.id}" rows="3" placeholder="${t('forms.answer_placeholder')}"></textarea>
           </div>`;
       }
       if (q.question_type === 'yes_no') {
@@ -1331,10 +1331,10 @@ async function openStudentForm(formId) {
             </div>
             <div style="display:flex;gap:12px">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:2px solid var(--gray-200);border-radius:8px;font-weight:500;transition:all 0.15s">
-                <input type="radio" name="qa_${q.id}" value="Yes" style="width:16px;height:16px"> Yes
+                <input type="radio" name="qa_${q.id}" value="Yes" style="width:16px;height:16px"> ${t('common.yes')}
               </label>
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:2px solid var(--gray-200);border-radius:8px;font-weight:500;transition:all 0.15s">
-                <input type="radio" name="qa_${q.id}" value="No" style="width:16px;height:16px"> No
+                <input type="radio" name="qa_${q.id}" value="No" style="width:16px;height:16px"> ${t('common.no')}
               </label>
             </div>
           </div>`;
@@ -1358,7 +1358,7 @@ async function openStudentForm(formId) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <button class="btn btn-sm btn-outline" onclick="navigateTo('student-forms')">&larr; Back</button>
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('student-forms')">${t('common.back')}</button>
         <div>
           <h2 style="margin:0">${form.title}</h2>
           <span style="font-size:0.82rem;color:var(--gray-500)">${form.classroom_subject} &middot; ${form.grade_level}</span>
@@ -1371,8 +1371,8 @@ async function openStudentForm(formId) {
             ${form.questions.map((q, idx) => renderQuestion(q, idx)).join('')}
           </div>
           <div style="padding-top:16px;border-top:1px solid var(--gray-100);display:flex;gap:12px;justify-content:flex-end">
-            <button class="btn btn-outline" onclick="navigateTo('student-forms')">Cancel</button>
-            <button class="btn btn-primary" onclick="submitStudentForm(${formId})">Submit Anonymously</button>
+            <button class="btn btn-outline" onclick="navigateTo('student-forms')">${t('common.cancel')}</button>
+            <button class="btn btn-primary" onclick="submitStudentForm(${formId})">${t('forms.submit_anonymous')}</button>
           </div>
         </div>
       </div>`;
@@ -1411,13 +1411,13 @@ async function submitStudentForm(formId) {
       answers.push({ question_id: q.id, answer_text });
     }
 
-    if (missingRequired) return toast('Please answer all required questions', 'error');
+    if (missingRequired) return toast(t('forms.required_error'), 'error');
 
-    const confirmed = await confirmDialog('Submit your anonymous response? You cannot change it after submitting.', 'Submit', 'Go back');
+    const confirmed = await confirmDialog(t('forms.confirm_submit'), t('common.submit'), t('common.cancel'));
     if (!confirmed) return;
 
     await API.post(`/forms/${formId}/submit`, { answers });
-    toast('Response submitted — thank you!');
+    toast(t('forms.submitted_msg'));
     navigateTo('student-forms');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1431,8 +1431,8 @@ async function renderTeacherHome() {
   el.innerHTML = `
     ${data.pending_review_count > 0 ? `
       <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <span style="font-size:0.9rem;color:#854d0e">⏳ <strong>${data.pending_review_count}</strong> review${data.pending_review_count !== 1 ? 's' : ''} awaiting admin approval</span>
-        <span style="font-size:0.8rem;color:#a16207">${data.total_review_count} total submitted</span>
+        <span style="font-size:0.9rem;color:#854d0e">${t('teacher.pending_banner', {count: data.pending_review_count, s: data.pending_review_count !== 1 ? 's' : ''})}</span>
+        <span style="font-size:0.8rem;color:#a16207">${t('teacher.total_submitted', {total: data.total_review_count})}</span>
       </div>
     ` : ''}
     <div class="grid grid-4" style="margin-bottom:28px">
@@ -1465,7 +1465,7 @@ async function renderTeacherHome() {
             const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
             return `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-              <span style="font-weight:500;display:flex;align-items:center;gap:4px">${capName}${criteriaInfoIcon(capName)}</span>
+              <span style="font-weight:500;display:flex;align-items:center;gap:4px">${t('criteria.' + cat)}${criteriaInfoIcon(capName)}</span>
               <div style="display:flex;align-items:center;gap:8px">
                 ${starsHTML(s[`avg_${cat}`] || 0)}
                 <span style="font-weight:600;color:${s.review_count > 0 ? scoreColor(s[`avg_${cat}`] || 0) : 'var(--gray-400)'}">${s.review_count > 0 ? fmtScore(s[`avg_${cat}`]) : '0.00'}</span>
@@ -1527,7 +1527,7 @@ async function renderTeacherHome() {
       chartInstances.dist = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+          labels: [t('chart.1_star'), t('chart.2_stars'), t('chart.3_stars'), t('chart.4_stars'), t('chart.5_stars')],
           datasets: [{
             data: [data.distribution[1], data.distribution[2], data.distribution[3], data.distribution[4], data.distribution[5]],
             backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981'],
@@ -1572,7 +1572,7 @@ async function renderTeacherClassrooms() {
               <div class="class-subject">${c.subject}</div>
               <div class="class-meta">${c.grade_level} &middot; ${c.student_count} ${t('common.students').toLowerCase()}</div>
             </div>
-            ${isArchived ? '<span style="font-size:0.75rem;background:var(--gray-200);color:var(--gray-600);padding:2px 8px;border-radius:10px;font-weight:500">Archived</span>' : ''}
+            ${isArchived ? `<span style="font-size:0.75rem;background:var(--gray-200);color:var(--gray-600);padding:2px 8px;border-radius:10px;font-weight:500">${t('teacher.archived')}</span>` : ''}
           </div>
           <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
             <div>
@@ -1581,11 +1581,11 @@ async function renderTeacherClassrooms() {
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               ${!isArchived ? `<button class="btn btn-sm btn-outline" onclick="regenerateCode(${c.id})">${t('teacher.new_code')}</button>` : ''}
-              ${!isArchived ? `<button class="btn btn-sm btn-outline" onclick="editClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}', '${c.grade_level.replace(/'/g, "\\'")}')">Edit</button>` : ''}
+              ${!isArchived ? `<button class="btn btn-sm btn-outline" onclick="editClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}', '${c.grade_level.replace(/'/g, "\\'")}')"> ${t('common.edit')}</button>` : ''}
               ${!isArchived
-                ? `<button class="btn btn-sm btn-outline" style="color:var(--gray-500)" onclick="archiveClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Archive</button>`
-                : `<button class="btn btn-sm btn-outline" onclick="unarchiveClassroomTeacher(${c.id})">Unarchive</button>`}
-              <button class="btn btn-sm btn-danger" onclick="deleteClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Delete</button>
+                ? `<button class="btn btn-sm btn-outline" style="color:var(--gray-500)" onclick="archiveClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}')"> ${t('teacher.archive')}</button>`
+                : `<button class="btn btn-sm btn-outline" onclick="unarchiveClassroomTeacher(${c.id})">${t('teacher.unarchive')}</button>`}
+              <button class="btn btn-sm btn-danger" onclick="deleteClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}')"> ${t('common.delete')}</button>
               <button class="btn btn-sm btn-primary" onclick="viewClassroomMembers(${c.id}, '${c.subject}')">${t('teacher.members')}</button>
             </div>
           </div>
@@ -1595,7 +1595,7 @@ async function renderTeacherClassrooms() {
       </div>
       ${archived.length > 0 ? `
         <div style="margin-top:32px">
-          <h3 style="color:var(--gray-500);font-size:0.95rem;margin-bottom:12px">Archived Classrooms (${archived.length})</h3>
+          <h3 style="color:var(--gray-500);font-size:0.95rem;margin-bottom:12px">${t('teacher.archived')} (${archived.length})</h3>
           <div class="grid grid-2">${archived.map(c => renderCard(c, true)).join('')}</div>
         </div>` : ''}`;
     })()}
@@ -1628,7 +1628,7 @@ async function createClassroomTeacher() {
   if (!subject || !grade_level) return toast(t('teacher.fill_all_fields'), 'error');
   try {
     const data = await API.post('/classrooms', { subject, grade_level });
-    toast(`Classroom created! Join code: ${formatJoinCode(data.join_code)}`);
+    toast(t('teacher.classroom_created', {code: formatJoinCode(data.join_code)}));
     closeModal();
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
@@ -1639,7 +1639,7 @@ async function archiveClassroomTeacher(id, subject) {
   if (!confirmed) return;
   try {
     await API.patch(`/classrooms/${id}`, { active_status: 0 });
-    toast('Classroom archived');
+    toast(t('teacher.archived_msg'));
     renderTeacherClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1647,14 +1647,14 @@ async function archiveClassroomTeacher(id, subject) {
 async function unarchiveClassroomTeacher(id) {
   try {
     await API.patch(`/classrooms/${id}`, { active_status: 1 });
-    toast('Classroom reactivated');
+    toast(t('teacher.reactivated_msg'));
     renderTeacherClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 function editClassroomTeacher(id, subject, gradeLevel) {
   openModal(`
-    <div class="modal-header"><h3>Edit Classroom</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('teacher.edit_classroom')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="form-group">
         <label>${t('common.subject')}</label>
@@ -1667,7 +1667,7 @@ function editClassroomTeacher(id, subject, gradeLevel) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
-      <button class="btn btn-primary" onclick="saveClassroomTeacher(${id})">Save</button>
+      <button class="btn btn-primary" onclick="saveClassroomTeacher(${id})">${t('common.save_short')}</button>
     </div>
   `);
 }
@@ -1678,7 +1678,7 @@ async function saveClassroomTeacher(id) {
   if (!subject || !grade_level) return toast(t('teacher.fill_all_fields'), 'error');
   try {
     await API.patch(`/classrooms/${id}`, { subject, grade_level });
-    toast('Classroom updated');
+    toast(t('teacher.classroom_updated'));
     closeModal();
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
@@ -1689,7 +1689,7 @@ async function deleteClassroomTeacher(id, subject) {
   if (!confirmed) return;
   try {
     await API.delete(`/classrooms/${id}`);
-    toast('Classroom deleted');
+    toast(t('teacher.classroom_deleted'));
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1699,7 +1699,7 @@ async function regenerateCode(classroomId) {
   if (!confirmed) return;
   try {
     const data = await API.post(`/classrooms/${classroomId}/regenerate-code`);
-    toast(`New join code: ${formatJoinCode(data.join_code)}`);
+    toast(t('teacher.new_join_code', {code: formatJoinCode(data.join_code)}));
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1708,11 +1708,11 @@ async function viewClassroomMembers(classroomId, subject) {
   try {
     const members = await API.get(`/classrooms/${classroomId}/members`);
     openModal(`
-      <div class="modal-header"><h3>${subject} - Students</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-header"><h3>${t('teacher.students_title', {subject})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
         ${members.length === 0
-          ? '<p style="color:var(--gray-500);text-align:center">No students enrolled yet</p>'
-          : `<table><thead><tr><th>Name</th><th>Grade</th><th>Joined</th></tr></thead><tbody>
+          ? `<p style="color:var(--gray-500);text-align:center">${t('teacher.no_students_enrolled')}</p>`
+          : `<table><thead><tr><th>${t('common.name')}</th><th>${t('common.grade')}</th><th>${t('teacher.joined')}</th></tr></thead><tbody>
               ${members.map(m => `<tr><td>${m.full_name}</td><td>${m.grade_or_position || '-'}</td><td>${new Date(m.joined_at).toLocaleDateString()}</td></tr>`).join('')}
             </tbody></table>`}
       </div>
@@ -1756,10 +1756,10 @@ async function renderTeacherFeedback() {
     <div class="grid grid-2" style="margin-bottom:28px">
       <!-- Summary by Subject -->
       <div class="card">
-        <div class="card-header"><h3>Average Ratings by Subject</h3></div>
+        <div class="card-header"><h3>${t('teacher.avg_ratings_by_subject')}</h3></div>
         <div class="card-body">
           ${Object.keys(bySubject).length === 0
-            ? '<div class="empty-state"><p>No reviews yet</p></div>'
+            ? `<div class="empty-state"><p>${t('teacher.no_reviews_yet')}</p></div>`
             : Object.keys(bySubject).map(key => {
               const s = bySubject[key];
               return `
@@ -1772,12 +1772,12 @@ async function renderTeacherFeedback() {
                     ${starsHTML(parseFloat(s.avg_overall))}
                   </div>
                   <div class="feedback-rating-grid">
-                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Clarity${criteriaInfoIcon('Clarity')}</span><span style="font-weight:600;color:${scoreColor(s.avg_clarity)};display:flex;align-items:center;gap:8px">${s.avg_clarity} ${starsHTML(parseFloat(s.avg_clarity))}</span></div>
-                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Engagement${criteriaInfoIcon('Engagement')}</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)};display:flex;align-items:center;gap:8px">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
-                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Fairness${criteriaInfoIcon('Fairness')}</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)};display:flex;align-items:center;gap:8px">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
-                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Supportiveness${criteriaInfoIcon('Supportiveness')}</span><span style="font-weight:600;color:${scoreColor(s.avg_supportiveness)};display:flex;align-items:center;gap:8px">${s.avg_supportiveness} ${starsHTML(parseFloat(s.avg_supportiveness))}</span></div>
-                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Preparation${criteriaInfoIcon('Preparation')}</span><span style="font-weight:600;color:${scoreColor(s.avg_preparation)};display:flex;align-items:center;gap:8px">${s.avg_preparation} ${starsHTML(parseFloat(s.avg_preparation))}</span></div>
-                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">Workload${criteriaInfoIcon('Workload')}</span><span style="font-weight:600;color:${scoreColor(s.avg_workload)};display:flex;align-items:center;gap:8px">${s.avg_workload} ${starsHTML(parseFloat(s.avg_workload))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">${t('criteria.clarity')}${criteriaInfoIcon('Clarity')}</span><span style="font-weight:600;color:${scoreColor(s.avg_clarity)};display:flex;align-items:center;gap:8px">${s.avg_clarity} ${starsHTML(parseFloat(s.avg_clarity))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">${t('criteria.engagement')}${criteriaInfoIcon('Engagement')}</span><span style="font-weight:600;color:${scoreColor(s.avg_engagement)};display:flex;align-items:center;gap:8px">${s.avg_engagement} ${starsHTML(parseFloat(s.avg_engagement))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">${t('criteria.fairness')}${criteriaInfoIcon('Fairness')}</span><span style="font-weight:600;color:${scoreColor(s.avg_fairness)};display:flex;align-items:center;gap:8px">${s.avg_fairness} ${starsHTML(parseFloat(s.avg_fairness))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">${t('criteria.supportiveness')}${criteriaInfoIcon('Supportiveness')}</span><span style="font-weight:600;color:${scoreColor(s.avg_supportiveness)};display:flex;align-items:center;gap:8px">${s.avg_supportiveness} ${starsHTML(parseFloat(s.avg_supportiveness))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">${t('criteria.preparation')}${criteriaInfoIcon('Preparation')}</span><span style="font-weight:600;color:${scoreColor(s.avg_preparation)};display:flex;align-items:center;gap:8px">${s.avg_preparation} ${starsHTML(parseFloat(s.avg_preparation))}</span></div>
+                    <div class="rating-item"><span style="display:flex;align-items:center;gap:4px">${t('criteria.workload')}${criteriaInfoIcon('Workload')}</span><span style="font-weight:600;color:${scoreColor(s.avg_workload)};display:flex;align-items:center;gap:8px">${s.avg_workload} ${starsHTML(parseFloat(s.avg_workload))}</span></div>
                   </div>
                 </div>
               `;
@@ -1787,24 +1787,26 @@ async function renderTeacherFeedback() {
 
       <!-- Overall Summary -->
       <div class="card">
-        <div class="card-header"><h3>Overall Performance</h3></div>
+        <div class="card-header"><h3>${t('teacher.overall_performance')}</h3></div>
         <div class="card-body">
           <div style="text-align:center;padding:20px 0">
             <div style="font-size:3rem;font-weight:700;color:${data.overall_scores.review_count > 0 ? scoreColor(data.overall_scores.avg_overall || 0) : 'var(--gray-300)'};margin-bottom:16px">
               ${data.overall_scores.review_count > 0 ? fmtScore(data.overall_scores.avg_overall) : '0.00'}
             </div>
             ${starsHTML(data.overall_scores.avg_overall || 0, 'large')}
-            <div style="color:var(--gray-500);margin-top:16px;font-size:1rem">${data.overall_scores.review_count} total reviews</div>
-            ${data.overall_scores.review_count === 0 ? '<div style="margin-top:8px;font-size:0.8rem;color:var(--gray-400)">Scores will appear once students submit and reviews are approved</div>' : ''}
+            <div style="color:var(--gray-500);margin-top:16px;font-size:1rem">${t('teacher.total_reviews', {count: data.overall_scores.review_count})}</div>
+            ${data.overall_scores.review_count === 0 ? `<div style="margin-top:8px;font-size:0.8rem;color:var(--gray-400)">${t('teacher.scores_pending')}</div>` : ''}
           </div>
           <div style="margin-top:24px">
-            ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'].map((name, i, arr) => {
-              const key = 'avg_' + name.toLowerCase();
+            ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map((cat, i, arr) => {
+              const name = t('criteria.' + cat);
+              const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
+              const key = 'avg_' + cat;
               const val = data.overall_scores[key] || 0;
               const hasReviews = data.overall_scores.review_count > 0;
               const border = i < arr.length - 1 ? 'border-bottom:1px solid var(--gray-100)' : '';
               return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;${border}">
-                <span style="display:flex;align-items:center;gap:4px">${name}${criteriaInfoIcon(name)}</span>
+                <span style="display:flex;align-items:center;gap:4px">${name}${criteriaInfoIcon(capName)}</span>
                 <span style="font-weight:600;color:${hasReviews ? scoreColor(val) : 'var(--gray-300)'}">
                   ${hasReviews ? fmtScore(data.overall_scores[key]) : '0.00'} ${starsHTML(hasReviews ? val : 0)}
                 </span>
@@ -1818,7 +1820,7 @@ async function renderTeacherFeedback() {
     <!-- Individual Reviews (paginated) -->
     <div class="card">
       <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-        <h3>Approved Reviews</h3>
+        <h3>${t('admin.approved_reviews')}</h3>
         ${data.completion_rates && data.completion_rates.length > 0 ? `<button class="btn btn-sm btn-outline" onclick="showCompletionRatesModal()">📊 Completion Rates</button>` : ''}
       </div>
       <div class="card-body" id="teacherReviewsList">
@@ -1864,7 +1866,7 @@ async function loadTeacherReviewsPage(page, reset = false) {
     if (old) old.remove();
 
     if (result.reviews.length === 0 && page === 1) {
-      container.innerHTML = '<div class="empty-state"><h3>No approved reviews yet</h3><p>Reviews appear here after admin approval</p></div>';
+      container.innerHTML = `<div class="empty-state"><h3>${t('teacher.no_approved_reviews')}</h3><p>${t('teacher.approved_reviews_hint')}</p></div>`;
     } else {
       const frag = document.createDocumentFragment();
       result.reviews.forEach(r => {
@@ -1879,12 +1881,12 @@ async function loadTeacherReviewsPage(page, reset = false) {
         btn.id = 'loadMoreReviewsBtn';
         btn.style.textAlign = 'center';
         btn.style.padding = '16px 0';
-        btn.innerHTML = `<button class="btn btn-outline" onclick="loadTeacherReviewsPage(${page + 1})">Load more reviews (${result.total - page * 50} remaining)</button>`;
+        btn.innerHTML = `<button class="btn btn-outline" onclick="loadTeacherReviewsPage(${page + 1})">${t('teacher.load_more', {remaining: result.total - page * 50})}</button>`;
         container.appendChild(btn);
       } else if (result.total > 0) {
         const note = document.createElement('p');
         note.style.cssText = 'text-align:center;color:var(--gray-400);font-size:0.82rem;padding:12px 0';
-        note.textContent = `All ${result.total} reviews loaded`;
+        note.textContent = t('teacher.all_loaded', {total: result.total});
         container.appendChild(note);
       }
     }
@@ -1899,7 +1901,7 @@ async function loadTeacherReviewsPage(page, reset = false) {
 function showCompletionRatesModal() {
   const rates = window._teacherCompletionRates || [];
   openModal(`
-    <div class="modal-header"><h3>Feedback Completion Rates</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('teacher.completion_rates_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       ${rates.length === 0 ? '<p style="color:var(--gray-500)">No data available</p>' : rates.map(c => `
         <div style="margin-bottom:16px">
@@ -1913,7 +1915,7 @@ function showCompletionRatesModal() {
         </div>
       `).join('')}
     </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">Close</button></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">${t('common.close')}</button></div>
   `);
 }
 
@@ -1949,7 +1951,7 @@ async function renderTeacherAnalytics() {
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div style="padding:10px 16px;background:var(--primary-light);border-left:4px solid var(--primary);border-radius:8px;font-size:0.92rem">
-        <strong>Current Term:</strong> ${data.active_term?.name || 'No active term'}
+        <strong>${t('teacher.current_term')}</strong> ${data.active_term?.name || t('teacher.no_active_term_label')}
       </div>
       <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:${trendMeta.bg};border-radius:20px">
         <span style="font-size:1.1rem;font-weight:700;color:${trendMeta.color}">${trendMeta.icon}</span>
@@ -1960,15 +1962,15 @@ async function renderTeacherAnalytics() {
 
     <div class="grid grid-2" style="margin-bottom:24px">
       <div class="card">
-        <div class="card-header"><h3>Score Trend by Period</h3></div>
+        <div class="card-header"><h3>${t('analytics.score_trend')}</h3></div>
         <div class="card-body">
           ${periods.length > 0
             ? '<div class="chart-container"><canvas id="trendChart"></canvas></div>'
-            : '<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">No feedback periods in this term yet</p></div>'}
+            : `<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">${t('analytics.no_periods')}</p></div>`}
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><h3>Category Breakdown</h3></div>
+        <div class="card-header"><h3>${t('analytics.category_breakdown')}</h3></div>
         <div class="card-body">
           ${data.overall_scores.review_count > 0
             ? '<div class="chart-container"><canvas id="radarChart"></canvas></div>'
@@ -1979,15 +1981,15 @@ async function renderTeacherAnalytics() {
 
     ${periods.length > 0 ? `
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><h3>Period-by-Period Progress</h3></div>
+      <div class="card-header"><h3>${t('analytics.period_progress')}</h3></div>
       <div class="card-body" style="padding:0">
         <table>
           <thead>
             <tr>
-              <th>Feedback Period</th>
-              <th>Avg Score</th>
-              <th>Reviews</th>
-              <th>Change vs Previous</th>
+              <th>${t('analytics.feedback_period')}</th>
+              <th>${t('analytics.avg_score')}</th>
+              <th>${t('common.reviews')}</th>
+              <th>${t('analytics.change_vs_prev')}</th>
             </tr>
           </thead>
           <tbody>${periodRows}</tbody>
@@ -2010,7 +2012,7 @@ async function renderTeacherAnalytics() {
         data: {
           labels: periods.map(p => p.name),
           datasets: [{
-            label: 'Score',
+            label: t('chart.score'),
             data: periods.map(p => p.score),
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59,130,246,0.08)',
@@ -2052,9 +2054,9 @@ async function renderTeacherAnalytics() {
       chartInstances.radar = new Chart(ctx2, {
         type: 'radar',
         data: {
-          labels: ['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'],
+          labels: [t('criteria.clarity'), t('criteria.engagement'), t('criteria.fairness'), t('criteria.supportiveness'), t('criteria.preparation'), t('criteria.workload')],
           datasets: [{
-            label: 'Your Scores',
+            label: t('teacher.your_scores'),
             data: [s.avg_clarity, s.avg_engagement, s.avg_fairness, s.avg_supportiveness, s.avg_preparation, s.avg_workload],
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59,130,246,0.15)',
@@ -2074,7 +2076,7 @@ async function renderTeacherAnalytics() {
 // ============ TEACHER FORMS ============
 async function renderTeacherForms() {
   const el = document.getElementById('contentArea');
-  el.innerHTML = `<div class="empty-state"><p>Loading forms...</p></div>`;
+  el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
     const [forms, classrooms] = await Promise.all([
       API.get('/forms'),
@@ -2082,23 +2084,23 @@ async function renderTeacherForms() {
     ]);
 
     const statusBadge = s => {
-      const map = { draft: ['#6b7280','Draft'], active: ['#16a34a','Active'], closed: ['#9ca3af','Closed'] };
+      const map = { draft: ['#6b7280', t('forms.status_draft')], active: ['#16a34a', t('forms.status_active')], closed: ['#9ca3af', t('forms.status_closed')] };
       const [color, label] = map[s] || ['#6b7280', s];
       return `<span style="background:${color};color:#fff;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600">${label}</span>`;
     };
 
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-        <h2 style="margin:0">My Forms</h2>
-        <button class="btn btn-primary" onclick="showCreateFormModal()">+ New Form</button>
+        <h2 style="margin:0">${t('forms.my_forms')}</h2>
+        <button class="btn btn-primary" onclick="showCreateFormModal()">${t('forms.new_form')}</button>
       </div>
 
       ${forms.length === 0 ? `
         <div class="card"><div class="card-body">
           <div class="empty-state">
-            <h3>No forms yet</h3>
-            <p>Create a questionnaire to collect specific feedback from your students.</p>
-            <button class="btn btn-primary" style="margin-top:12px" onclick="showCreateFormModal()">Create First Form</button>
+            <h3>${t('forms.no_forms')}</h3>
+            <p>${t('forms.no_forms_msg')}</p>
+            <button class="btn btn-primary" style="margin-top:12px" onclick="showCreateFormModal()">${t('forms.create_first')}</button>
           </div>
         </div></div>
       ` : `
@@ -2117,7 +2119,7 @@ async function renderTeacherForms() {
                 <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--gray-500);flex-wrap:wrap">
                   <span>📋 ${f.question_count} question${f.question_count !== 1 ? 's' : ''}</span>
                   <span>💬 ${f.response_count} response${f.response_count !== 1 ? 's' : ''}</span>
-                  ${f.deadline ? `<span style="color:${new Date(f.deadline) < new Date() ? 'var(--danger)' : 'var(--warning)'}">⏰ ${new Date(f.deadline) < new Date() ? 'Expired' : 'Deadline'}: ${new Date(f.deadline).toLocaleDateString()}</span>` : ''}
+                  ${f.deadline ? `<span style="color:${new Date(f.deadline) < new Date() ? 'var(--danger)' : 'var(--warning)'}">⏰ ${new Date(f.deadline) < new Date() ? t('forms.expired') : t('forms.deadline')}: ${new Date(f.deadline).toLocaleDateString()}</span>` : ''}
                 </div>
               </div>
               <div class="card-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px">
@@ -2144,31 +2146,31 @@ function showCreateFormModal() {
   const classroomsEl = document.getElementById('teacherClassroomList');
   const classrooms = classroomsEl ? JSON.parse(classroomsEl.textContent) : [];
   openModal(`
-    <div class="modal-header"><h3>New Form</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('forms.new_form_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Title *</label>
-        <input type="text" class="form-control" id="newFormTitle" placeholder="e.g. Mid-term check-in">
+        <label>${t('forms.title_label')}</label>
+        <input type="text" class="form-control" id="newFormTitle" placeholder="${t('forms.title_placeholder')}">
       </div>
       <div class="form-group">
-        <label>Description <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+        <label>${t('forms.desc_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label>
         <textarea class="form-control" id="newFormDesc" rows="2" placeholder="What is this form about?"></textarea>
       </div>
       <div class="form-group">
-        <label>Classroom *</label>
+        <label>${t('forms.classroom_label')}</label>
         <select class="form-control" id="newFormClassroom">
-          <option value="">-- Select classroom --</option>
+          <option value="">${t('forms.select_classroom')}</option>
           ${classrooms.map(c => `<option value="${c.id}">${c.subject} &middot; ${c.grade_level}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
-        <label>Deadline <span style="color:var(--gray-400);font-weight:400">(optional — auto-closes form when reached)</span></label>
+        <label>${t('forms.deadline_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.deadline_hint')}</span></label>
         <input type="datetime-local" class="form-control" id="newFormDeadline">
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="createForm()">Create Form</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="createForm()">${t('forms.create_btn')}</button>
     </div>
   `);
   setTimeout(() => document.getElementById('newFormTitle')?.focus(), 50);
@@ -2184,7 +2186,7 @@ async function createForm() {
   try {
     await API.post('/forms', { title, description, classroom_id: parseInt(classroom_id), deadline: deadline || undefined });
     closeModal();
-    toast('Form created! Now add your questions.');
+    toast(t('forms.created_msg'));
     await renderTeacherForms();
     // Open builder for the newly created form — get the first draft
     const forms = await API.get('/forms');
@@ -2202,7 +2204,7 @@ async function openFormBuilder(formId) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <button class="btn btn-sm btn-outline" onclick="navigateTo(currentUser.role === 'teacher' ? 'teacher-forms' : 'admin-forms')">&larr; Back to Forms</button>
+        <button class="btn btn-sm btn-outline" onclick="navigateTo(currentUser.role === 'teacher' ? 'teacher-forms' : 'admin-forms')">${t('forms.back_to_forms')}</button>
         <div style="flex:1">
           <h2 style="margin:0">${form.title}</h2>
           <span style="font-size:0.82rem;color:var(--gray-500)">${form.classrooms && form.classrooms.length > 1 ? form.classrooms.map(c => c.subject + ' ' + c.grade_level).join(', ') : (form.classroom_subject + ' · ' + form.grade_level)}</span>
@@ -2213,7 +2215,7 @@ async function openFormBuilder(formId) {
       ${form.status !== 'draft' ? `
         <div class="card" style="margin-bottom:16px;border-left:4px solid #f59e0b">
           <div class="card-body" style="padding:12px 16px;font-size:0.85rem;color:var(--gray-600)">
-            ⚠️ This form is <strong>${form.status}</strong>. Questions can only be edited on draft forms.
+            ${t('forms.edit_warning', {status: form.status})}
           </div>
         </div>
       ` : ''}
@@ -2225,11 +2227,11 @@ async function openFormBuilder(formId) {
       ${form.status === 'draft' ? `
         <div class="card" style="margin-top:16px;border:2px dashed var(--gray-200)">
           <div class="card-body" style="text-align:center;padding:24px">
-            <p style="color:var(--gray-500);margin-bottom:16px">Add a question to your form</p>
+            <p style="color:var(--gray-500);margin-bottom:16px">${t('forms.add_question_prompt')}</p>
             <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'text')">📝 Text Answer</button>
-              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'multiple_choice')">&#9673; Multiple Choice</button>
-              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'yes_no')">✓ Yes / No</button>
+              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'text')">${t('forms.text_type')}</button>
+              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'multiple_choice')">${t('forms.mc_type')}</button>
+              <button class="btn btn-outline" onclick="showAddQuestionModal(${formId},'yes_no')">${t('forms.yn_type')}</button>
             </div>
           </div>
         </div>
@@ -2242,21 +2244,21 @@ async function openFormBuilder(formId) {
 
 function renderFormQuestionsList(questions, formStatus) {
   if (questions.length === 0) {
-    return `<div class="card"><div class="card-body"><div class="empty-state"><h3>No questions yet</h3><p>Add questions below to build your form.</p></div></div></div>`;
+    return `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('forms.no_questions')}</h3><p>${t('forms.no_questions_hint')}</p></div></div></div>`;
   }
   return questions.map((q, idx) => `
     <div class="card" style="margin-bottom:10px">
       <div class="card-body" style="display:flex;align-items:flex-start;gap:12px">
         <span style="background:var(--gray-100);color:var(--gray-500);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0">${idx + 1}</span>
         <div style="flex:1">
-          <div style="font-weight:600;margin-bottom:4px">${q.question_text} ${q.required ? '<span style="color:#ef4444;font-size:0.75rem">*required</span>' : ''}</div>
+          <div style="font-weight:600;margin-bottom:4px">${q.question_text} ${q.required ? `<span style="color:#ef4444;font-size:0.75rem">${t('forms.required')}</span>` : ''}</div>
           <div style="font-size:0.78rem;color:var(--gray-400)">
             ${q.question_type === 'text' ? '📝 Text answer' : q.question_type === 'yes_no' ? '✓ Yes / No' : '&#9673; ' + (q.options || []).join(' &middot; ')}
           </div>
         </div>
         ${formStatus === 'draft' ? `
           <div style="display:flex;gap:6px">
-            <button class="btn btn-sm btn-outline" onclick="showEditQuestionModal(${q.form_id},${q.id})">Edit</button>
+            <button class="btn btn-sm btn-outline" onclick="showEditQuestionModal(${q.form_id},${q.id})">${t('common.edit')}</button>
             <button class="btn btn-sm btn-danger" onclick="deleteFormQuestion(${q.form_id},${q.id})">✕</button>
           </div>
         ` : ''}
@@ -2269,7 +2271,7 @@ function showAddQuestionModal(formId, questionType) {
   const typeLabel = { text: '📝 Text Answer', multiple_choice: '&#9673; Multiple Choice', yes_no: '✓ Yes / No' };
   const optionsHTML = questionType === 'multiple_choice' ? `
     <div class="form-group">
-      <label>Options <span style="color:var(--gray-400);font-weight:400">(at least 2)</span></label>
+      <label>${t('forms.options_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.options_min_hint')}</span></label>
       <div id="mcOptions">
         <div class="mc-option-row" style="display:flex;gap:6px;margin-bottom:6px">
           <input type="text" class="form-control mc-option-input" placeholder="Option 1" style="flex:1">
@@ -2287,18 +2289,18 @@ function showAddQuestionModal(formId, questionType) {
     <div class="modal-header"><h3>${typeLabel[questionType]}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Question *</label>
-        <input type="text" class="form-control" id="newQText" placeholder="e.g. What topic would you like more time on?">
+        <label>${t('forms.question_label')}</label>
+        <input type="text" class="form-control" id="newQText" placeholder="${t('forms.question_placeholder')}">
       </div>
       ${optionsHTML}
       <div class="form-group" style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="newQRequired" checked style="width:16px;height:16px">
-        <label for="newQRequired" style="margin:0;cursor:pointer">Required question</label>
+        <label for="newQRequired" style="margin:0;cursor:pointer">${t('forms.required_checkbox')}</label>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="addFormQuestion(${formId},'${questionType}')">Add Question</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="addFormQuestion(${formId},'${questionType}')">${t('forms.add_question')}</button>
     </div>
   `);
   setTimeout(() => document.getElementById('newQText')?.focus(), 50);
@@ -2315,23 +2317,23 @@ function addMcOption() {
 }
 function removeMcOption(btn) {
   const container = document.getElementById('mcOptions');
-  if (container.querySelectorAll('.mc-option-row').length <= 2) return toast('Need at least 2 options', 'error');
+  if (container.querySelectorAll('.mc-option-row').length <= 2) return toast(t('forms.need_2_options'), 'error');
   btn.closest('.mc-option-row').remove();
 }
 
 async function addFormQuestion(formId, questionType) {
   const question_text = document.getElementById('newQText').value.trim();
   const required = document.getElementById('newQRequired').checked;
-  if (!question_text) return toast('Question text is required', 'error');
+  if (!question_text) return toast(t('forms.question_required'), 'error');
   let options;
   if (questionType === 'multiple_choice') {
     options = [...document.querySelectorAll('.mc-option-input')].map(i => i.value.trim()).filter(Boolean);
-    if (options.length < 2) return toast('Add at least 2 options', 'error');
+    if (options.length < 2) return toast(t('forms.options_required'), 'error');
   }
   try {
     await API.post(`/forms/${formId}/questions`, { question_text, question_type: questionType, options, required });
     closeModal();
-    toast('Question added');
+    toast(t('forms.question_added'));
     openFormBuilder(formId);
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -2340,7 +2342,7 @@ async function showEditQuestionModal(formId, questionId) {
   try {
     const form = await API.get(`/forms/${formId}`);
     const q = form.questions.find(q => q.id === questionId);
-    if (!q) return toast('Question not found', 'error');
+    if (!q) return toast(t('forms.question_not_found'), 'error');
     const optionsHTML = q.question_type === 'multiple_choice' ? `
       <div class="form-group">
         <label>Options</label>
@@ -2356,21 +2358,21 @@ async function showEditQuestionModal(formId, questionId) {
       </div>
     ` : '';
     openModal(`
-      <div class="modal-header"><h3>Edit Question</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-header"><h3>${t('forms.edit_question')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
         <div class="form-group">
-          <label>Question *</label>
+          <label>${t('forms.question_label')}</label>
           <input type="text" class="form-control" id="editQText" value="${q.question_text.replace(/"/g, '&quot;')}">
         </div>
         ${optionsHTML}
         <div class="form-group" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" id="editQRequired" ${q.required ? 'checked' : ''} style="width:16px;height:16px">
-          <label for="editQRequired" style="margin:0;cursor:pointer">Required question</label>
+          <label for="editQRequired" style="margin:0;cursor:pointer">${t('forms.required_checkbox')}</label>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveEditQuestion(${formId},${questionId},'${q.question_type}')">Save</button>
+        <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+        <button class="btn btn-primary" onclick="saveEditQuestion(${formId},${questionId},'${q.question_type}')">${t('common.save_short')}</button>
       </div>
     `);
   } catch (err) { toast(err.message, 'error'); }
@@ -2379,26 +2381,26 @@ async function showEditQuestionModal(formId, questionId) {
 async function saveEditQuestion(formId, questionId, questionType) {
   const question_text = document.getElementById('editQText').value.trim();
   const required = document.getElementById('editQRequired').checked;
-  if (!question_text) return toast('Question text is required', 'error');
+  if (!question_text) return toast(t('forms.question_required'), 'error');
   let options;
   if (questionType === 'multiple_choice') {
     options = [...document.querySelectorAll('.mc-option-input')].map(i => i.value.trim()).filter(Boolean);
-    if (options.length < 2) return toast('Add at least 2 options', 'error');
+    if (options.length < 2) return toast(t('forms.need_2_options'), 'error');
   }
   try {
     await API.put(`/forms/${formId}/questions/${questionId}`, { question_text, options, required });
     closeModal();
-    toast('Question updated');
+    toast(t('forms.question_updated'));
     openFormBuilder(formId);
   } catch (err) { toast(err.message, 'error'); }
 }
 
 async function deleteFormQuestion(formId, questionId) {
-  const confirmed = await confirmDialog('Delete this question?', 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('forms.delete_question_confirm'), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/forms/${formId}/questions/${questionId}`);
-    toast('Question deleted');
+    toast(t('forms.question_deleted'));
     openFormBuilder(formId);
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -2409,24 +2411,24 @@ async function setFormStatus(formId, status) {
   if (!confirmed) return;
   try {
     await API.patch(`/forms/${formId}`, { status });
-    toast(`Form ${status === 'active' ? 'activated — students can now fill it out' : 'closed'}`);
+    toast(status === 'active' ? t('forms.form_activated') : t('forms.form_closed'));
     renderTeacherForms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 async function deleteForm(formId, title) {
-  const confirmed = await confirmDialog(`Delete form "${title}"?`, 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('forms.delete_form_confirm', {title}), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/forms/${formId}`);
-    toast('Form deleted');
+    toast(t('forms.form_deleted'));
     renderTeacherForms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 async function openFormResults(formId) {
   const el = document.getElementById('contentArea');
-  el.innerHTML = `<div class="empty-state"><p>Loading results...</p></div>`;
+  el.innerHTML = `<div class="empty-state"><p>${t('forms.loading_results')}</p></div>`;
   try {
     const data = await API.get(`/forms/${formId}/results`);
     const { form, total_responses, results } = data;
@@ -2438,7 +2440,7 @@ async function openFormResults(formId) {
             <div class="card-header"><strong>${r.question_text}</strong> <span style="color:var(--gray-400);font-size:0.8rem">(${r.total_answers} response${r.total_answers !== 1 ? 's' : ''})</span></div>
             <div class="card-body">
               ${r.answers.length === 0
-                ? '<p style="color:var(--gray-400);font-style:italic">No text answers yet.</p>'
+                ? `<p style="color:var(--gray-400);font-style:italic">${t('forms.no_text_answers')}</p>`
                 : r.answers.map(a => `<div style="padding:8px 12px;background:var(--gray-50);border-radius:8px;margin-bottom:6px;font-size:0.88rem">"${a}"</div>`).join('')}
             </div>
           </div>`;
@@ -2469,14 +2471,14 @@ async function openFormResults(formId) {
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <button class="btn btn-sm btn-outline" onclick="navigateTo(currentUser.role === 'teacher' ? 'teacher-forms' : 'admin-forms')">&larr; Back to Forms</button>
+        <button class="btn btn-sm btn-outline" onclick="navigateTo(currentUser.role === 'teacher' ? 'teacher-forms' : 'admin-forms')">${t('forms.back_to_forms')}</button>
         <div style="flex:1">
-          <h2 style="margin:0">${form.title} — Results</h2>
-          <span style="font-size:0.82rem;color:var(--gray-500)">${total_responses} total response${total_responses !== 1 ? 's' : ''}</span>
+          <h2 style="margin:0">${t('forms.results_title', {count: total_responses})}</h2>
+          <span style="font-size:0.82rem;color:var(--gray-500)">${t('forms.results_responses', {count: total_responses, s: total_responses !== 1 ? 's' : ''})}</span>
         </div>
       </div>
       ${results.length === 0
-        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No questions</h3></div></div></div>'
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('forms.no_questions_results')}</h3></div></div></div>`
         : results.map(renderResult).join('')}
     `;
   } catch (err) {
@@ -2753,7 +2755,7 @@ async function renderAdminForms() {
 }
 
 function renderAdminFormCards(forms) {
-  if (!forms.length) return `<div class="empty-state"><h3>No forms yet</h3><p>Create your first form to send questionnaires to classrooms</p></div>`;
+  if (!forms.length) return `<div class="empty-state"><h3>${t('admin_forms.no_forms')}</h3><p>${t('admin_forms.no_forms_msg')}</p></div>`;
   const statusBadge = s => `<span class="badge badge-${s === 'active' ? 'success' : s === 'closed' ? 'gray' : 'warning'}">${s}</span>`;
   return `<div class="grid grid-2">
     ${forms.map(f => `
@@ -2804,11 +2806,11 @@ async function adminSetFormStatus(formId, status) {
 }
 
 async function adminDeleteForm(formId, title) {
-  const confirmed = await confirmDialog(`Delete form "${title}"?`, 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('forms.delete_form_confirm', {title}), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/forms/${formId}`);
-    toast('Form deleted');
+    toast(t('forms.form_deleted'));
     renderAdminForms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -2825,34 +2827,34 @@ async function showAdminCreateFormModal() {
     <div class="form-group">
       <label>Organization *</label>
       <select class="form-control" id="adminFormOrg" onchange="loadClassroomsForAdminForm(this.value)">
-        <option value="">-- Select organization --</option>
+        <option value="">${t('admin_forms.select_org')}</option>
         ${orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('')}
       </select>
     </div>
   ` : '';
 
   openModal(`
-    <div class="modal-header"><h3>New Form</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('forms.new_form_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Title *</label>
-        <input type="text" class="form-control" id="adminFormTitle" placeholder="e.g. End-of-term Student Survey" maxlength="200">
+        <label>${t('forms.title_label')}</label>
+        <input type="text" class="form-control" id="adminFormTitle" placeholder="${t('admin_forms.title_placeholder')}" maxlength="200">
       </div>
       <div class="form-group">
-        <label>Description <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+        <label>${t('forms.desc_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label>
         <textarea class="form-control" id="adminFormDesc" rows="2" placeholder="What is this form about?"></textarea>
       </div>
       ${orgPickerHTML}
       <div class="form-group">
-        <label>Classrooms *</label>
+        <label>${t('forms.classroom_label')}</label>
         <div id="adminClassroomPickerWrap">
-          ${currentUser.role === 'org_admin' ? '<div class="loading" style="padding:12px"><div class="spinner"></div></div>' : '<div style="color:var(--gray-400);font-size:0.88rem;padding:4px 0">Select an organization first</div>'}
+          ${currentUser.role === 'org_admin' ? '<div class="loading" style="padding:12px"><div class="spinner"></div></div>' : `<div style="color:var(--gray-400);font-size:0.88rem;padding:4px 0">${t('admin_forms.select_org_first')}</div>`}
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="createAdminForm()">Create Form</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="createAdminForm()">${t('forms.create_btn')}</button>
     </div>
   `);
 
@@ -2871,15 +2873,15 @@ async function loadClassroomsForAdminForm(orgId) {
   try {
     const classrooms = await API.get(url);
     if (!classrooms.length) {
-      wrap.innerHTML = `<div style="color:var(--gray-400);font-size:0.88rem;padding:8px 0">No classrooms found</div>`;
+      wrap.innerHTML = `<div style="color:var(--gray-400);font-size:0.88rem;padding:8px 0">${t('admin_forms.no_classrooms')}</div>`;
       return;
     }
     wrap.innerHTML = `
       <div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px">
         <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-          <input type="text" id="adminClSearch" class="form-control" style="flex:1;padding:7px 10px;font-size:0.88rem" placeholder="Search by class, grade or teacher…" oninput="filterAdminClassroomPicker(this.value)">
-          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllAdminClassrooms(true)">All</button>
-          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllAdminClassrooms(false)">None</button>
+          <input type="text" id="adminClSearch" class="form-control" style="flex:1;padding:7px 10px;font-size:0.88rem" placeholder="${t('admin_forms.search_placeholder')}" oninput="filterAdminClassroomPicker(this.value)">
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllAdminClassrooms(true)">${t('common.all')}</button>
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllAdminClassrooms(false)">${t('admin_forms.none_btn')}</button>
         </div>
         <div id="adminClList" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
           ${classrooms.map(c => `
@@ -2918,7 +2920,7 @@ function selectAllAdminClassrooms(checked) {
 function updateAdminClCount() {
   const total = document.querySelectorAll('.admin-cl-cb:checked').length;
   const el = document.getElementById('adminClCount');
-  if (el) el.textContent = `${total} classroom${total !== 1 ? 's' : ''} selected`;
+  if (el) el.textContent = t('admin_forms.classrooms_selected', {count: total});
 }
 
 async function createAdminForm() {
@@ -2941,7 +2943,7 @@ async function createAdminForm() {
   try {
     const created = await API.post('/forms', body);
     closeModal();
-    toast('Form created! Now add your questions.');
+    toast(t('forms.created_msg'));
     if (created?.id) {
       openFormBuilder(created.id);
     } else {
@@ -4009,17 +4011,17 @@ async function renderAdminModerate() {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:12px">
-        <p style="color:var(--gray-500);margin:0">${reviews.length} review(s) awaiting moderation</p>
-        ${reviews.length > 0 ? `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem"><input type="checkbox" id="selectAllReviews" onchange="toggleSelectAllReviews(this)"> Select all</label>` : ''}
+        <p style="color:var(--gray-500);margin:0">${t('admin.reviews_awaiting', {count: reviews.length})}</p>
+        ${reviews.length > 0 ? `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem"><input type="checkbox" id="selectAllReviews" onchange="toggleSelectAllReviews(this)"> ${t('moderate.select_all')}</label>` : ''}
       </div>
       ${reviews.length > 0 ? `
         <div style="display:flex;gap:8px">
-          <button class="btn btn-success" id="approveSelectedBtn" onclick="approveSelectedReviews()" style="display:none">✓ Approve Selected</button>
-          <button class="btn btn-success" onclick="bulkApproveAll(${JSON.stringify(reviews.map(r => r.id))})">✓ Approve All (${reviews.length})</button>
+          <button class="btn btn-success" id="approveSelectedBtn" onclick="approveSelectedReviews()" style="display:none">${t('moderate.approve_selected')}</button>
+          <button class="btn btn-success" onclick="bulkApproveAll(${JSON.stringify(reviews.map(r => r.id))})">${t('admin.approve_all', {count: reviews.length})}</button>
         </div>` : ''}
     </div>
     ${reviews.length === 0
-      ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>All clear!</h3><p>No reviews pending moderation</p></div></div></div>'
+      ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('admin.all_clear_title')}</h3><p>${t('admin.all_clear_desc')}</p></div></div></div>`
       : reviews.map(r => `
         <div class="card" style="margin-bottom:16px">
           <div class="card-body">
@@ -4038,27 +4040,29 @@ async function renderAdminModerate() {
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
               <div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
+                <span style="font-size:0.85rem;color:var(--gray-600)">${t('review.overall')}</span>
                 <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
               </div>
-              ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
-                const v = r[c.k]; const val = v || 0;
+              ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => {
+                const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
+                const k = (cat === 'supportiveness' ? 'supportiveness' : cat) + '_rating';
+                const v = r[k]; const val = v || 0;
                 return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
+                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${t('criteria.' + cat)}${criteriaInfoIcon(capName)}</span>
                   <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
                 </div>`;
               }).join('')}
             </div>
-            ${r.feedback_text ? `<div class="review-text" style="margin-bottom:12px">${r.feedback_text}</div>` : '<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic;margin-bottom:12px">No written feedback</p>'}
+            ${r.feedback_text ? `<div class="review-text" style="margin-bottom:12px">${r.feedback_text}</div>` : `<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic;margin-bottom:12px">${t('review.no_written_feedback')}</p>`}
             ${JSON.parse(r.tags || '[]').length > 0 ? `
               <div class="review-tags" style="margin-bottom:16px">
                 ${JSON.parse(r.tags).map(tag => `<span class="tag">${tag}</span>`).join('')}
               </div>
             ` : ''}
             <div style="display:flex;gap:8px;margin-top:16px">
-              <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">Approve</button>
-              <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">Reject</button>
-              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">Delete</button>
+              <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">${t('admin.approve_btn')}</button>
+              <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">${t('admin.reject_btn')}</button>
+              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">${t('common.delete')}</button>
             </div>
           </div>
         </div>
@@ -4067,9 +4071,9 @@ async function renderAdminModerate() {
       <div style="margin-top:32px;margin-bottom:16px">
         <h3 style="display:flex;align-items:center;gap:8px">
           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger)"></span>
-          Flagged Reviews (${flagged.length})
+          ${t('admin.flagged_reviews', {count: flagged.length})}
         </h3>
-        <p style="color:var(--gray-500);font-size:0.9rem;margin-top:4px">These reviews were flagged as potentially inappropriate</p>
+        <p style="color:var(--gray-500);font-size:0.9rem;margin-top:4px">${t('moderate.flagged_desc')}</p>
       </div>
       ${flagged.map(r => `
         <div class="card" style="margin-bottom:16px;border-left:4px solid var(--danger)">
@@ -4086,22 +4090,24 @@ async function renderAdminModerate() {
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
               <div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
+                <span style="font-size:0.85rem;color:var(--gray-600)">${t('review.overall')}</span>
                 <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
               </div>
-              ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
-                const v = r[c.k]; const val = v || 0;
+              ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => {
+                const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
+                const k = cat + '_rating';
+                const v = r[k]; const val = v || 0;
                 return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
+                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${t('criteria.' + cat)}${criteriaInfoIcon(capName)}</span>
                   <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
                 </div>`;
               }).join('')}
             </div>
-            ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger);margin-bottom:12px">${r.feedback_text}</div>` : ''}
+            ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger);margin-bottom:12px">${r.feedback_text}</div>` : `<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic;margin-bottom:12px">${t('review.no_written_feedback')}</p>`}
             <div style="display:flex;gap:8px;margin-top:16px">
-              <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">Approve Anyway</button>
-              <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">Reject</button>
-              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">Delete</button>
+              <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">${t('admin.approve_anyway')}</button>
+              <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">${t('admin.reject_btn')}</button>
+              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">${t('common.delete')}</button>
             </div>
           </div>
         </div>
@@ -4116,10 +4122,10 @@ async function renderAdminFlagged() {
 
   el.innerHTML = `
     <div style="margin-bottom:16px">
-      <p style="color:var(--gray-500)">${reviews.length} flagged review(s) need attention</p>
+      <p style="color:var(--gray-500)">${t('admin.flagged_count', {count: reviews.length})}</p>
     </div>
     ${reviews.length === 0
-      ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No flagged reviews</h3><p>All reviews are clean</p></div></div></div>'
+      ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('admin.no_flagged_title')}</h3><p>${t('admin.no_flagged_desc')}</p></div></div></div>`
       : reviews.map(r => `
         <div class="card" style="margin-bottom:16px;border-left:4px solid var(--danger)">
           <div class="card-body">
@@ -4135,22 +4141,24 @@ async function renderAdminFlagged() {
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
               <div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:0.85rem;color:var(--gray-600)">Overall</span>
+                <span style="font-size:0.85rem;color:var(--gray-600)">${t('review.overall')}</span>
                 <span style="font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
               </div>
-              ${[{k:'clarity_rating',l:'Clarity',n:'Clarity'},{k:'engagement_rating',l:'Engagement',n:'Engagement'},{k:'fairness_rating',l:'Fairness',n:'Fairness'},{k:'supportiveness_rating',l:'Support',n:'Supportiveness'},{k:'preparation_rating',l:'Preparation',n:'Preparation'},{k:'workload_rating',l:'Workload',n:'Workload'}].map(c => {
-                const v = r[c.k]; const val = v || 0;
+              ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => {
+                const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
+                const k = cat + '_rating';
+                const v = r[k]; const val = v || 0;
                 return `<div style="padding:10px 14px;background:var(--gray-50);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${c.l}${criteriaInfoIcon(c.n)}</span>
+                  <span style="font-size:0.85rem;color:var(--gray-600);display:flex;align-items:center;gap:3px">${t('criteria.' + cat)}${criteriaInfoIcon(capName)}</span>
                   <span style="font-weight:700;color:${scoreColor(val)}">${v ? v + '/5' : '-'}</span>
                 </div>`;
               }).join('')}
             </div>
-            ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger);margin-bottom:12px">${r.feedback_text}</div>` : ''}
+            ${r.feedback_text ? `<div class="review-text" style="border-left:3px solid var(--danger);margin-bottom:12px">${r.feedback_text}</div>` : `<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic;margin-bottom:12px">${t('review.no_written_feedback')}</p>`}
             <div style="display:flex;gap:8px;margin-top:16px">
-              <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">Approve Anyway</button>
-              <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">Reject</button>
-              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">Delete</button>
+              <button class="btn btn-success" onclick="moderateReview(${r.id}, 'approve')">${t('admin.approve_anyway')}</button>
+              <button class="btn btn-danger" onclick="moderateReview(${r.id}, 'reject')">${t('admin.reject_btn')}</button>
+              <button class="btn btn-outline" onclick="confirmDeleteReview(${r.id})">${t('common.delete')}</button>
             </div>
           </div>
         </div>
@@ -4161,17 +4169,17 @@ async function renderAdminFlagged() {
 async function moderateReview(id, action) {
   try {
     await API.put(`/admin/reviews/${id}/${action}`);
-    toast(`Review ${action}d`);
+    toast(action === 'approve' ? t('admin.review_approved') : t('admin.review_rejected'));
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 async function bulkApproveAll(reviewIds) {
-  const confirmed = await confirmDialog(`Approve all ${reviewIds.length} pending reviews at once?`, 'Approve All', 'Cancel');
+  const confirmed = await confirmDialog(t('admin.approve_all_confirm', {count: reviewIds.length}), t('admin.approve_all_btn'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.post('/admin/reviews/bulk-approve', { review_ids: reviewIds });
-    toast(`Successfully approved ${reviewIds.length} reviews!`, 'success');
+    toast(t('admin.bulk_approved', {count: reviewIds.length}), 'success');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4186,24 +4194,25 @@ function updateApproveSelectedBtn() {
   const btn = document.getElementById('approveSelectedBtn');
   if (btn) {
     btn.style.display = selected.length > 0 ? 'inline-flex' : 'none';
-    btn.textContent = `✓ Approve Selected (${selected.length})`;
+    btn.textContent = t('moderate.approve_selected_count', {count: selected.length});
   }
 }
 
 async function approveSelectedReviews() {
   const ids = [...document.querySelectorAll('.review-select-cb:checked')].map(cb => parseInt(cb.value));
   if (ids.length === 0) return;
-  const confirmed = await confirmDialog(`Approve ${ids.length} selected review(s)?`, 'Approve', 'Cancel');
+  const confirmed = await confirmDialog(t('moderate.approve_selected_confirm', {count: ids.length}), t('admin.approve_btn'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.post('/admin/reviews/bulk-approve', { review_ids: ids });
-    toast(`Approved ${ids.length} review(s)!`, 'success');
+    toast(t('moderate.approved_selected_toast', {count: ids.length}), 'success');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
 
+
 async function confirmDeleteReview(id) {
-  const confirmed = await confirmDialog('Permanently delete this review?', 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('admin.delete_review_confirm'), t('common.delete'), t('common.cancel'));
   if (confirmed) {
     await deleteReview(id);
   }
@@ -4212,7 +4221,7 @@ async function confirmDeleteReview(id) {
 async function deleteReview(id) {
   try {
     await API.delete(`/admin/reviews/${id}`);
-    toast('Review deleted');
+    toast(t('admin.review_deleted'));
     if (currentView === 'admin-moderate') renderAdminModerate();
     else if (currentView === 'admin-flagged') renderAdminFlagged();
   } catch (err) { toast(err.message, 'error'); }
@@ -4279,14 +4288,14 @@ async function renderAdminTeachers() {
     <div class="card" style="margin-bottom:20px;padding:18px 24px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
         <div>
-          <div style="font-weight:600;color:var(--gray-800);margin-bottom:3px">Teacher Invite Code</div>
-          <div style="font-size:0.82rem;color:var(--gray-500)">Share with teachers so they can self-register at <strong>/join</strong></div>
+          <div style="font-weight:600;color:var(--gray-800);margin-bottom:3px">${t('admin.invite_code_title')}</div>
+          <div style="font-size:0.82rem;color:var(--gray-500)">${t('admin.invite_code_hint')}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">${inviteData.invite_code || (inviteData.error ? 'Error' : '—')}</code>
           ${inviteData.invite_code ? `
-            <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">Copy</button>
-            <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="confirmRegenerateInviteCode()">Regenerate</button>
+            <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">${t('org.copy')}</button>
+            <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="confirmRegenerateInviteCode()">${t('org.regenerate')}</button>
           ` : ''}
         </div>
       </div>
@@ -4301,26 +4310,26 @@ async function renderAdminTeachers() {
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Subject</th>
-              <th>Department</th>
-              <th>Avg Rating</th>
-              <th>Reviews</th>
-              <th>Actions</th>
+              <th>${t('admin.name_col')}</th>
+              <th>${t('common.subject')}</th>
+              <th>${t('admin.dept_col')}</th>
+              <th>${t('admin.avg_rating_col')}</th>
+              <th>${t('admin.reviews_col')}</th>
+              <th>${t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
-            ${teachers.map(t => `
+            ${teachers.map(tchr => `
               <tr>
-                <td><strong>${t.full_name}</strong></td>
-                <td>${t.subject || '-'}</td>
-                <td>${t.department || '-'}</td>
-                <td style="font-weight:600;color:${scoreColor(t.scores?.avg_overall || 0)}">${fmtScore(t.scores?.avg_overall)}</td>
-                <td>${t.scores?.review_count || 0}</td>
+                <td><strong>${tchr.full_name}</strong></td>
+                <td>${tchr.subject || '-'}</td>
+                <td>${tchr.department || '-'}</td>
+                <td style="font-weight:600;color:${scoreColor(tchr.scores?.avg_overall || 0)}">${fmtScore(tchr.scores?.avg_overall)}</td>
+                <td>${tchr.scores?.review_count || 0}</td>
                 <td>
-                  <button class="btn btn-sm btn-outline" onclick='editTeacher(${JSON.stringify(t)})'>Edit</button>
-                  <button class="btn btn-sm btn-primary" onclick="viewTeacherFeedback(${t.id})">View Feedback</button>
-                  <button class="btn btn-sm btn-outline" onclick="exportTeacherPDF(${t.id})">Export PDF</button>
+                  <button class="btn btn-sm btn-outline" onclick='editTeacher(${JSON.stringify(tchr)})'>${t('common.edit')}</button>
+                  <button class="btn btn-sm btn-primary" onclick="viewTeacherFeedback(${tchr.id})">${t('admin.view_feedback')}</button>
+                  <button class="btn btn-sm btn-outline" onclick="exportTeacherPDF(${tchr.id})">${t('admin.export_pdf')}</button>
                 </td>
               </tr>
             `).join('')}
@@ -4343,20 +4352,21 @@ async function viewTeacherFeedback(teacherId) {
         <div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:20px">
           <div>
             <div style="font-size:2rem;font-weight:700;color:${scoreColor(data.scores.avg_overall || 0)}">${fmtScore(data.scores.avg_overall)}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Overall Rating</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">${t('profile.overall_rating')}</div>
           </div>
           <div>
             <div style="font-size:2rem;font-weight:700">${data.scores.review_count}</div>
-            <div style="color:var(--gray-500);font-size:0.85rem">Total Reviews</div>
+            <div style="color:var(--gray-500);font-size:0.85rem">${t('profile.total_reviews')}</div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:16px;border-top:1px solid var(--gray-200)">
-          ${['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'].map(name => {
-            const key = 'avg_' + name.toLowerCase();
+          ${['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'].map(cat => {
+            const capName = cat.charAt(0).toUpperCase() + cat.slice(1);
+            const key = 'avg_' + cat;
             const val = data.scores[key] || 0;
             return `<div style="text-align:center">
               <div style="font-size:1.3rem;font-weight:600;color:${scoreColor(val)}">${fmtScore(data.scores[key])}</div>
-              <div style="color:var(--gray-500);font-size:0.85rem;display:flex;align-items:center;justify-content:center;gap:3px">${name}${criteriaInfoIcon(name)}</div>
+              <div style="color:var(--gray-500);font-size:0.85rem;display:flex;align-items:center;justify-content:center;gap:3px">${t('criteria.' + cat)}${criteriaInfoIcon(capName)}</div>
             </div>`;
           }).join('')}
         </div>
@@ -4368,7 +4378,7 @@ async function viewTeacherFeedback(teacherId) {
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <div style="font-size:0.85rem;color:var(--gray-500)">${new Date(r.created_at).toLocaleDateString()}</div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-                <div style="font-weight:600;color:${scoreColor(r.overall_rating)}">Overall: ${r.overall_rating}/5</div>
+                <div style="font-weight:600;color:${scoreColor(r.overall_rating)}">${t('review.overall')}: ${r.overall_rating}/5</div>
                 ${starsHTML(r.overall_rating, 'small')}
               </div>
             </div>
@@ -4394,10 +4404,10 @@ async function viewTeacherFeedback(teacherId) {
 async function exportTeacherPDF(teacherId) {
   try {
     const data = await API.get(`/admin/teacher/${teacherId}/feedback`);
-    const t = data.teacher;
+    const tchr = data.teacher;
     const s = data.scores;
     const reviews = data.reviews || [];
-    const orgs = t.org_name ? t.org_name : '';
+    const orgs = tchr.org_name ? tchr.org_name : '';
     const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const ratingBar = (val) => {
       const pct = Math.round((val / 5) * 100);
@@ -4406,7 +4416,7 @@ async function exportTeacherPDF(teacherId) {
     };
     const feedbackSample = reviews.slice(0, 10).filter(r => r.feedback_text).map(r => `<li style="margin-bottom:8px;padding:8px 12px;background:#f9fafb;border-left:3px solid #d1d5db;border-radius:4px;font-size:0.85rem">${r.feedback_text}</li>`).join('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Teacher Report — ${t.full_name}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Teacher Report — ${tchr.full_name}</title>
     <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111827;padding:40px;max-width:750px;margin:0 auto}
     h1{font-size:1.8rem;font-weight:800;margin-bottom:4px}h2{font-size:1.1rem;font-weight:700;color:#374151;margin-bottom:16px;border-bottom:2px solid #e5e7eb;padding-bottom:8px}
     .chip{display:inline-block;background:#f3f4f6;padding:3px 10px;border-radius:12px;font-size:0.8rem;color:#4b5563;margin-right:6px}
@@ -4416,32 +4426,32 @@ async function exportTeacherPDF(teacherId) {
     @media print{body{padding:20px}}</style></head><body>
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:32px">
       <div>
-        <h1>${t.full_name}</h1>
-        <p style="color:#6b7280;margin-top:4px">${[t.subject, t.department].filter(Boolean).join(' · ')}</p>
+        <h1>${tchr.full_name}</h1>
+        <p style="color:#6b7280;margin-top:4px">${[tchr.subject, tchr.department].filter(Boolean).join(' · ')}</p>
         ${orgs ? `<span class="chip">🏫 ${orgs}</span>` : ''}
-        ${t.experience_years ? `<span class="chip">📅 ${t.experience_years} years experience</span>` : ''}
+        ${tchr.experience_years ? `<span class="chip">📅 ${tchr.experience_years} years experience</span>` : ''}
       </div>
       <div style="text-align:right">
-        <div style="font-size:0.75rem;color:#9ca3af">EduRate Report</div>
+        <div style="font-size:0.75rem;color:#9ca3af">${t('pdf.report_label')}</div>
         <div style="font-size:0.75rem;color:#9ca3af">${now}</div>
       </div>
     </div>
-    ${t.bio ? `<div style="margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:8px"><p style="font-size:0.9rem;color:#374151;line-height:1.6">${t.bio}</p></div>` : ''}
-    <h2>Performance Summary</h2>
+    ${tchr.bio ? `<div style="margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:8px"><p style="font-size:0.9rem;color:#374151;line-height:1.6">${tchr.bio}</p></div>` : ''}
+    <h2>${t('pdf.performance_summary')}</h2>
     <div style="display:flex;gap:32px;align-items:center;margin-bottom:24px">
       <div style="text-align:center"><div class="score-big" style="color:${s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#ca8a04' : '#dc2626'}">${fmtScore(s.avg_overall)}</div><div class="score-sub">Overall Rating / 5.00</div></div>
       <div style="text-align:center"><div class="score-big">${s.review_count}</div><div class="score-sub">Total Reviews</div></div>
     </div>
-    <h2>Rating Breakdown</h2>
+    <h2>${t('pdf.rating_breakdown')}</h2>
     <div class="grid">
-      ${['Clarity','Engagement','Fairness','Supportiveness','Preparation','Workload'].map(name => {
-        const val = s['avg_'+name.toLowerCase()] || 0;
-        return `<div class="row"><div class="label">${name}</div>${ratingBar(val)}</div>`;
+      ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => {
+        const val = s['avg_'+cat] || 0;
+        return `<div class="row"><div class="label">${t('criteria.' + cat)}</div>${ratingBar(val)}</div>`;
       }).join('')}
     </div>
-    ${feedbackSample ? `<h2>Student Feedback (Sample)</h2><ul style="list-style:none;margin-bottom:24px">${feedbackSample}</ul>` : ''}
+    ${feedbackSample ? `<h2>${t('pdf.feedback_sample')}</h2><ul style="list-style:none;margin-bottom:24px">${feedbackSample}</ul>` : ''}
     <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#9ca3af;text-align:center">
-      Generated by EduRate · ${now} · Confidential — For educational administration use only
+      ${t('pdf.footer', {date: now})}
     </div>
     </body></html>`;
 
@@ -5235,9 +5245,9 @@ function createOrganization() {
         <div class="form-group">
           <label>${t('admin.subscription')}</label>
           <select class="form-control" id="createOrgStatus">
-            <option value="active">Active</option>
-            <option value="trial">Trial</option>
-            <option value="suspended">Suspended</option>
+            <option value="active">${t('org.subscription_active')}</option>
+            <option value="trial">${t('org.subscription_trial')}</option>
+            <option value="suspended">${t('org.subscription_suspended')}</option>
           </select>
         </div>
         <div class="form-row">
@@ -5270,7 +5280,7 @@ async function saveNewOrganization() {
   const max_students = parseInt(document.getElementById('createOrgMaxStudents').value);
 
   if (!name || !slug || !contact_email) {
-    return toast('Please fill in required fields', 'error');
+    return toast(t('org.required_error'), 'error');
   }
 
   try {
@@ -5278,7 +5288,7 @@ async function saveNewOrganization() {
       name, slug, contact_email, contact_phone, address,
       subscription_status, max_teachers, max_students
     });
-    toast('Organization created successfully', 'success');
+    toast(t('org.created'), 'success');
     closeModal();
     navigateTo('admin-orgs');
   } catch (error) {
@@ -5289,7 +5299,7 @@ async function saveNewOrganization() {
 function editOrganization(orgIndex) {
   const org = cachedOrgs[orgIndex];
   if (!org) {
-    toast('Organization not found', 'error');
+    toast(t('org.not_found'), 'error');
     return;
   }
 
@@ -5322,9 +5332,9 @@ function editOrganization(orgIndex) {
         <div class="form-group">
           <label>${t('admin.subscription')}</label>
           <select class="form-control" id="editOrgStatus">
-            <option value="active" ${org.subscription_status === 'active' ? 'selected' : ''}>Active</option>
-            <option value="trial" ${org.subscription_status === 'trial' ? 'selected' : ''}>Trial</option>
-            <option value="suspended" ${org.subscription_status === 'suspended' ? 'selected' : ''}>Suspended</option>
+            <option value="active" ${org.subscription_status === 'active' ? 'selected' : ''}>${t('org.subscription_active')}</option>
+            <option value="trial" ${org.subscription_status === 'trial' ? 'selected' : ''}>${t('org.subscription_trial')}</option>
+            <option value="suspended" ${org.subscription_status === 'suspended' ? 'selected' : ''}>${t('org.subscription_suspended')}</option>
           </select>
         </div>
         <div class="form-row">
@@ -5339,13 +5349,13 @@ function editOrganization(orgIndex) {
         </div>
       </form>
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200)">
-        <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;color:var(--gray-700)">Teacher Invite Code</div>
+        <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px;color:var(--gray-700)">${t('admin.invite_code_title')}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <code id="superInviteCode" style="font-size:1.1rem;font-weight:700;letter-spacing:3px;background:var(--gray-100);padding:6px 14px;border-radius:8px;color:var(--gray-800)">Loading...</code>
-          <button class="btn btn-sm btn-outline" onclick="copySuperInviteCode()">Copy</button>
-          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateSuperInviteCode(${org.id})">Regenerate</button>
+          <button class="btn btn-sm btn-outline" onclick="copySuperInviteCode()">${t('org.copy')}</button>
+          <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="regenerateSuperInviteCode(${org.id})">${t('org.regenerate')}</button>
         </div>
-        <div style="font-size:0.75rem;color:var(--gray-400);margin-top:6px">Teachers use this code at /join to self-register</div>
+        <div style="font-size:0.75rem;color:var(--gray-400);margin-top:6px">${t('org.invite_hint')}</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -5370,20 +5380,20 @@ function editOrganization(orgIndex) {
 function copySuperInviteCode() {
   const code = document.getElementById('superInviteCode')?.textContent;
   if (!code || code === 'N/A' || code === 'Loading...' || code === 'Error' || code === '—') return;
-  navigator.clipboard.writeText(code).then(() => toast('Invite code copied!', 'success')).catch(() => toast('Copy failed', 'error'));
+  navigator.clipboard.writeText(code).then(() => toast(t('org.code_copied'), 'success')).catch(() => toast(t('org.copy_failed'), 'error'));
 }
 
 async function regenerateSuperInviteCode(orgId) {
-  if (!await confirmDialog('Regenerate the invite code for this organization? The old code will stop working immediately.', 'Regenerate')) return;
+  if (!await confirmDialog(t('org.regenerate_confirm'), t('org.regenerate'))) return;
   try {
     const data = await API.post('/admin/regenerate-invite-code', { org_id: orgId });
     const display = document.getElementById('superInviteCode');
     if (display) display.textContent = data.invite_code;
     const cached = cachedOrgs.find(o => o.id === orgId);
     if (cached) cached.invite_code = data.invite_code;
-    toast('Invite code regenerated', 'success');
+    toast(t('org.code_regenerated'), 'success');
   } catch (err) {
-    toast(err.message || 'Failed to regenerate', 'error');
+    toast(err.message || t('org.regen_failed'), 'error');
   }
 }
 
@@ -5398,7 +5408,7 @@ async function saveOrganizationEdit(orgId) {
   const max_students = parseInt(document.getElementById('editOrgMaxStudents').value);
 
   if (!name || !slug || !contact_email) {
-    return toast('Please fill in required fields', 'error');
+    return toast(t('org.required_error'), 'error');
   }
 
   try {
@@ -5406,7 +5416,7 @@ async function saveOrganizationEdit(orgId) {
       name, slug, contact_email, contact_phone, address,
       subscription_status, max_teachers, max_students
     });
-    toast('Organization updated successfully', 'success');
+    toast(t('org.updated'), 'success');
     closeModal();
     navigateTo('admin-orgs');
   } catch (error) {
@@ -5461,19 +5471,19 @@ async function viewOrgMembers(orgId, orgName) {
 function copyInviteCode() {
   const code = document.getElementById('inviteCodeDisplay')?.textContent;
   if (!code || code === '—') return;
-  navigator.clipboard.writeText(code).then(() => toast('Invite code copied!', 'success')).catch(() => toast('Copy failed', 'error'));
+  navigator.clipboard.writeText(code).then(() => toast(t('org.code_copied'), 'success')).catch(() => toast(t('org.copy_failed'), 'error'));
 }
 
 async function confirmRegenerateInviteCode() {
-  const ok = await confirmDialog('The current invite code will stop working immediately. Teachers who haven\'t joined yet will need the new code.', 'Regenerate');
+  const ok = await confirmDialog(t('org.regen_confirm_long'), t('org.regenerate'));
   if (!ok) return;
   try {
     const data = await API.post('/admin/regenerate-invite-code', {});
     const display = document.getElementById('inviteCodeDisplay');
     if (display) display.textContent = data.invite_code;
-    toast('Invite code regenerated', 'success');
+    toast(t('org.code_regenerated'), 'success');
   } catch (err) {
-    toast(err.message || 'Failed to regenerate', 'error');
+    toast(err.message || t('org.regen_failed'), 'error');
   }
 }
 
@@ -5492,7 +5502,7 @@ async function deleteOrganization(orgId, orgName, memberCount) {
 
   try {
     await API.delete(`/organizations/${orgId}`);
-    toast('Organization deleted successfully', 'success');
+    toast(t('org.deleted'), 'success');
     navigateTo('admin-orgs');
   } catch (error) {
     toast(error.message || 'Failed to delete organization', 'error');
@@ -5501,16 +5511,16 @@ async function deleteOrganization(orgId, orgName, memberCount) {
 
 async function removeOrgMember(orgId, userId, userName, orgName) {
   const confirmed = await confirmDialog(
-    `Remove <strong>${userName}</strong> from <strong>${orgName}</strong>?<br><br>This will remove their association with this organization.`,
-    'Remove',
-    'Cancel'
+    t('org.remove_member_confirm', {user: userName, org: orgName}),
+    t('common.remove'),
+    t('common.cancel')
   );
 
   if (!confirmed) return;
 
   try {
     await API.delete(`/organizations/${orgId}/members/${userId}`);
-    toast('Member removed successfully', 'success');
+    toast(t('org.member_removed'), 'success');
     closeModal();
     // Refresh the members view
     viewOrgMembers(orgId, orgName);
@@ -5523,7 +5533,7 @@ async function removeOrgMember(orgId, userId, userName, orgName) {
 
 function announcementCardHTML(a, canDelete) {
   const date = new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const targetLabel = a.target_type === 'org' ? 'Organization-wide' : a.target_type === 'all' ? 'All Organizations' : 'Selected Classrooms';
+  const targetLabel = a.target_type === 'org' ? t('ann.org_wide') : a.target_type === 'all' ? t('ann.all_orgs') : t('ann.selected_classrooms');
   return `
     <div class="card" style="margin-bottom:16px">
       <div class="card-body">
@@ -5532,7 +5542,7 @@ function announcementCardHTML(a, canDelete) {
             <h3 style="margin:0 0 4px;font-size:1.05rem">${a.title}</h3>
             <span style="font-size:0.78rem;color:var(--gray-400)">${targetLabel} &middot; ${date}</span>
           </div>
-          ${canDelete ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);flex-shrink:0" onclick="deleteAnnouncement(${a.id})">Delete</button>` : ''}
+          ${canDelete ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);flex-shrink:0" onclick="deleteAnnouncement(${a.id})">${t('common.delete')}</button>` : ''}
         </div>
         <div style="color:var(--gray-700);line-height:1.6;font-size:0.92rem">${a.content}</div>
       </div>
@@ -5557,10 +5567,10 @@ async function renderAdminAnnouncements() {
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
-        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">+ New Announcement</button>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
       </div>
       ${announcements.length === 0
-        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No announcements yet</h3><p>Post updates, notices, or news to your organization.</p></div></div></div>'
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_updates_hint')}</p></div></div></div>`
         : announcements.map(a => announcementCardHTML(a, true)).join('')}
     `;
   } catch (err) {
@@ -5576,10 +5586,10 @@ async function renderTeacherAnnouncements() {
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
-        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">+ New Announcement</button>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
       </div>
       ${announcements.length === 0
-        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No announcements yet</h3><p>Post announcements to your classrooms.</p></div></div></div>'
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_classrooms_hint')}</p></div></div></div>`
         : announcements.map(a => announcementCardHTML(a, a.creator_id === (currentUser?.id))).join('')}
     `;
   } catch (err) {
@@ -5595,10 +5605,10 @@ async function renderHeadAnnouncements() {
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
-        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">+ New Announcement</button>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
       </div>
       ${announcements.length === 0
-        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No announcements yet</h3><p>Post announcements to your school.</p></div></div></div>'
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_school_hint')}</p></div></div></div>`
         : announcements.map(a => announcementCardHTML(a, true)).join('')}
     `;
   } catch (err) {
@@ -5624,34 +5634,34 @@ async function showCreateAnnouncementModal() {
     </div>` : '';
 
   const targetOptions = role === 'super_admin'
-    ? `<option value="org">Specific Organization</option><option value="classrooms">Specific Classrooms</option><option value="all">All Organizations</option>`
+    ? `<option value="org">${t('ann.specific_org')}</option><option value="classrooms">${t('ann.specific_classrooms')}</option><option value="all">${t('ann.all_orgs')}</option>`
     : role === 'teacher'
-      ? `<option value="classrooms">My Classrooms</option>`
-      : `<option value="org">Entire Organization</option><option value="classrooms">Specific Classrooms</option>`;
+      ? `<option value="classrooms">${t('ann.my_classrooms')}</option>`
+      : `<option value="org">${t('ann.entire_org')}</option><option value="classrooms">${t('ann.specific_classrooms')}</option>`;
 
   openModal(`
-    <div class="modal-header"><h3>New Announcement</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('ann.new_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Title *</label>
-        <input type="text" class="form-control" id="annTitle" placeholder="Announcement title">
+        <label>${t('ann.title_label')}</label>
+        <input type="text" class="form-control" id="annTitle" placeholder="${t('ann.title_placeholder')}">
       </div>
       ${role !== 'teacher' ? `
       <div class="form-group">
-        <label>Target</label>
+        <label>${t('ann.target_label')}</label>
         <select class="form-control" id="annTargetType" onchange="updateAnnTargetUI()">
           ${targetOptions}
         </select>
       </div>` : `<input type="hidden" id="annTargetType" value="classrooms">`}
       ${classroomSelect}
       <div class="form-group">
-        <label>Content *</label>
+        <label>${t('ann.content_label')}</label>
         ${richTextToolbar('annContent')}
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAnnouncement()">Post Announcement</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="submitAnnouncement()">${t('ann.post_btn')}</button>
     </div>
   `);
 
@@ -5677,13 +5687,13 @@ async function submitAnnouncement() {
   const target_type = document.getElementById('annTargetType')?.value || 'org';
   const classroom_ids = [...document.querySelectorAll('input[name=annClassroom]:checked')].map(cb => parseInt(cb.value));
 
-  if (!title) return toast('Title is required', 'error');
-  if (!content || content === '') return toast('Content is required', 'error');
-  if (target_type === 'classrooms' && classroom_ids.length === 0) return toast('Select at least one classroom', 'error');
+  if (!title) return toast(t('ann.title_required'), 'error');
+  if (!content || content === '') return toast(t('ann.content_required'), 'error');
+  if (target_type === 'classrooms' && classroom_ids.length === 0) return toast(t('ann.select_classroom'), 'error');
 
   try {
     await API.post('/announcements', { title, content, target_type, classroom_ids });
-    toast('Announcement posted!', 'success');
+    toast(t('ann.posted'), 'success');
     closeModal();
     const view = currentView;
     if (view) navigateTo(view);
@@ -5691,11 +5701,11 @@ async function submitAnnouncement() {
 }
 
 async function deleteAnnouncement(id) {
-  const confirmed = await confirmDialog('Delete this announcement?', 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('ann.delete_confirm'), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/announcements/${id}`);
-    toast('Announcement deleted');
+    toast(t('ann.deleted'));
     const view = currentView;
     if (view) navigateTo(view);
   } catch (err) { toast(err.message, 'error'); }
