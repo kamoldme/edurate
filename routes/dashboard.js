@@ -23,9 +23,9 @@ router.get('/student', authenticate, authorize('student'), (req, res) => {
     const activePeriod = db.prepare(`
       SELECT fp.*, t.name as term_name FROM feedback_periods fp
       JOIN terms t ON fp.term_id = t.id
-      WHERE fp.active_status = 1 AND t.active_status = 1
-      LIMIT 1
-    `).get();
+      WHERE fp.active_status = 1 AND t.active_status = 1 AND t.org_id = ?
+      ORDER BY fp.id ASC LIMIT 1
+    `).get(req.user.org_id);
 
     const myReviews = db.prepare(`
       SELECT r.id, r.teacher_id, r.classroom_id, r.overall_rating, r.flagged_status, r.approved_status,
@@ -70,11 +70,11 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
     `).all(teacher.id);
 
     const activeTerm = db.prepare('SELECT * FROM terms WHERE active_status = 1 AND org_id = ? LIMIT 1').get(teacher.org_id);
-    const activePeriod = db.prepare(`
+    const activePeriod = activeTerm ? db.prepare(`
       SELECT fp.* FROM feedback_periods fp
-      WHERE fp.active_status = 1 ${activeTerm ? 'AND fp.term_id = ' + activeTerm.id : ''}
-      LIMIT 1
-    `).get();
+      WHERE fp.active_status = 1 AND fp.term_id = ?
+      ORDER BY fp.id ASC LIMIT 1
+    `).get(activeTerm.id) : null;
     const allTerms = db.prepare('SELECT id, name FROM terms WHERE org_id = ? ORDER BY start_date DESC').all(teacher.org_id);
 
     // Overall scores
@@ -122,15 +122,14 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
       }));
     }
 
-    // Teacher responses
-    const responses = db.prepare(`
-      SELECT tr.*, fp.name as period_name, c.subject as classroom_subject
-      FROM teacher_responses tr
-      JOIN feedback_periods fp ON tr.feedback_period_id = fp.id
-      JOIN classrooms c ON tr.classroom_id = c.id
-      WHERE tr.teacher_id = ?
-      ORDER BY tr.created_at DESC
-    `).all(teacher.id);
+    // Pending review count (for teacher awareness)
+    const pendingCount = db.prepare(
+      "SELECT COUNT(*) as count FROM reviews WHERE teacher_id = ? AND approved_status = 0 AND flagged_status = 'pending'"
+    ).get(teacher.id).count;
+
+    const totalReviewCount = db.prepare(
+      'SELECT COUNT(*) as count FROM reviews WHERE teacher_id = ?'
+    ).get(teacher.id).count;
 
     res.json({
       teacher,
@@ -145,7 +144,8 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
       department_average: deptAvg,
       recent_reviews: recentReviews,
       completion_rates: completionRates,
-      responses
+      pending_review_count: pendingCount,
+      total_review_count: totalReviewCount
     });
   } catch (err) {
     console.error('Teacher dashboard error:', err);
@@ -153,39 +153,36 @@ router.get('/teacher', authenticate, authorize('teacher'), (req, res) => {
   }
 });
 
-// POST /api/dashboard/teacher/respond - teacher posts period response
-router.post('/teacher/respond', authenticate, authorize('teacher'), (req, res) => {
+// GET /api/dashboard/teacher/reviews - paginated approved reviews for teacher
+router.get('/teacher/reviews', authenticate, authorize('teacher'), (req, res) => {
   try {
-    const { classroom_id, feedback_period_id, response_text } = req.body;
-    if (!classroom_id || !feedback_period_id || !response_text) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-
     const teacher = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(req.user.id);
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
 
-    const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ? AND teacher_id = ?')
-      .get(classroom_id, teacher.id);
-    if (!classroom) return res.status(403).json({ error: 'Not your classroom' });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 50;
+    const offset = (page - 1) * limit;
 
-    db.prepare(`
-      INSERT OR REPLACE INTO teacher_responses (teacher_id, classroom_id, feedback_period_id, response_text)
-      VALUES (?, ?, ?, ?)
-    `).run(teacher.id, classroom_id, feedback_period_id, response_text);
+    const total = db.prepare('SELECT COUNT(*) as count FROM reviews WHERE teacher_id = ? AND approved_status = 1').get(teacher.id).count;
 
-    logAuditEvent({
-      userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
-      actionType: 'teacher_respond',
-      actionDescription: `Posted response to feedback for ${classroom.subject}`,
-      targetType: 'teacher_response', targetId: classroom_id,
-      metadata: { classroom_id, feedback_period_id },
-      ipAddress: req.ip
-    });
+    const reviews = db.prepare(`
+      SELECT r.overall_rating, r.clarity_rating, r.engagement_rating,
+        r.fairness_rating, r.supportiveness_rating, r.preparation_rating, r.workload_rating,
+        r.feedback_text, r.tags, r.approved_status, r.created_at,
+        fp.name as period_name, t.name as term_name, c.subject as classroom_subject, c.grade_level
+      FROM reviews r
+      JOIN feedback_periods fp ON r.feedback_period_id = fp.id
+      JOIN terms t ON r.term_id = t.id
+      JOIN classrooms c ON r.classroom_id = c.id
+      WHERE r.teacher_id = ? AND r.approved_status = 1
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(teacher.id, limit, offset);
 
-    res.json({ message: 'Response saved' });
+    res.json({ reviews, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
-    console.error('Teacher respond error:', err);
-    res.status(500).json({ error: 'Failed to save response' });
+    console.error('Teacher reviews error:', err);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
   }
 });
 
@@ -201,31 +198,111 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
 
     const teachers = db.prepare(`SELECT * FROM teachers WHERE ${orgId ? 'org_id = ?' : '1=1'}`).all(...(orgId ? [orgId] : []));
 
-    const teacherPerformance = teachers.map(t => {
-      const scores = getTeacherScores(t.id, activeTerm ? { termId: activeTerm.id } : {});
-      const distribution = getRatingDistribution(t.id, activeTerm ? { termId: activeTerm.id } : {});
-      const trend = activeTerm ? getTeacherTrend(t.id, activeTerm.id) : null;
+    // ── Bulk queries instead of N × 3 queries ──────────────────────────────
+    const termFilter = activeTerm ? 'AND r.term_id = ?' : '';
+    const orgFilter2 = orgId ? 'AND r.org_id = ?' : '';
+    const bulkParams = [...(activeTerm ? [activeTerm.id] : []), ...(orgId ? [orgId] : [])];
 
-      return {
-        ...t,
-        scores,
-        distribution,
-        trend
-      };
+    // 1 query: all teacher aggregate scores
+    const scoresData = db.prepare(`
+      SELECT r.teacher_id,
+        COUNT(*) as review_count,
+        ROUND(AVG(r.clarity_rating), 2) as avg_clarity,
+        ROUND(AVG(r.engagement_rating), 2) as avg_engagement,
+        ROUND(AVG(r.fairness_rating), 2) as avg_fairness,
+        ROUND(AVG(r.supportiveness_rating), 2) as avg_supportiveness,
+        ROUND(AVG(r.preparation_rating), 2) as avg_preparation,
+        ROUND(AVG(r.workload_rating), 2) as avg_workload,
+        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
+               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as avg_overall,
+        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
+               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as final_score
+      FROM reviews r
+      WHERE r.approved_status = 1 ${termFilter} ${orgFilter2}
+      GROUP BY r.teacher_id
+    `).all(...bulkParams);
+
+    // 1 query: rating distributions
+    const distData = db.prepare(`
+      SELECT teacher_id, overall_rating as rating, COUNT(*) as count
+      FROM reviews WHERE approved_status = 1 ${termFilter} ${orgFilter2}
+      GROUP BY teacher_id, overall_rating
+    `).all(...bulkParams);
+
+    // 1 query: period scores for trend (only if active term exists)
+    let periodData = [];
+    if (activeTerm) {
+      periodData = db.prepare(`
+        SELECT fp.id as period_id, fp.name as period_name, r.teacher_id,
+          COUNT(r.id) as review_count,
+          ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
+                 AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as score
+        FROM feedback_periods fp
+        LEFT JOIN reviews r ON r.feedback_period_id = fp.id AND r.approved_status = 1 ${orgFilter2}
+        WHERE fp.term_id = ?
+        GROUP BY fp.id, r.teacher_id ORDER BY fp.id
+      `).all(...(orgId ? [orgId] : []), activeTerm.id);
+    }
+
+    // Build lookup maps
+    const scoreMap = {};
+    scoresData.forEach(s => { scoreMap[s.teacher_id] = s; });
+
+    const distMap = {};
+    distData.forEach(d => {
+      if (!distMap[d.teacher_id]) distMap[d.teacher_id] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      distMap[d.teacher_id][d.rating] = d.count;
     });
 
-    // Department-level aggregation
+    const allPeriodIds = [...new Set(periodData.map(p => p.period_id))];
+    const periodNameMap = {};
+    periodData.forEach(p => { periodNameMap[p.period_id] = p.period_name; });
+    const teacherPeriodMap = {};
+    periodData.forEach(p => {
+      if (!p.teacher_id) return;
+      if (!teacherPeriodMap[p.teacher_id]) teacherPeriodMap[p.teacher_id] = {};
+      teacherPeriodMap[p.teacher_id][p.period_id] = { score: p.score, review_count: p.review_count };
+    });
+
+    const teacherPerformance = teachers.map(t => {
+      const scores = scoreMap[t.id] || { review_count: 0, avg_overall: null, avg_clarity: null, avg_engagement: null, avg_fairness: null, avg_supportiveness: null, avg_preparation: null, avg_workload: null, final_score: null };
+      const distribution = distMap[t.id] || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+      let trend = null;
+      if (activeTerm) {
+        const periods = allPeriodIds.map(pid => ({
+          id: pid, name: periodNameMap[pid],
+          score: teacherPeriodMap[t.id]?.[pid]?.score ?? null,
+          review_count: teacherPeriodMap[t.id]?.[pid]?.review_count ?? 0
+        }));
+        const validScores = periods.filter(p => p.score !== null).map(p => p.score);
+        let trendDir = 'stable';
+        if (validScores.length >= 2) {
+          const diff = validScores[validScores.length - 1] - validScores[0];
+          if (diff > 0.3) trendDir = 'improving';
+          else if (diff < -0.3) trendDir = 'declining';
+        }
+        trend = { periods, trend: trendDir };
+      }
+
+      return { ...t, scores, distribution, trend };
+    });
+
+    // Department-level aggregation (from already-fetched scores)
     const departments = {};
     teachers.forEach(t => {
       if (!t.department) return;
-      if (!departments[t.department]) {
-        departments[t.department] = { teachers: [], avg_score: 0 };
-      }
+      if (!departments[t.department]) departments[t.department] = { teachers: [], avg_score: 0 };
       departments[t.department].teachers.push(t.id);
     });
-
     for (const [dept, data] of Object.entries(departments)) {
-      data.avg_score = getDepartmentAverage(dept, activeTerm?.id, orgId);
+      const deptScores = scoresData.filter(s => {
+        const teacher = teachers.find(t => t.id === s.teacher_id);
+        return teacher?.department === dept;
+      });
+      data.avg_score = deptScores.length > 0
+        ? Math.round((deptScores.reduce((sum, s) => sum + (s.avg_overall || 0), 0) / deptScores.length) * 100) / 100
+        : 0;
     }
 
     // All classrooms with stats (scoped to org)

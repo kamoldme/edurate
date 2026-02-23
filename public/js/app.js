@@ -164,7 +164,8 @@ const ICONS = {
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
   settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
-  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>'
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+  megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>'
 };
 
 function buildNavigation() {
@@ -186,14 +187,16 @@ function buildNavigation() {
       { id: 'teacher-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'teacher-feedback', label: t('nav.feedback'), icon: 'review' },
       { id: 'teacher-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'teacher-forms', label: 'Forms', icon: 'review' }
+      { id: 'teacher-forms', label: 'Forms', icon: 'review' },
+      { id: 'teacher-announcements', label: 'Announcements', icon: 'megaphone' }
     ];
   } else if (role === 'school_head') {
     items = [
       { id: 'head-home', label: t('nav.dashboard'), icon: 'home' },
       { id: 'head-teachers', label: t('nav.teachers'), icon: 'users' },
       { id: 'head-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
-      { id: 'head-analytics', label: t('nav.analytics'), icon: 'chart' }
+      { id: 'head-analytics', label: t('nav.analytics'), icon: 'chart' },
+      { id: 'head-announcements', label: 'Announcements', icon: 'megaphone' }
     ];
   } else if (role === 'super_admin') {
     items = [
@@ -206,6 +209,7 @@ function buildNavigation() {
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
       { id: 'admin-forms', label: 'Forms', icon: 'review' },
+      { id: 'admin-announcements', label: 'Announcements', icon: 'megaphone' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -219,6 +223,7 @@ function buildNavigation() {
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
       { id: 'admin-forms', label: 'Forms', icon: 'review' },
+      { id: 'admin-announcements', label: 'Announcements', icon: 'megaphone' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -302,6 +307,9 @@ function navigateTo(view) {
     'admin-flagged': t('title.flagged_reviews'),
     'admin-support': t('title.support_messages'),
     'admin-audit': t('title.audit_logs'),
+    'admin-announcements': 'Announcements',
+    'teacher-announcements': 'Announcements',
+    'head-announcements': 'Announcements',
     'account': t('title.account_details')
   };
   document.getElementById('pageTitle').textContent = titles[view] || t('common.dashboard');
@@ -334,6 +342,9 @@ function navigateTo(view) {
     'admin-support': renderAdminSupport,
     'admin-audit': renderAdminAudit,
     'admin-forms': renderAdminForms,
+    'admin-announcements': renderAdminAnnouncements,
+    'teacher-announcements': renderTeacherAnnouncements,
+    'head-announcements': renderHeadAnnouncements,
     'account': renderAccount
   };
 
@@ -401,6 +412,11 @@ function trendArrow(trend) {
 
 function escAttr(str) {
   return String(str || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
+function formatJoinCode(code) {
+  const c = String(code || '').replace(/\D/g, '');
+  return c.length >= 8 ? c.slice(0, 4) + '-' + c.slice(4, 8) : c;
 }
 
 function toast(message, type = 'success') {
@@ -669,17 +685,18 @@ async function renderStudentHome() {
     <div class="grid grid-2">
       <div class="card">
         <div class="card-header"><h3>${t('student.my_classrooms')}</h3></div>
-        <div class="card-body">
+        <div class="card-body" id="studentClassroomList">
           ${data.classrooms.length === 0
             ? `<div class="empty-state"><h3>${t('student.no_classrooms')}</h3><p>${t('student.join_classroom_hint')}</p></div>`
             : data.classrooms.map(c => `
-              <div class="classroom-card" style="margin-bottom:12px;display:flex;align-items:center;gap:12px">
+              <div class="classroom-card" id="cls-${c.id}" style="margin-bottom:12px;display:flex;align-items:center;gap:12px">
                 ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'small', true)}
                 <div style="flex:1">
                   <div class="class-subject" style="margin:0">${c.subject}</div>
                   <div class="class-meta" style="margin:0${currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'org_admin' || currentUser.role === 'school_head') ? ';cursor:pointer' : ''}" ${currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'org_admin' || currentUser.role === 'school_head') ? `onclick="viewTeacherProfile(${c.teacher_id})"` : ''}>${c.teacher_name}</div>
                   <div class="class-meta" style="margin:0">${c.grade_level}</div>
                 </div>
+                <span id="reviewed-${c.id}" style="display:none;font-size:0.78rem;color:var(--success);font-weight:600;white-space:nowrap">✓ Reviewed</span>
               </div>
             `).join('')}
         </div>
@@ -697,7 +714,7 @@ async function renderStudentHome() {
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   ${starsHTML(r.overall_rating)}
-                  ${badgeHTML(r.flagged_status)}
+                  ${r.approved_status === 1 ? '<span style="font-size:0.75rem;color:var(--success);font-weight:600;background:#dcfce7;padding:2px 7px;border-radius:10px">✓ Approved</span>' : badgeHTML(r.flagged_status)}
                 </div>
               </div>
             `).join('')}
@@ -706,11 +723,18 @@ async function renderStudentHome() {
     </div>
   `;
 
-  // Fetch eligible count
+  // Fetch eligible count and mark reviewed classrooms
   try {
     const eligible = await API.get('/reviews/eligible-teachers');
     const remaining = eligible.teachers.filter(t => !t.already_reviewed).length;
     document.getElementById('eligibleCount').textContent = remaining;
+    // Mark classrooms where student already submitted a review this period
+    eligible.teachers.forEach(t => {
+      if (t.already_reviewed) {
+        const badge = document.getElementById(`reviewed-${t.classroom_id}`);
+        if (badge) badge.style.display = 'inline';
+      }
+    });
   } catch { document.getElementById('eligibleCount').textContent = '0'; }
 }
 
@@ -751,7 +775,7 @@ function showJoinClassroom() {
     <div class="modal-body">
       <div class="form-group">
         <label>${t('student.join_code_label')}</label>
-        <input type="text" class="form-control" id="joinCodeInput" placeholder="${t('student.join_code_placeholder')}" maxlength="8" style="text-transform:uppercase;font-family:monospace;font-size:1.2rem;letter-spacing:3px;text-align:center">
+        <input type="text" class="form-control" id="joinCodeInput" placeholder="XXXX-XXXX" maxlength="9" style="font-family:monospace;font-size:1.2rem;letter-spacing:3px;text-align:center" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,8);this.value=this.value.length>4?this.value.slice(0,4)+'-'+this.value.slice(4):this.value">
       </div>
     </div>
     <div class="modal-footer">
@@ -1029,8 +1053,9 @@ async function renderStudentMyReviews() {
                   </div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-                  ${badgeHTML(r.flagged_status)}
+                  ${r.approved_status === 1 ? '<span class="badge" style="background:#16a34a;color:#fff">✓ Approved</span>' : badgeHTML(r.flagged_status)}
                   <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+                  ${r.approved_status !== 1 ? `<button class="btn btn-sm btn-outline" onclick="editMyReview(${r.id})">Edit</button>` : '<span style="font-size:0.75rem;color:var(--gray-400)">Cannot edit (approved)</span>'}
                 </div>
               </div>
               <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
@@ -1039,7 +1064,7 @@ async function renderStudentMyReviews() {
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
                 <div class="review-tags">
-                  ${JSON.parse(r.tags).map(t => `<span class="tag">${t}</span>`).join('')}
+                  ${JSON.parse(r.tags).map(tag => `<span class="tag">${tag}</span>`).join('')}
                 </div>
               ` : ''}
             </div>
@@ -1047,6 +1072,64 @@ async function renderStudentMyReviews() {
       </div>
     </div>
   `;
+}
+
+async function editMyReview(reviewId) {
+  const reviews = await API.get('/reviews/my-reviews').catch(() => []);
+  const review = reviews.find(r => r.id === reviewId);
+  if (!review) return toast('Review not found', 'error');
+  if (review.approved_status === 1) return toast('Cannot edit an approved review', 'error');
+
+  const tags = await API.get('/reviews/tags').catch(() => []);
+  const currentTags = JSON.parse(review.tags || '[]');
+
+  openModal(`
+    <div class="modal-header"><h3>Edit Review — ${review.teacher_name}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:16px">${review.classroom_subject} &middot; ${review.period_name}</p>
+      ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => `
+        <div class="form-group">
+          <label>${cat.charAt(0).toUpperCase() + cat.slice(1)}</label>
+          <select class="form-control" id="edit_${cat}">
+            ${[1,2,3,4,5].map(v => `<option value="${v}" ${review[cat+'_rating'] == v ? 'selected' : ''}>${v} - ${['Very Poor','Poor','Average','Good','Excellent'][v-1]}</option>`).join('')}
+          </select>
+        </div>
+      `).join('')}
+      <div class="form-group">
+        <label>Written Feedback <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+        <textarea class="form-control" id="edit_feedback" rows="3" placeholder="Share your thoughts...">${review.feedback_text || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Tags</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${tags.map(tag => `<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="${escAttr(tag)}" ${currentTags.includes(tag) ? 'checked' : ''}> ${tag}</label>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitReviewEdit(${reviewId})">Save Changes</button>
+    </div>
+  `);
+}
+
+async function submitReviewEdit(reviewId) {
+  const body = {
+    clarity_rating: parseInt(document.getElementById('edit_clarity').value),
+    engagement_rating: parseInt(document.getElementById('edit_engagement').value),
+    fairness_rating: parseInt(document.getElementById('edit_fairness').value),
+    supportiveness_rating: parseInt(document.getElementById('edit_supportiveness').value),
+    preparation_rating: parseInt(document.getElementById('edit_preparation').value),
+    workload_rating: parseInt(document.getElementById('edit_workload').value),
+    feedback_text: document.getElementById('edit_feedback').value,
+    tags: [...document.querySelectorAll('#modal input[type=checkbox]:checked')].map(cb => cb.value)
+  };
+  try {
+    await API.put(`/reviews/${reviewId}`, body);
+    toast('Review updated. Awaiting re-approval.');
+    closeModal();
+    renderStudentMyReviews();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 async function viewTeacherProfile(teacherId) {
@@ -1319,6 +1402,12 @@ async function renderTeacherHome() {
   const s = data.overall_scores;
 
   el.innerHTML = `
+    ${data.pending_review_count > 0 ? `
+      <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-size:0.9rem;color:#854d0e">⏳ <strong>${data.pending_review_count}</strong> review${data.pending_review_count !== 1 ? 's' : ''} awaiting admin approval</span>
+        <span style="font-size:0.8rem;color:#a16207">${data.total_review_count} total submitted</span>
+      </div>
+    ` : ''}
     <div class="grid grid-4" style="margin-bottom:28px">
       <div class="stat-card">
         <div class="stat-label">${t('teacher.overall_rating')}</div>
@@ -1441,36 +1530,48 @@ async function renderTeacherClassrooms() {
       <p style="color:var(--gray-500)">${t('teacher.manage_classrooms')}</p>
       <button class="btn btn-primary" onclick="showCreateClassroomTeacher()">${t('teacher.create_classroom')}</button>
     </div>
-    ${data.classrooms.length === 0
-      ? `<div class="empty-state" style="margin-top:40px">
+    ${(() => {
+      const active = data.classrooms.filter(c => c.active_status !== 0);
+      const archived = data.classrooms.filter(c => c.active_status === 0);
+      if (data.classrooms.length === 0) return `<div class="empty-state" style="margin-top:40px">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray-300);margin-bottom:12px"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           <h3 style="color:var(--gray-500);margin-bottom:6px">No classrooms yet</h3>
           <p style="color:var(--gray-400);font-size:0.875rem">Create your first classroom to get started</p>
-        </div>`
-      : `<div class="grid grid-2">
-      ${data.classrooms.map(c => `
-        <div class="classroom-card">
+        </div>`;
+      const renderCard = (c, isArchived) => `
+        <div class="classroom-card" style="${isArchived ? 'opacity:0.65;' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:start">
             <div>
               <div class="class-subject">${c.subject}</div>
               <div class="class-meta">${c.grade_level} &middot; ${c.student_count} ${t('common.students').toLowerCase()}</div>
             </div>
+            ${isArchived ? '<span style="font-size:0.75rem;background:var(--gray-200);color:var(--gray-600);padding:2px 8px;border-radius:10px;font-weight:500">Archived</span>' : ''}
           </div>
           <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
             <div>
               <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">${t('teacher.join_code')}</div>
-              <span class="join-code">${c.join_code}</span>
+              <span class="join-code">${formatJoinCode(c.join_code)}</span>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-sm btn-outline" onclick="regenerateCode(${c.id})">${t('teacher.new_code')}</button>
-              <button class="btn btn-sm btn-outline" onclick="editClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}', '${c.grade_level.replace(/'/g, "\\'")}')">Edit</button>
+              ${!isArchived ? `<button class="btn btn-sm btn-outline" onclick="regenerateCode(${c.id})">${t('teacher.new_code')}</button>` : ''}
+              ${!isArchived ? `<button class="btn btn-sm btn-outline" onclick="editClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}', '${c.grade_level.replace(/'/g, "\\'")}')">Edit</button>` : ''}
+              ${!isArchived
+                ? `<button class="btn btn-sm btn-outline" style="color:var(--gray-500)" onclick="archiveClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Archive</button>`
+                : `<button class="btn btn-sm btn-outline" onclick="unarchiveClassroomTeacher(${c.id})">Unarchive</button>`}
               <button class="btn btn-sm btn-danger" onclick="deleteClassroomTeacher(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Delete</button>
               <button class="btn btn-sm btn-primary" onclick="viewClassroomMembers(${c.id}, '${c.subject}')">${t('teacher.members')}</button>
             </div>
           </div>
-        </div>
-      `).join('')}
-    </div>`}
+        </div>`;
+      return `<div class="grid grid-2">
+        ${active.map(c => renderCard(c, false)).join('')}
+      </div>
+      ${archived.length > 0 ? `
+        <div style="margin-top:32px">
+          <h3 style="color:var(--gray-500);font-size:0.95rem;margin-bottom:12px">Archived Classrooms (${archived.length})</h3>
+          <div class="grid grid-2">${archived.map(c => renderCard(c, true)).join('')}</div>
+        </div>` : ''}`;
+    })()}
   `;
 }
 
@@ -1500,9 +1601,27 @@ async function createClassroomTeacher() {
   if (!subject || !grade_level) return toast(t('teacher.fill_all_fields'), 'error');
   try {
     const data = await API.post('/classrooms', { subject, grade_level });
-    toast(`Classroom created! Join code: ${data.join_code}`);
+    toast(`Classroom created! Join code: ${formatJoinCode(data.join_code)}`);
     closeModal();
     navigateTo('teacher-classrooms');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function archiveClassroomTeacher(id, subject) {
+  const confirmed = await confirmDialog(`Archive "${subject}"? Students can no longer join, but history is preserved.`, 'Archive', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.patch(`/classrooms/${id}`, { active_status: 0 });
+    toast('Classroom archived');
+    renderTeacherClassrooms();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function unarchiveClassroomTeacher(id) {
+  try {
+    await API.patch(`/classrooms/${id}`, { active_status: 1 });
+    toast('Classroom reactivated');
+    renderTeacherClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -1553,7 +1672,7 @@ async function regenerateCode(classroomId) {
   if (!confirmed) return;
   try {
     const data = await API.post(`/classrooms/${classroomId}/regenerate-code`);
-    toast(`New join code: ${data.join_code}`);
+    toast(`New join code: ${formatJoinCode(data.join_code)}`);
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1581,6 +1700,7 @@ async function renderTeacherFeedback() {
   // Separate approved and pending reviews
   const approvedReviews = data.recent_reviews.filter(r => r.approved_status === 1);
   const pendingReviews = data.recent_reviews.filter(r => r.approved_status === 0);
+  window._teacherCompletionRates = data.completion_rates || [];
 
   // Group APPROVED reviews by subject/classroom for averages
   const bySubject = {};
@@ -1668,40 +1788,106 @@ async function renderTeacherFeedback() {
       </div>
     </div>
 
-    <!-- Individual Reviews -->
+    <!-- Individual Reviews (paginated) -->
     <div class="card">
-      <div class="card-header">
-        <h3>Approved Reviews (${approvedReviews.length})</h3>
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Approved Reviews</h3>
+        ${data.completion_rates && data.completion_rates.length > 0 ? `<button class="btn btn-sm btn-outline" onclick="showCompletionRatesModal()">📊 Completion Rates</button>` : ''}
       </div>
-      <div class="card-body">
-        ${approvedReviews.length === 0
-          ? '<div class="empty-state"><h3>No approved reviews yet</h3><p>Approved reviews will appear here once admins review student feedback</p></div>'
-          : approvedReviews.map(r => `
-            <div class="review-card">
-              <div class="review-header">
-                <div>
-                  <span style="color:var(--gray-500);font-size:0.85rem">${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}</span>
-                  <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
-                    <span style="font-size:1.3rem;font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
-                    ${starsHTML(r.overall_rating, 'large')}
-                  </div>
-                </div>
-                <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
-              </div>
-              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">
-                ${ratingGridHTML(r)}
-              </div>
-              ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
-              ${JSON.parse(r.tags || '[]').length > 0 ? `
-                <div class="review-tags">
-                  ${JSON.parse(r.tags).map(t => `<span class="tag">${t}</span>`).join('')}
-                </div>
-              ` : ''}
-            </div>
-          `).join('')}
+      <div class="card-body" id="teacherReviewsList">
+        <div class="loading"><div class="spinner"></div></div>
       </div>
     </div>
   `;
+  // Load first page of approved reviews
+  window._teacherReviewPage = 1;
+  window._teacherReviewsLoading = false;
+  loadTeacherReviewsPage(1, true);
+}
+
+function renderTeacherReviewCard(r) {
+  const tags = JSON.parse(r.tags || '[]');
+  return `<div class="review-card">
+    <div class="review-header">
+      <div>
+        <span style="color:var(--gray-500);font-size:0.85rem">${r.classroom_subject} (${r.grade_level}) &middot; ${r.period_name}</span>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:1.3rem;font-weight:700;color:${scoreColor(r.overall_rating)}">${r.overall_rating}/5</span>
+          ${starsHTML(r.overall_rating, 'large')}
+        </div>
+      </div>
+      <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
+    </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">${ratingGridHTML(r)}</div>
+    ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
+    ${tags.length > 0 ? `<div class="review-tags">${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+async function loadTeacherReviewsPage(page, reset = false) {
+  if (window._teacherReviewsLoading) return;
+  window._teacherReviewsLoading = true;
+  const container = document.getElementById('teacherReviewsList');
+  if (!container) return;
+  try {
+    const result = await API.get(`/dashboard/teacher/reviews?page=${page}&limit=50`);
+    if (reset) container.innerHTML = '';
+    // Remove old load-more button
+    const old = document.getElementById('loadMoreReviewsBtn');
+    if (old) old.remove();
+
+    if (result.reviews.length === 0 && page === 1) {
+      container.innerHTML = '<div class="empty-state"><h3>No approved reviews yet</h3><p>Reviews appear here after admin approval</p></div>';
+    } else {
+      const frag = document.createDocumentFragment();
+      result.reviews.forEach(r => {
+        const div = document.createElement('div');
+        div.innerHTML = renderTeacherReviewCard(r);
+        frag.appendChild(div.firstElementChild);
+      });
+      container.appendChild(frag);
+
+      if (page < result.pages) {
+        const btn = document.createElement('div');
+        btn.id = 'loadMoreReviewsBtn';
+        btn.style.textAlign = 'center';
+        btn.style.padding = '16px 0';
+        btn.innerHTML = `<button class="btn btn-outline" onclick="loadTeacherReviewsPage(${page + 1})">Load more reviews (${result.total - page * 50} remaining)</button>`;
+        container.appendChild(btn);
+      } else if (result.total > 0) {
+        const note = document.createElement('p');
+        note.style.cssText = 'text-align:center;color:var(--gray-400);font-size:0.82rem;padding:12px 0';
+        note.textContent = `All ${result.total} reviews loaded`;
+        container.appendChild(note);
+      }
+    }
+    window._teacherReviewPage = page;
+  } catch (err) {
+    if (container) container.innerHTML += `<p style="color:var(--danger)">${err.message}</p>`;
+  } finally {
+    window._teacherReviewsLoading = false;
+  }
+}
+
+function showCompletionRatesModal() {
+  const rates = window._teacherCompletionRates || [];
+  openModal(`
+    <div class="modal-header"><h3>Feedback Completion Rates</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      ${rates.length === 0 ? '<p style="color:var(--gray-500)">No data available</p>' : rates.map(c => `
+        <div style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-weight:500">${c.subject} (${c.grade_level})</span>
+            <span style="font-weight:600;color:${c.rate >= 70 ? 'var(--success)' : c.rate >= 40 ? 'var(--warning)' : 'var(--danger)'}">${c.submitted}/${c.total} (${c.rate}%)</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill ${c.rate >= 70 ? 'green' : c.rate >= 40 ? 'yellow' : 'red'}" style="width:${c.rate}%"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">Close</button></div>
+  `);
 }
 
 async function renderTeacherAnalytics() {
@@ -1901,9 +2087,10 @@ async function renderTeacherForms() {
               </div>
               <div class="card-body" style="flex:1">
                 ${f.description ? `<p style="color:var(--gray-600);font-size:0.85rem;margin-bottom:12px">${f.description}</p>` : ''}
-                <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--gray-500)">
+                <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--gray-500);flex-wrap:wrap">
                   <span>📋 ${f.question_count} question${f.question_count !== 1 ? 's' : ''}</span>
                   <span>💬 ${f.response_count} response${f.response_count !== 1 ? 's' : ''}</span>
+                  ${f.deadline ? `<span style="color:${new Date(f.deadline) < new Date() ? 'var(--danger)' : 'var(--warning)'}">⏰ ${new Date(f.deadline) < new Date() ? 'Expired' : 'Deadline'}: ${new Date(f.deadline).toLocaleDateString()}</span>` : ''}
                 </div>
               </div>
               <div class="card-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px">
@@ -1947,6 +2134,10 @@ function showCreateFormModal() {
           ${classrooms.map(c => `<option value="${c.id}">${c.subject} &middot; ${c.grade_level}</option>`).join('')}
         </select>
       </div>
+      <div class="form-group">
+        <label>Deadline <span style="color:var(--gray-400);font-weight:400">(optional — auto-closes form when reached)</span></label>
+        <input type="datetime-local" class="form-control" id="newFormDeadline">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -1960,10 +2151,11 @@ async function createForm() {
   const title = document.getElementById('newFormTitle').value.trim();
   const description = document.getElementById('newFormDesc').value.trim();
   const classroom_id = document.getElementById('newFormClassroom').value;
+  const deadline = document.getElementById('newFormDeadline')?.value || null;
   if (!title) return toast('Title is required', 'error');
   if (!classroom_id) return toast('Please select a classroom', 'error');
   try {
-    await API.post('/forms', { title, description, classroom_id: parseInt(classroom_id) });
+    await API.post('/forms', { title, description, classroom_id: parseInt(classroom_id), deadline: deadline || undefined });
     closeModal();
     toast('Form created! Now add your questions.');
     await renderTeacherForms();
@@ -3624,7 +3816,7 @@ async function renderAdminClassrooms() {
                 <td>${c.teacher_name || '-'}</td>
                 <td>${c.grade_level}</td>
                 <td><a href="#" onclick="event.preventDefault();viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')" style="color:var(--primary);font-weight:600">${c.student_count || 0}</a></td>
-                <td><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px">${c.join_code}</code></td>
+                <td><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px">${formatJoinCode(c.join_code)}</code></td>
                 <td>
                   <button class="btn btn-sm btn-outline" onclick="viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Members</button>
                   <button class="btn btn-sm btn-outline" onclick='editClassroom(${JSON.stringify(c)})'>Edit</button>
@@ -3788,9 +3980,16 @@ async function renderAdminModerate() {
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <p style="color:var(--gray-500)">${reviews.length} review(s) awaiting moderation</p>
-      ${reviews.length > 0 ? `<button class="btn btn-success" onclick="bulkApproveAll(${JSON.stringify(reviews.map(r => r.id))})">✓ Approve All (${reviews.length})</button>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <p style="color:var(--gray-500);margin:0">${reviews.length} review(s) awaiting moderation</p>
+        ${reviews.length > 0 ? `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem"><input type="checkbox" id="selectAllReviews" onchange="toggleSelectAllReviews(this)"> Select all</label>` : ''}
+      </div>
+      ${reviews.length > 0 ? `
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-success" id="approveSelectedBtn" onclick="approveSelectedReviews()" style="display:none">✓ Approve Selected</button>
+          <button class="btn btn-success" onclick="bulkApproveAll(${JSON.stringify(reviews.map(r => r.id))})">✓ Approve All (${reviews.length})</button>
+        </div>` : ''}
     </div>
     ${reviews.length === 0
       ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>All clear!</h3><p>No reviews pending moderation</p></div></div></div>'
@@ -3798,9 +3997,12 @@ async function renderAdminModerate() {
         <div class="card" style="margin-bottom:16px">
           <div class="card-body">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
-              <div>
-                <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
-                <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
+              <div style="display:flex;align-items:start;gap:10px">
+                <input type="checkbox" class="review-select-cb" value="${r.id}" onchange="updateApproveSelectedBtn()" style="margin-top:4px;width:16px;height:16px;cursor:pointer">
+                <div>
+                  <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
+                  <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
+                </div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
                 ${badgeHTML(r.flagged_status)}
@@ -3823,7 +4025,7 @@ async function renderAdminModerate() {
             ${r.feedback_text ? `<div class="review-text" style="margin-bottom:12px">${r.feedback_text}</div>` : '<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic;margin-bottom:12px">No written feedback</p>'}
             ${JSON.parse(r.tags || '[]').length > 0 ? `
               <div class="review-tags" style="margin-bottom:16px">
-                ${JSON.parse(r.tags).map(t => `<span class="tag">${t}</span>`).join('')}
+                ${JSON.parse(r.tags).map(tag => `<span class="tag">${tag}</span>`).join('')}
               </div>
             ` : ''}
             <div style="display:flex;gap:8px;margin-top:16px">
@@ -3947,6 +4149,32 @@ async function bulkApproveAll(reviewIds) {
   } catch (err) { toast(err.message, 'error'); }
 }
 
+function toggleSelectAllReviews(cb) {
+  document.querySelectorAll('.review-select-cb').forEach(el => el.checked = cb.checked);
+  updateApproveSelectedBtn();
+}
+
+function updateApproveSelectedBtn() {
+  const selected = [...document.querySelectorAll('.review-select-cb:checked')];
+  const btn = document.getElementById('approveSelectedBtn');
+  if (btn) {
+    btn.style.display = selected.length > 0 ? 'inline-flex' : 'none';
+    btn.textContent = `✓ Approve Selected (${selected.length})`;
+  }
+}
+
+async function approveSelectedReviews() {
+  const ids = [...document.querySelectorAll('.review-select-cb:checked')].map(cb => parseInt(cb.value));
+  if (ids.length === 0) return;
+  const confirmed = await confirmDialog(`Approve ${ids.length} selected review(s)?`, 'Approve', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.post('/admin/reviews/bulk-approve', { review_ids: ids });
+    toast(`Approved ${ids.length} review(s)!`, 'success');
+    renderAdminModerate();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
 async function confirmDeleteReview(id) {
   const confirmed = await confirmDialog('Permanently delete this review?', 'Delete', 'Cancel');
   if (confirmed) {
@@ -4065,6 +4293,7 @@ async function renderAdminTeachers() {
                 <td>
                   <button class="btn btn-sm btn-outline" onclick='editTeacher(${JSON.stringify(t)})'>Edit</button>
                   <button class="btn btn-sm btn-primary" onclick="viewTeacherFeedback(${t.id})">View Feedback</button>
+                  <button class="btn btn-sm btn-outline" onclick="exportTeacherPDF(${t.id})">Export PDF</button>
                 </td>
               </tr>
             `).join('')}
@@ -4133,6 +4362,67 @@ async function viewTeacherFeedback(teacherId) {
       </div>
     </div>
   `);
+}
+
+async function exportTeacherPDF(teacherId) {
+  try {
+    const data = await API.get(`/admin/teacher/${teacherId}/feedback`);
+    const t = data.teacher;
+    const s = data.scores;
+    const reviews = data.reviews || [];
+    const orgs = t.org_name ? t.org_name : '';
+    const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const ratingBar = (val) => {
+      const pct = Math.round((val / 5) * 100);
+      const color = val >= 4 ? '#16a34a' : val >= 3 ? '#ca8a04' : '#dc2626';
+      return `<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px"><div style="width:${pct}%;height:8px;background:${color};border-radius:4px"></div></div><span style="min-width:32px;font-weight:600;color:${color}">${Number(val).toFixed(2)}</span></div>`;
+    };
+    const feedbackSample = reviews.slice(0, 10).filter(r => r.feedback_text).map(r => `<li style="margin-bottom:8px;padding:8px 12px;background:#f9fafb;border-left:3px solid #d1d5db;border-radius:4px;font-size:0.85rem">${r.feedback_text}</li>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Teacher Report — ${t.full_name}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111827;padding:40px;max-width:750px;margin:0 auto}
+    h1{font-size:1.8rem;font-weight:800;margin-bottom:4px}h2{font-size:1.1rem;font-weight:700;color:#374151;margin-bottom:16px;border-bottom:2px solid #e5e7eb;padding-bottom:8px}
+    .chip{display:inline-block;background:#f3f4f6;padding:3px 10px;border-radius:12px;font-size:0.8rem;color:#4b5563;margin-right:6px}
+    .score-big{font-size:2.5rem;font-weight:800;color:#111827}.score-sub{font-size:0.85rem;color:#6b7280}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+    .row{padding:10px 0;border-bottom:1px solid #f3f4f6}.label{font-size:0.85rem;color:#6b7280;margin-bottom:4px}
+    @media print{body{padding:20px}}</style></head><body>
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:32px">
+      <div>
+        <h1>${t.full_name}</h1>
+        <p style="color:#6b7280;margin-top:4px">${[t.subject, t.department].filter(Boolean).join(' · ')}</p>
+        ${orgs ? `<span class="chip">🏫 ${orgs}</span>` : ''}
+        ${t.experience_years ? `<span class="chip">📅 ${t.experience_years} years experience</span>` : ''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:0.75rem;color:#9ca3af">EduRate Report</div>
+        <div style="font-size:0.75rem;color:#9ca3af">${now}</div>
+      </div>
+    </div>
+    ${t.bio ? `<div style="margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:8px"><p style="font-size:0.9rem;color:#374151;line-height:1.6">${t.bio}</p></div>` : ''}
+    <h2>Performance Summary</h2>
+    <div style="display:flex;gap:32px;align-items:center;margin-bottom:24px">
+      <div style="text-align:center"><div class="score-big" style="color:${s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#ca8a04' : '#dc2626'}">${fmtScore(s.avg_overall)}</div><div class="score-sub">Overall Rating / 5.00</div></div>
+      <div style="text-align:center"><div class="score-big">${s.review_count}</div><div class="score-sub">Total Reviews</div></div>
+    </div>
+    <h2>Rating Breakdown</h2>
+    <div class="grid">
+      ${['Clarity','Engagement','Fairness','Supportiveness','Preparation','Workload'].map(name => {
+        const val = s['avg_'+name.toLowerCase()] || 0;
+        return `<div class="row"><div class="label">${name}</div>${ratingBar(val)}</div>`;
+      }).join('')}
+    </div>
+    ${feedbackSample ? `<h2>Student Feedback (Sample)</h2><ul style="list-style:none;margin-bottom:24px">${feedbackSample}</ul>` : ''}
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#9ca3af;text-align:center">
+      Generated by EduRate · ${now} · Confidential — For educational administration use only
+    </div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 // ============ ADMIN: SUBMISSION TRACKING ============
@@ -5200,4 +5490,186 @@ async function removeOrgMember(orgId, userId, userName, orgName) {
   } catch (error) {
     toast(error.message || 'Failed to remove member', 'error');
   }
+}
+
+// ============ ANNOUNCEMENTS ============
+
+function announcementCardHTML(a, canDelete) {
+  const date = new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const targetLabel = a.target_type === 'org' ? 'Organization-wide' : a.target_type === 'all' ? 'All Organizations' : 'Selected Classrooms';
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+          <div>
+            <h3 style="margin:0 0 4px;font-size:1.05rem">${a.title}</h3>
+            <span style="font-size:0.78rem;color:var(--gray-400)">${targetLabel} &middot; ${date}</span>
+          </div>
+          ${canDelete ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);flex-shrink:0" onclick="deleteAnnouncement(${a.id})">Delete</button>` : ''}
+        </div>
+        <div style="color:var(--gray-700);line-height:1.6;font-size:0.92rem">${a.content}</div>
+      </div>
+    </div>`;
+}
+
+function richTextToolbar(editorId) {
+  return `<div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
+    ${[['Bold','B','bold'],['Italic','I','italic'],['Underline','U','underline']].map(([title, label, cmd]) =>
+      `<button type="button" title="${title}" onclick="document.execCommand('${cmd}',false,null);document.getElementById('${editorId}').focus()"
+        style="border:1px solid var(--gray-200);background:var(--gray-50);border-radius:4px;padding:3px 10px;font-weight:${cmd==='bold'?'700':'400'};font-style:${cmd==='italic'?'italic':'normal'};text-decoration:${cmd==='underline'?'underline':'none'};cursor:pointer;font-size:0.85rem">${label}</button>`
+    ).join('')}
+  </div>
+  <div id="${editorId}" contenteditable="true" style="min-height:100px;padding:10px;border:1px solid var(--gray-200);border-radius:6px;font-size:0.92rem;line-height:1.6;outline:none" placeholder="Write your announcement..."></div>`;
+}
+
+async function renderAdminAnnouncements() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const announcements = await API.get('/announcements');
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">+ New Announcement</button>
+      </div>
+      ${announcements.length === 0
+        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No announcements yet</h3><p>Post updates, notices, or news to your organization.</p></div></div></div>'
+        : announcements.map(a => announcementCardHTML(a, true)).join('')}
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function renderTeacherAnnouncements() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const announcements = await API.get('/announcements');
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">+ New Announcement</button>
+      </div>
+      ${announcements.length === 0
+        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No announcements yet</h3><p>Post announcements to your classrooms.</p></div></div></div>'
+        : announcements.map(a => announcementCardHTML(a, a.creator_id === (currentUser?.id))).join('')}
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function renderHeadAnnouncements() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const announcements = await API.get('/announcements');
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">+ New Announcement</button>
+      </div>
+      ${announcements.length === 0
+        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>No announcements yet</h3><p>Post announcements to your school.</p></div></div></div>'
+        : announcements.map(a => announcementCardHTML(a, true)).join('')}
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function showCreateAnnouncementModal() {
+  const role = currentUser?.role;
+  // Fetch classrooms available for targeting
+  let classrooms = [];
+  try { classrooms = await API.get('/announcements/classrooms'); } catch {}
+
+  const classroomSelect = classrooms.length > 0 ? `
+    <div class="form-group" id="annClassroomsGroup" style="display:none">
+      <label>Target Classrooms</label>
+      <div style="max-height:160px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:6px;padding:8px">
+        ${classrooms.map(c => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
+          <input type="checkbox" name="annClassroom" value="${c.id}">
+          ${c.subject} &middot; ${c.grade_level}${c.teacher_name ? ' &middot; ' + c.teacher_name : ''}
+        </label>`).join('')}
+      </div>
+    </div>` : '';
+
+  const targetOptions = role === 'super_admin'
+    ? `<option value="org">Specific Organization</option><option value="classrooms">Specific Classrooms</option><option value="all">All Organizations</option>`
+    : role === 'teacher'
+      ? `<option value="classrooms">My Classrooms</option>`
+      : `<option value="org">Entire Organization</option><option value="classrooms">Specific Classrooms</option>`;
+
+  openModal(`
+    <div class="modal-header"><h3>New Announcement</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" class="form-control" id="annTitle" placeholder="Announcement title">
+      </div>
+      ${role !== 'teacher' ? `
+      <div class="form-group">
+        <label>Target</label>
+        <select class="form-control" id="annTargetType" onchange="updateAnnTargetUI()">
+          ${targetOptions}
+        </select>
+      </div>` : `<input type="hidden" id="annTargetType" value="classrooms">`}
+      ${classroomSelect}
+      <div class="form-group">
+        <label>Content *</label>
+        ${richTextToolbar('annContent')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAnnouncement()">Post Announcement</button>
+    </div>
+  `);
+
+  // Auto-select all classrooms for teachers
+  if (role === 'teacher') {
+    setTimeout(() => {
+      const grp = document.getElementById('annClassroomsGroup');
+      if (grp) grp.style.display = '';
+      document.querySelectorAll('input[name=annClassroom]').forEach(cb => cb.checked = true);
+    }, 50);
+  }
+}
+
+function updateAnnTargetUI() {
+  const val = document.getElementById('annTargetType')?.value;
+  const grp = document.getElementById('annClassroomsGroup');
+  if (grp) grp.style.display = val === 'classrooms' ? '' : 'none';
+}
+
+async function submitAnnouncement() {
+  const title = document.getElementById('annTitle')?.value.trim();
+  const content = document.getElementById('annContent')?.innerHTML.trim();
+  const target_type = document.getElementById('annTargetType')?.value || 'org';
+  const classroom_ids = [...document.querySelectorAll('input[name=annClassroom]:checked')].map(cb => parseInt(cb.value));
+
+  if (!title) return toast('Title is required', 'error');
+  if (!content || content === '') return toast('Content is required', 'error');
+  if (target_type === 'classrooms' && classroom_ids.length === 0) return toast('Select at least one classroom', 'error');
+
+  try {
+    await API.post('/announcements', { title, content, target_type, classroom_ids });
+    toast('Announcement posted!', 'success');
+    closeModal();
+    const view = currentView;
+    if (view) navigateTo(view);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteAnnouncement(id) {
+  const confirmed = await confirmDialog('Delete this announcement?', 'Delete', 'Cancel');
+  if (!confirmed) return;
+  try {
+    await API.delete(`/announcements/${id}`);
+    toast('Announcement deleted');
+    const view = currentView;
+    if (view) navigateTo(view);
+  } catch (err) { toast(err.message, 'error'); }
 }

@@ -706,4 +706,39 @@ try {
   console.error('Migration error (forms multi-classroom):', err.message);
 }
 
+// Add deadline column to forms
+try {
+  const hasDeadline = db.prepare("SELECT COUNT(*) as c FROM pragma_table_info('forms') WHERE name='deadline'").get();
+  if (!hasDeadline.c) {
+    db.exec('ALTER TABLE forms ADD COLUMN deadline DATETIME');
+  }
+} catch (err) {
+  console.error('Migration error (forms deadline):', err.message);
+}
+
+// Announcements feature
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      creator_role TEXT NOT NULL,
+      org_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      target_type TEXT NOT NULL DEFAULT 'org',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS announcement_classrooms (
+      announcement_id INTEGER NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+      classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+      PRIMARY KEY (announcement_id, classroom_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_announcements_org ON announcements(org_id);
+    CREATE INDEX IF NOT EXISTS idx_announcements_creator ON announcements(creator_id);
+  `);
+} catch (err) {
+  console.error('Migration error (announcements):', err.message);
+}
+
 module.exports = db;

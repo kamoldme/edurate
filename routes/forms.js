@@ -339,8 +339,9 @@ router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admi
     const title = req.body.title?.trim() || form.title;
     const description = req.body.description !== undefined ? (req.body.description?.trim() || null) : form.description;
     const status = req.body.status && VALID_STATUSES.includes(req.body.status) ? req.body.status : form.status;
+    const deadline = req.body.deadline !== undefined ? (req.body.deadline || null) : form.deadline;
 
-    db.prepare('UPDATE forms SET title = ?, description = ?, status = ? WHERE id = ?').run(title, description, status, form.id);
+    db.prepare('UPDATE forms SET title = ?, description = ?, status = ?, deadline = ? WHERE id = ?').run(title, description, status, deadline, form.id);
     res.json(db.prepare('SELECT * FROM forms WHERE id = ?').get(form.id));
   } catch (err) {
     console.error('Update form error:', err);

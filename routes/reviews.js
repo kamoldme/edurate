@@ -233,6 +233,11 @@ router.put('/:id', authenticate, authorize('student'), (req, res) => {
       .get(req.params.id, req.user.id);
     if (!review) return res.status(404).json({ error: 'Review not found' });
 
+    // Cannot edit an approved review
+    if (review.approved_status === 1) {
+      return res.status(400).json({ error: 'This review has already been approved and cannot be edited.' });
+    }
+
     // Check if feedback period is still active
     const period = db.prepare('SELECT * FROM feedback_periods WHERE id = ? AND active_status = 1')
       .get(review.feedback_period_id);

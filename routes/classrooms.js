@@ -154,12 +154,15 @@ router.post('/join', authenticate, authorize('student'), (req, res) => {
     const { join_code } = req.body;
     if (!join_code) return res.status(400).json({ error: 'Join code is required' });
 
+    // Strip formatting (dashes, spaces) — accept XXXX-XXXX or XXXXXXXX
+    const cleanCode = String(join_code).replace(/\D/g, '');
+
     const classroom = db.prepare(`
       SELECT c.*, te.full_name as teacher_name, te.avatar_url as teacher_avatar_url
       FROM classrooms c
       JOIN teachers te ON c.teacher_id = te.id
       WHERE c.join_code = ? AND c.active_status = 1
-    `).get(join_code.toUpperCase());
+    `).get(cleanCode);
 
     if (!classroom) return res.status(404).json({ error: 'Invalid or inactive join code' });
 
@@ -211,9 +214,10 @@ router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admi
 
     const subject = req.body.subject?.trim() || classroom.subject;
     const grade_level = req.body.grade_level?.trim() || classroom.grade_level;
+    const active_status = req.body.active_status !== undefined ? req.body.active_status : classroom.active_status;
 
-    db.prepare('UPDATE classrooms SET subject = ?, grade_level = ? WHERE id = ?')
-      .run(subject, grade_level, req.params.id);
+    db.prepare('UPDATE classrooms SET subject = ?, grade_level = ?, active_status = ? WHERE id = ?')
+      .run(subject, grade_level, active_status, req.params.id);
 
     logAuditEvent({
       userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
