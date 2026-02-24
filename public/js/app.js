@@ -84,15 +84,15 @@ function setupUI() {
   if (u.role === 'super_admin') {
     topBarActions.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;">
-        <button id="appNotifBtn" onclick="navigateTo('admin-applications')" title="Organization Applications"
+        <button id="appNotifBtn" onclick="navigateTo('admin-applications')" title="${t('admin.org_applications')}"
           style="position:relative;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;cursor:pointer;display:flex;align-items:center;color:#64748b">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <span id="appNotifBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.65rem;font-weight:700;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></span>
         </button>
         <div style="display:flex;align-items:center;gap:8px;">
-          <label style="font-size:0.875rem;color:#64748b;font-weight:500;">Organization:</label>
+          <label style="font-size:0.875rem;color:#64748b;font-weight:500;">${t('admin.org_label')}</label>
           <select id="orgSwitcher" onchange="switchOrg(this.value)" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.875rem;cursor:pointer;">
-            <option value="">All Organizations</option>
+            <option value="">${t('ann.all_orgs')}</option>
           </select>
         </div>
       </div>
@@ -187,8 +187,7 @@ function buildNavigation() {
       { id: 'teacher-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'teacher-feedback', label: t('nav.feedback'), icon: 'review' },
       { id: 'teacher-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'teacher-forms', label: t('nav.forms'), icon: 'review' },
-      { id: 'teacher-announcements', label: t('nav.announcements'), icon: 'megaphone' }
+      { id: 'teacher-forms', label: t('nav.forms'), icon: 'review' }
     ];
   } else if (role === 'school_head') {
     items = [
@@ -196,7 +195,7 @@ function buildNavigation() {
       { id: 'head-teachers', label: t('nav.teachers'), icon: 'users' },
       { id: 'head-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
       { id: 'head-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'head-announcements', label: t('nav.announcements'), icon: 'megaphone' }
+      { id: 'head-forms', label: t('nav.forms'), icon: 'review' }
     ];
   } else if (role === 'super_admin') {
     items = [
@@ -209,7 +208,6 @@ function buildNavigation() {
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
       { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
-      { id: 'admin-announcements', label: t('nav.announcements'), icon: 'megaphone' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -223,7 +221,6 @@ function buildNavigation() {
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
       { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
-      { id: 'admin-announcements', label: t('nav.announcements'), icon: 'megaphone' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
     ];
@@ -337,9 +334,7 @@ function navigateTo(view) {
     'admin-flagged': t('title.flagged_reviews'),
     'admin-support': t('title.support_messages'),
     'admin-audit': t('title.audit_logs'),
-    'admin-announcements': t('title.announcements'),
-    'teacher-announcements': t('title.announcements'),
-    'head-announcements': t('title.announcements'),
+    'head-forms': t('title.forms'),
     'account': t('title.account_details')
   };
   document.getElementById('pageTitle').textContent = titles[view] || t('common.dashboard');
@@ -372,9 +367,7 @@ function navigateTo(view) {
     'admin-support': renderAdminSupport,
     'admin-audit': renderAdminAudit,
     'admin-forms': renderAdminForms,
-    'admin-announcements': renderAdminAnnouncements,
-    'teacher-announcements': renderTeacherAnnouncements,
-    'head-announcements': renderHeadAnnouncements,
+    'head-forms': renderHeadForms,
     'account': renderAccount
   };
 
@@ -2081,9 +2074,10 @@ async function renderTeacherForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
-    const [forms, classrooms] = await Promise.all([
+    const [forms, classrooms, announcements] = await Promise.all([
       API.get('/forms'),
-      API.get('/classrooms')
+      API.get('/classrooms'),
+      API.get('/announcements').catch(() => [])
     ]);
 
     const statusBadge = s => {
@@ -2139,6 +2133,16 @@ async function renderTeacherForms() {
 
       <!-- Hidden classroom list for modal -->
       <div id="teacherClassroomList" style="display:none">${JSON.stringify(classrooms)}</div>
+
+      <div style="margin-top:40px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h2 style="margin:0">${t('nav.announcements')}</h2>
+          <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
+        </div>
+        ${announcements.length === 0
+          ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_classrooms_hint')}</p></div></div></div>`
+          : announcements.map(a => announcementCardHTML(a, a.creator_id === (currentUser?.id))).join('')}
+      </div>
     `;
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
@@ -2721,35 +2725,65 @@ async function renderHeadAnalytics() {
   `;
 }
 
+// ============ HEAD FORMS (ANNOUNCEMENTS) ============
+async function renderHeadForms() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const announcements = await API.get('/announcements');
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
+      </div>
+      ${announcements.length === 0
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_school_hint')}</p></div></div></div>`
+        : announcements.map(a => announcementCardHTML(a, true)).join('')}
+    `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+  }
+}
+
 // ============ ADMIN FORMS ============
 async function renderAdminForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   try {
-    const [forms, orgs] = await Promise.all([
+    const [forms, orgs, announcements] = await Promise.all([
       API.get('/forms'),
-      currentUser.role === 'super_admin' ? API.get('/organizations') : Promise.resolve([])
+      currentUser.role === 'super_admin' ? API.get('/organizations') : Promise.resolve([]),
+      API.get('/announcements').catch(() => [])
     ]);
-
-    const statusBadge = s => `<span class="badge badge-${s === 'active' ? 'success' : s === 'closed' ? 'gray' : 'warning'}">${s}</span>`;
 
     const orgFilterHTML = currentUser.role === 'super_admin' ? `
       <select id="adminFormOrgFilter" class="form-control" style="width:220px" onchange="filterAdminFormsByOrg(this.value)">
-        <option value="">All Organizations</option>
+        <option value="">${t('ann.all_orgs')}</option>
         ${orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('')}
       </select>
     ` : '';
 
+    const annHint = currentUser.role === 'super_admin' ? t('ann.post_updates_hint') : t('ann.post_classrooms_hint');
+
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <h2 style="margin:0">Forms</h2>
+          <h2 style="margin:0">${t('forms.title')}</h2>
           ${orgFilterHTML}
         </div>
-        <button class="btn btn-primary" onclick="showAdminCreateFormModal()">+ Create Form</button>
+        <button class="btn btn-primary" onclick="showAdminCreateFormModal()">${t('forms.new_form')}</button>
       </div>
       <div id="adminFormsList">
         ${renderAdminFormCards(forms)}
+      </div>
+      <div style="margin-top:40px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h2 style="margin:0">${t('nav.announcements')}</h2>
+          <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
+        </div>
+        ${announcements.length === 0
+          ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${annHint}</p></div></div></div>`
+          : announcements.map(a => announcementCardHTML(a, true)).join('')}
       </div>
     `;
   } catch (err) {
@@ -3019,18 +3053,18 @@ async function renderAdminHome() {
     ${isOrgAdmin ? `
     <div class="card">
       <div class="card-header" style="display:flex;align-items:center;gap:12px">
-        <h3 style="margin:0">Organization Average — Feedback Period Trend</h3>
+        <h3 style="margin:0">${t('admin.org_avg_trend')}</h3>
         ${trendHtml}
       </div>
       <div class="card-body">
         ${hasTrend
           ? '<div class="chart-container"><canvas id="orgPeriodChart"></canvas></div>'
-          : '<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">No feedback periods found. Create terms and feedback periods to see trends here.</p></div>'}
+          : `<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">${t('admin.no_periods_trend')}</p></div>`}
       </div>
       ${hasTrend ? `
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Term</th><th>Period</th><th>Avg Score</th><th>Reviews</th><th>Change</th></tr></thead>
+          <thead><tr><th>${t('common.term')}</th><th>${t('admin.period_col')}</th><th>${t('analytics.avg_score')}</th><th>${t('common.reviews')}</th><th>${t('admin.change_col')}</th></tr></thead>
           <tbody>
             ${periodTrend.map((p, i) => {
               const prev = periodTrend[i - 1];
@@ -3224,7 +3258,7 @@ async function viewOrgStats(orgId, orgName) {
 
     if (!Array.isArray(periods) || periods.length === 0) {
       document.querySelector('#modalContent .modal-body').innerHTML =
-        '<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">No feedback periods found for this organization.</p></div>';
+        `<div class="empty-state" style="padding:32px 0"><p style="color:var(--gray-400)">${t('admin.no_periods_org')}</p></div>`;
       return;
     }
 
@@ -3256,13 +3290,13 @@ async function viewOrgStats(orgId, orgName) {
 
     document.querySelector('#modalContent .modal-body').innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <span style="font-size:0.88rem;color:var(--gray-500)">${periods.length} feedback period${periods.length !== 1 ? 's' : ''}</span>
+        <span style="font-size:0.88rem;color:var(--gray-500)">${t('admin.feedback_period_count', {count: periods.length})}</span>
         ${trendHtml}
       </div>
       <div class="chart-container" style="margin-bottom:16px"><canvas id="orgStatsModalChart"></canvas></div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Term</th><th>Period</th><th>Avg Score</th><th>Reviews</th><th>Change</th></tr></thead>
+          <thead><tr><th>${t('common.term')}</th><th>${t('admin.period_col')}</th><th>${t('analytics.avg_score')}</th><th>${t('common.reviews')}</th><th>${t('admin.change_col')}</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -3585,9 +3619,9 @@ async function renderAdminTerms() {
 
   el.innerHTML = `
     <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
-      <button class="btn btn-primary" onclick="showCreateTerm()">+ Create Term</button>
+      <button class="btn btn-primary" onclick="showCreateTerm()">${t('admin.create_term_title')}</button>
     </div>
-    ${terms.length === 0 ? '<p style="color:var(--gray-500);text-align:center;padding:40px">No terms yet. Create one to get started.</p>' : ''}
+    ${terms.length === 0 ? `<p style="color:var(--gray-500);text-align:center;padding:40px">${t('admin.no_terms')}</p>` : ''}
     ${terms.map(term => `
       <div class="card" style="margin-bottom:20px;max-width:700px">
         <div class="card-header">
@@ -3605,11 +3639,11 @@ async function renderAdminTerms() {
         </div>
         <div class="card-body">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <span style="font-size:0.85rem;font-weight:600;color:var(--gray-600)">Feedback Periods (${term.periods.length})</span>
-            <button class="btn btn-sm btn-outline" onclick="showAddPeriodModal(${term.id}, '${escAttr(term.name)}', '${term.start_date}', '${term.end_date}')">+ Add Period</button>
+            <span style="font-size:0.85rem;font-weight:600;color:var(--gray-600)">${t('admin.feedback_periods_count', {count: term.periods.length})}</span>
+            <button class="btn btn-sm btn-outline" onclick="showAddPeriodModal(${term.id}, '${escAttr(term.name)}', '${term.start_date}', '${term.end_date}')">${t('admin.add_period')}</button>
           </div>
           ${term.periods.length === 0
-            ? `<p style="font-size:0.85rem;color:var(--gray-400);padding:4px 0">No feedback periods. Add one to allow students to submit reviews.</p>`
+            ? `<p style="font-size:0.85rem;color:var(--gray-400);padding:4px 0">${t('admin.no_feedback_periods_hint')}</p>`
             : term.periods.map(p => `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1.5px solid ${p.active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px;margin-bottom:8px;gap:8px">
                 <div style="min-width:0">
@@ -3636,16 +3670,16 @@ async function renderAdminTerms() {
 
 function showAddPeriodModal(termId, termName, termStart, termEnd) {
   openModal(`
-    <div class="modal-header"><h3>Add Feedback Period</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('admin.add_period_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      <p style="font-size:0.85rem;color:var(--gray-500);margin-bottom:16px">Term: <strong>${termName}</strong> (${termStart} → ${termEnd})</p>
-      <div class="form-group"><label>Period Name <span style="color:var(--gray-400);font-weight:400">(optional)</span></label><input type="text" class="form-control" id="newPeriodName" placeholder="e.g. Mid-term, End-of-term"></div>
-      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="newPeriodStart" min="${termStart}" max="${termEnd}"></div>
-      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="newPeriodEnd" min="${termStart}" max="${termEnd}"></div>
+      <p style="font-size:0.85rem;color:var(--gray-500);margin-bottom:16px">${t('admin.term_label')} <strong>${termName}</strong> (${termStart} → ${termEnd})</p>
+      <div class="form-group"><label>${t('admin.period_name')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label><input type="text" class="form-control" id="newPeriodName" placeholder="${t('admin.period_name_placeholder')}"></div>
+      <div class="form-group"><label>${t('admin.start_date')}</label><input type="date" class="form-control" id="newPeriodStart" min="${termStart}" max="${termEnd}"></div>
+      <div class="form-group"><label>${t('admin.end_date')}</label><input type="date" class="form-control" id="newPeriodEnd" min="${termStart}" max="${termEnd}"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="createFeedbackPeriod(${termId})">Add Period</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="createFeedbackPeriod(${termId})">${t('admin.add_period_btn')}</button>
     </div>
   `);
 }
@@ -3654,10 +3688,10 @@ async function createFeedbackPeriod(termId) {
   const name = document.getElementById('newPeriodName').value;
   const start_date = document.getElementById('newPeriodStart').value;
   const end_date = document.getElementById('newPeriodEnd').value;
-  if (!start_date || !end_date) return toast('Start date and end date are required', 'error');
+  if (!start_date || !end_date) return toast(t('admin.dates_required'), 'error');
   try {
     await API.post('/admin/feedback-periods', { term_id: termId, name, start_date, end_date });
-    toast('Feedback period added');
+    toast(t('admin.period_added'));
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3665,15 +3699,15 @@ async function createFeedbackPeriod(termId) {
 
 function editPeriod(periodId, name, startDate, endDate) {
   openModal(`
-    <div class="modal-header"><h3>Edit Feedback Period</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('admin.edit_period_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Period Name</label><input type="text" class="form-control" id="editPeriodName" value="${name}"></div>
-      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="editPeriodStart" value="${startDate}"></div>
-      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="editPeriodEnd" value="${endDate}"></div>
+      <div class="form-group"><label>${t('admin.period_name')}</label><input type="text" class="form-control" id="editPeriodName" value="${name}"></div>
+      <div class="form-group"><label>${t('admin.start_date')}</label><input type="date" class="form-control" id="editPeriodStart" value="${startDate}"></div>
+      <div class="form-group"><label>${t('admin.end_date')}</label><input type="date" class="form-control" id="editPeriodEnd" value="${endDate}"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="updatePeriod(${periodId})">Save</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="updatePeriod(${periodId})">${t('common.save_short')}</button>
     </div>
   `);
 }
@@ -3682,10 +3716,10 @@ async function updatePeriod(periodId) {
   const name = document.getElementById('editPeriodName').value;
   const start_date = document.getElementById('editPeriodStart').value;
   const end_date = document.getElementById('editPeriodEnd').value;
-  if (!name || !start_date || !end_date) return toast('All fields are required', 'error');
+  if (!name || !start_date || !end_date) return toast(t('admin.fill_all_fields'), 'error');
   try {
     await API.put(`/admin/feedback-periods/${periodId}`, { name, start_date, end_date });
-    toast('Period updated');
+    toast(t('admin.period_updated'));
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3693,28 +3727,28 @@ async function updatePeriod(periodId) {
 
 async function deletePeriod(periodId, periodName) {
   const confirmed = await confirmDialog(
-    `Delete feedback period "${periodName}"?<br><br>This cannot be done if any reviews have been submitted for this period.`,
-    'Delete', 'Cancel'
+    t('admin.delete_period_confirm', {name: periodName}),
+    t('common.delete'), t('common.cancel')
   );
   if (!confirmed) return;
   try {
     await API.delete(`/admin/feedback-periods/${periodId}`);
-    toast('Period deleted');
+    toast(t('admin.period_deleted'));
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 function showCreateTerm() {
   openModal(`
-    <div class="modal-header"><h3>Create Term</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('admin.create_term_modal')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Term Name <span style="color:var(--gray-400);font-weight:400">(optional)</span></label><input type="text" class="form-control" id="termName" placeholder="Auto-generated if left blank"></div>
-      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="termStart"></div>
-      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="termEnd"></div>
+      <div class="form-group"><label>${t('admin.term_name')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label><input type="text" class="form-control" id="termName" placeholder="${t('admin.term_name_placeholder')}"></div>
+      <div class="form-group"><label>${t('admin.start_date')}</label><input type="date" class="form-control" id="termStart"></div>
+      <div class="form-group"><label>${t('admin.end_date')}</label><input type="date" class="form-control" id="termEnd"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="createTerm()">Create</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="createTerm()">${t('common.create')}</button>
     </div>
   `);
 }
@@ -3723,10 +3757,10 @@ async function createTerm() {
   const name = document.getElementById('termName').value;
   const start_date = document.getElementById('termStart').value;
   const end_date = document.getElementById('termEnd').value;
-  if (!start_date || !end_date) return toast('Start date and end date are required', 'error');
+  if (!start_date || !end_date) return toast(t('admin.dates_required'), 'error');
   try {
     await API.post('/admin/terms', { name, start_date, end_date });
-    toast('Term created successfully');
+    toast(t('admin.term_created'));
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3735,7 +3769,7 @@ async function createTerm() {
 async function activateTerm(termId) {
   try {
     await API.put(`/admin/terms/${termId}`, { active_status: 1 });
-    toast('Term activated');
+    toast(t('admin.term_activated'));
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -3743,35 +3777,35 @@ async function activateTerm(termId) {
 async function togglePeriod(periodId, status) {
   try {
     await API.put(`/admin/feedback-periods/${periodId}`, { active_status: status });
-    toast(status ? 'Period opened' : 'Period closed');
+    toast(status ? t('admin.period_opened') : t('admin.period_closed'));
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 function editTerm(termId, name, startDate, endDate, activeStatus, feedbackVisible) {
   openModal(`
-    <div class="modal-header"><h3>Edit Term</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('admin.edit_term_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Term Name</label><input type="text" class="form-control" id="editTermName" value="${name}"></div>
-      <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="editTermStart" value="${startDate}"></div>
-      <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="editTermEnd" value="${endDate}"></div>
+      <div class="form-group"><label>${t('admin.term_name')}</label><input type="text" class="form-control" id="editTermName" value="${name}"></div>
+      <div class="form-group"><label>${t('admin.start_date')}</label><input type="date" class="form-control" id="editTermStart" value="${startDate}"></div>
+      <div class="form-group"><label>${t('admin.end_date')}</label><input type="date" class="form-control" id="editTermEnd" value="${endDate}"></div>
       <div class="form-group">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="editTermActive" ${activeStatus ? 'checked' : ''}>
-          <span>Term Active</span>
+          <span>${t('admin.term_active')}</span>
         </label>
       </div>
       <div class="form-group">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="editTermFeedbackVisible" ${feedbackVisible ? 'checked' : ''}>
-          <span>Feedback Visible to Teachers</span>
+          <span>${t('admin.feedback_visible_label')}</span>
         </label>
-        <p style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">When unchecked, feedback from this term will be hidden from teacher dashboards</p>
+        <p style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">${t('admin.feedback_visible_hint')}</p>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="updateTerm(${termId})">Save Changes</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="updateTerm(${termId})">${t('common.save_changes')}</button>
     </div>
   `);
 }
@@ -3783,11 +3817,11 @@ async function updateTerm(termId) {
   const active_status = document.getElementById('editTermActive').checked ? 1 : 0;
   const feedback_visible = document.getElementById('editTermFeedbackVisible').checked ? 1 : 0;
 
-  if (!name || !start_date || !end_date) return toast('Fill all fields', 'error');
+  if (!name || !start_date || !end_date) return toast(t('admin.fill_all_fields'), 'error');
 
   try {
     await API.put(`/admin/terms/${termId}`, { name, start_date, end_date, active_status, feedback_visible });
-    toast('Term updated successfully');
+    toast(t('admin.term_updated'));
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3795,27 +3829,27 @@ async function updateTerm(termId) {
 
 async function deleteTerm(termId, termName) {
   const confirmed = await confirmDialog(
-    `⚠️ DELETE TERM: "${termName}"?<br><br>` +
-    `This will permanently delete:<br>` +
-    `• All feedback periods for this term<br>` +
-    `• All student reviews from this term<br>` +
-    `• All classrooms linked to this term<br><br>` +
-    `This action CANNOT be undone!`,
-    'Continue', 'Cancel'
+    t('admin.delete_term_confirm', {name: termName}) + '<br><br>' +
+    t('admin.delete_term_warning') + '<br>' +
+    `• ${t('admin.delete_term_periods')}<br>` +
+    `• ${t('admin.delete_term_reviews')}<br>` +
+    `• ${t('admin.delete_term_classrooms')}<br><br>` +
+    t('admin.delete_term_irreversible'),
+    t('admin.continue'), t('common.cancel')
   );
 
   if (!confirmed) return;
 
   // Additional confirmation with text input
-  const doubleConfirm = prompt(`To confirm deletion of "${termName}", type DELETE in capital letters:`);
+  const doubleConfirm = prompt(t('admin.type_delete', {name: termName}));
 
   if (doubleConfirm !== 'DELETE') {
-    return toast('Deletion cancelled', 'info');
+    return toast(t('admin.deletion_cancelled'), 'info');
   }
 
   try {
     await API.delete(`/admin/terms/${termId}`);
-    toast('Term and all associated data deleted', 'success');
+    toast(t('admin.term_deleted'), 'success');
     renderAdminTerms();
   } catch (err) {
     toast(err.message, 'error');
