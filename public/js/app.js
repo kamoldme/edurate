@@ -373,7 +373,7 @@ function navigateTo(view) {
 
   if (viewFunctions[view]) {
     viewFunctions[view]().catch(err => {
-      content.innerHTML = `<div class="empty-state"><h3>Error loading page</h3><p>${err.message}</p></div>`;
+      content.innerHTML = `<div class="empty-state"><h3>${t('common.error_loading')}</h3><p>${err.message}</p></div>`;
     });
   }
 }
@@ -424,7 +424,7 @@ function ratingGridHTML(r) {
 
 function badgeHTML(status) {
   const map = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected', flagged: 'badge-flagged' };
-  return `<span class="badge ${map[status] || 'badge-pending'}">${status}</span>`;
+  return `<span class="badge ${map[status] || 'badge-pending'}">${t('common.' + status) || status}</span>`;
 }
 
 function trendArrow(trend) {
@@ -490,7 +490,7 @@ function confirmWithText(message, requiredText, warningMessage = '') {
           <p style="color:#991b1b;font-weight:600;margin:0">${warningMessage}</p>
         </div>` : ''}
         <div style="margin-bottom:20px">
-          <p style="font-size:0.95rem;margin-bottom:8px;color:var(--gray-600)">Type <strong style="color:#ef4444">"${requiredText}"</strong> to confirm:</p>
+          <p style="font-size:0.95rem;margin-bottom:8px;color:var(--gray-600)">${t('dialog.type_to_confirm', {text: requiredText}).replace(`"${requiredText}"`, `<strong style="color:#ef4444">"${requiredText}"</strong>`)}</p>
           <input type="text" id="confirmTextInput" class="form-control" placeholder="${requiredText}" autocomplete="off">
         </div>
         <div style="display:flex;gap:12px;justify-content:flex-end">
@@ -821,7 +821,7 @@ async function joinClassroom() {
 }
 
 async function leaveClassroom(id, name) {
-  const confirmed = await confirmDialog(`Leave "${name}"? You won't be able to review this teacher.`, 'Leave', 'Cancel');
+  const confirmed = await confirmDialog(t('student.leave_confirm', {name}), t('student.leave'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/classrooms/${id}/leave`);
@@ -924,7 +924,7 @@ async function renderStudentReview() {
       ` : ''}
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -1120,7 +1120,7 @@ async function editMyReview(reviewId) {
       `).join('')}
       <div class="form-group">
         <label>${t('review.written_feedback_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label>
-        <textarea class="form-control" id="edit_feedback" rows="3" placeholder="Share your thoughts...">${review.feedback_text || ''}</textarea>
+        <textarea class="form-control" id="edit_feedback" rows="3" placeholder="${t('review.share_thoughts')}">${review.feedback_text || ''}</textarea>
       </div>
       <div class="form-group">
         <label>${t('review.tags_label')}</label>
@@ -1294,7 +1294,7 @@ async function renderStudentForms() {
         `).join('')}
       </div>`;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -1373,7 +1373,7 @@ async function openStudentForm(formId) {
         </div>
       </div>`;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -1558,8 +1558,8 @@ async function renderTeacherClassrooms() {
       const archived = data.classrooms.filter(c => c.active_status === 0);
       if (data.classrooms.length === 0) return `<div class="empty-state" style="margin-top:40px">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray-300);margin-bottom:12px"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          <h3 style="color:var(--gray-500);margin-bottom:6px">No classrooms yet</h3>
-          <p style="color:var(--gray-400);font-size:0.875rem">Create your first classroom to get started</p>
+          <h3 style="color:var(--gray-500);margin-bottom:6px">${t('teacher.no_classrooms_title')}</h3>
+          <p style="color:var(--gray-400);font-size:0.875rem">${t('teacher.create_first_classroom')}</p>
         </div>`;
       const renderCard = (c, isArchived) => `
         <div class="classroom-card" style="${isArchived ? 'opacity:0.65;' : ''}">
@@ -1631,7 +1631,7 @@ async function createClassroomTeacher() {
 }
 
 async function archiveClassroomTeacher(id, subject) {
-  const confirmed = await confirmDialog(`Archive "${subject}"? Students can no longer join, but history is preserved.`, 'Archive', 'Cancel');
+  const confirmed = await confirmDialog(t('teacher.archive_confirm', {name: subject}), t('teacher.archive'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.patch(`/classrooms/${id}`, { active_status: 0 });
@@ -1681,7 +1681,7 @@ async function saveClassroomTeacher(id) {
 }
 
 async function deleteClassroomTeacher(id, subject) {
-  const confirmed = await confirmDialog(`Delete "${subject}"? This will also remove all students and reviews.`, 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('teacher.delete_classroom_confirm', {name: subject}), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/classrooms/${id}`);
@@ -1817,7 +1817,7 @@ async function renderTeacherFeedback() {
     <div class="card">
       <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
         <h3>${t('admin.approved_reviews')}</h3>
-        ${data.completion_rates && data.completion_rates.length > 0 ? `<button class="btn btn-sm btn-outline" onclick="showCompletionRatesModal()">📊 Completion Rates</button>` : ''}
+        ${data.completion_rates && data.completion_rates.length > 0 ? `<button class="btn btn-sm btn-outline" onclick="showCompletionRatesModal()">📊 ${t('teacher.completion_rates_btn')}</button>` : ''}
       </div>
       <div class="card-body" id="teacherReviewsList">
         <div class="loading"><div class="spinner"></div></div>
@@ -1899,7 +1899,7 @@ function showCompletionRatesModal() {
   openModal(`
     <div class="modal-header"><h3>${t('teacher.completion_rates_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      ${rates.length === 0 ? '<p style="color:var(--gray-500)">No data available</p>' : rates.map(c => `
+      ${rates.length === 0 ? `<p style="color:var(--gray-500)">${t('teacher.no_data_available')}</p>` : rates.map(c => `
         <div style="margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;margin-bottom:6px">
             <span style="font-weight:500">${c.subject} (${c.grade_level})</span>
@@ -1922,9 +1922,9 @@ async function renderTeacherAnalytics() {
   const periods = data.trend?.periods || [];
   const trendLabel = data.trend?.trend || 'stable';
   const trendMeta = {
-    improving: { color: '#16a34a', bg: '#dcfce7', icon: '↑', text: 'Improving' },
-    declining:  { color: '#dc2626', bg: '#fee2e2', icon: '↓', text: 'Declining' },
-    stable:     { color: '#6b7280', bg: '#f3f4f6', icon: '→', text: 'Stable' }
+    improving: { color: '#16a34a', bg: '#dcfce7', icon: '↑', text: t('analytics.improving') },
+    declining:  { color: '#dc2626', bg: '#fee2e2', icon: '↓', text: t('analytics.declining') },
+    stable:     { color: '#6b7280', bg: '#f3f4f6', icon: '→', text: t('analytics.stable') }
   }[trendLabel];
 
   // Per-period delta rows
@@ -1970,7 +1970,7 @@ async function renderTeacherAnalytics() {
         <div class="card-body">
           ${data.overall_scores.review_count > 0
             ? '<div class="chart-container"><canvas id="radarChart"></canvas></div>'
-            : '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;text-align:center;color:var(--gray-400)"><p style="font-weight:500;margin-bottom:4px">No data yet</p><p style="font-size:0.82rem">Appears once students submit and reviews are approved</p></div>'}
+            : `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;text-align:center;color:var(--gray-400)"><p style="font-weight:500;margin-bottom:4px">${t('teacher.no_data_yet')}</p><p style="font-size:0.82rem">${t('teacher.no_data_hint')}</p></div>`}
         </div>
       </div>
     </div>
@@ -2120,11 +2120,11 @@ async function renderTeacherForms() {
                 </div>
               </div>
               <div class="card-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px">
-                ${f.status === 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormBuilder(${f.id})">Edit Questions</button>` : ''}
-                ${f.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="setFormStatus(${f.id},'active')">Activate</button>` : ''}
-                ${f.status === 'active' ? `<button class="btn btn-sm btn-outline" onclick="setFormStatus(${f.id},'closed')">Close</button>` : ''}
-                ${f.response_count > 0 || f.status !== 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormResults(${f.id})">Results</button>` : ''}
-                ${f.status !== 'active' ? `<button class="btn btn-sm btn-danger" onclick="deleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">Delete</button>` : ''}
+                ${f.status === 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormBuilder(${f.id})">${t('forms.edit_questions')}</button>` : ''}
+                ${f.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="setFormStatus(${f.id},'active')">${t('forms.activate')}</button>` : ''}
+                ${f.status === 'active' ? `<button class="btn btn-sm btn-outline" onclick="setFormStatus(${f.id},'closed')">${t('forms.close_btn')}</button>` : ''}
+                ${f.response_count > 0 || f.status !== 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormResults(${f.id})">${t('forms.results')}</button>` : ''}
+                ${f.status !== 'active' ? `<button class="btn btn-sm btn-danger" onclick="deleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">${t('common.delete')}</button>` : ''}
               </div>
             </div>
           `).join('')}
@@ -2145,7 +2145,7 @@ async function renderTeacherForms() {
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -2161,7 +2161,7 @@ function showCreateFormModal() {
       </div>
       <div class="form-group">
         <label>${t('forms.desc_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label>
-        <textarea class="form-control" id="newFormDesc" rows="2" placeholder="What is this form about?"></textarea>
+        <textarea class="form-control" id="newFormDesc" rows="2" placeholder="${t('forms.desc_placeholder')}"></textarea>
       </div>
       <div class="form-group">
         <label>${t('forms.classroom_label')}</label>
@@ -2188,8 +2188,8 @@ async function createForm() {
   const description = document.getElementById('newFormDesc').value.trim();
   const classroom_id = document.getElementById('newFormClassroom').value;
   const deadline = document.getElementById('newFormDeadline')?.value || null;
-  if (!title) return toast('Title is required', 'error');
-  if (!classroom_id) return toast('Please select a classroom', 'error');
+  if (!title) return toast(t('admin.fill_required'), 'error');
+  if (!classroom_id) return toast(t('forms.select_classroom'), 'error');
   try {
     await API.post('/forms', { title, description, classroom_id: parseInt(classroom_id), deadline: deadline || undefined });
     closeModal();
@@ -2204,7 +2204,7 @@ async function createForm() {
 
 async function openFormBuilder(formId) {
   const el = document.getElementById('contentArea');
-  el.innerHTML = `<div class="empty-state"><p>Loading form builder...</p></div>`;
+  el.innerHTML = `<div class="empty-state"><p>${t('forms.loading_builder')}</p></div>`;
   try {
     const form = await API.get(`/forms/${formId}`);
     const statusBadgeColor = { draft: '#6b7280', active: '#16a34a', closed: '#9ca3af' };
@@ -2245,7 +2245,7 @@ async function openFormBuilder(formId) {
       ` : ''}
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -2260,7 +2260,7 @@ function renderFormQuestionsList(questions, formStatus) {
         <div style="flex:1">
           <div style="font-weight:600;margin-bottom:4px">${q.question_text} ${q.required ? `<span style="color:#ef4444;font-size:0.75rem">${t('forms.required')}</span>` : ''}</div>
           <div style="font-size:0.78rem;color:var(--gray-400)">
-            ${q.question_type === 'text' ? '📝 Text answer' : q.question_type === 'yes_no' ? '✓ Yes / No' : '&#9673; ' + (q.options || []).join(' &middot; ')}
+            ${q.question_type === 'text' ? t('forms.text_type') : q.question_type === 'yes_no' ? t('forms.yn_type') : '&#9673; ' + (q.options || []).join(' &middot; ')}
           </div>
         </div>
         ${formStatus === 'draft' ? `
@@ -2275,21 +2275,21 @@ function renderFormQuestionsList(questions, formStatus) {
 }
 
 function showAddQuestionModal(formId, questionType) {
-  const typeLabel = { text: '📝 Text Answer', multiple_choice: '&#9673; Multiple Choice', yes_no: '✓ Yes / No' };
+  const typeLabel = { text: t('forms.text_type'), multiple_choice: t('forms.mc_type'), yes_no: t('forms.yn_type') };
   const optionsHTML = questionType === 'multiple_choice' ? `
     <div class="form-group">
       <label>${t('forms.options_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.options_min_hint')}</span></label>
       <div id="mcOptions">
         <div class="mc-option-row" style="display:flex;gap:6px;margin-bottom:6px">
-          <input type="text" class="form-control mc-option-input" placeholder="Option 1" style="flex:1">
+          <input type="text" class="form-control mc-option-input" placeholder="${t('forms.option_placeholder', {n: 1})}" style="flex:1">
           <button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>
         </div>
         <div class="mc-option-row" style="display:flex;gap:6px;margin-bottom:6px">
-          <input type="text" class="form-control mc-option-input" placeholder="Option 2" style="flex:1">
+          <input type="text" class="form-control mc-option-input" placeholder="${t('forms.option_placeholder', {n: 2})}" style="flex:1">
           <button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>
         </div>
       </div>
-      <button type="button" class="btn btn-sm btn-outline" style="margin-top:4px" onclick="addMcOption()">+ Add option</button>
+      <button type="button" class="btn btn-sm btn-outline" style="margin-top:4px" onclick="addMcOption()">${t('forms.add_option')}</button>
     </div>
   ` : '';
   openModal(`
@@ -2319,7 +2319,7 @@ function addMcOption() {
   const row = document.createElement('div');
   row.className = 'mc-option-row';
   row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
-  row.innerHTML = `<input type="text" class="form-control mc-option-input" placeholder="Option ${idx}" style="flex:1"><button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>`;
+  row.innerHTML = `<input type="text" class="form-control mc-option-input" placeholder="${t('forms.option_placeholder', {n: idx})}" style="flex:1"><button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>`;
   container.appendChild(row);
 }
 function removeMcOption(btn) {
@@ -2352,16 +2352,16 @@ async function showEditQuestionModal(formId, questionId) {
     if (!q) return toast(t('forms.question_not_found'), 'error');
     const optionsHTML = q.question_type === 'multiple_choice' ? `
       <div class="form-group">
-        <label>Options</label>
+        <label>${t('forms.options_label')}</label>
         <div id="mcOptions">
           ${(q.options || []).map((opt, i) => `
             <div class="mc-option-row" style="display:flex;gap:6px;margin-bottom:6px">
-              <input type="text" class="form-control mc-option-input" value="${opt}" placeholder="Option ${i+1}" style="flex:1">
+              <input type="text" class="form-control mc-option-input" value="${opt}" placeholder="${t('forms.option_placeholder', {n: i+1})}" style="flex:1">
               <button type="button" class="btn btn-sm btn-outline" onclick="removeMcOption(this)" style="flex-shrink:0">✕</button>
             </div>
           `).join('')}
         </div>
-        <button type="button" class="btn btn-sm btn-outline" style="margin-top:4px" onclick="addMcOption()">+ Add option</button>
+        <button type="button" class="btn btn-sm btn-outline" style="margin-top:4px" onclick="addMcOption()">${t('forms.add_option')}</button>
       </div>
     ` : '';
     openModal(`
@@ -2413,8 +2413,7 @@ async function deleteFormQuestion(formId, questionId) {
 }
 
 async function setFormStatus(formId, status) {
-  const labels = { active: 'activate', closed: 'close' };
-  const confirmed = await confirmDialog(`Are you sure you want to ${labels[status] || status} this form?`, 'Confirm', 'Cancel');
+  const confirmed = await confirmDialog(status === 'active' ? t('forms.confirm_activate') : t('forms.confirm_close'), t('common.confirm'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.patch(`/forms/${formId}`, { status });
@@ -2489,7 +2488,7 @@ async function openFormResults(formId) {
         : results.map(renderResult).join('')}
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -2516,13 +2515,13 @@ async function renderHeadHome() {
           <table>
             <thead><tr><th>${t('common.teacher')}</th><th>${t('common.department')}</th><th>${t('chart.score')}</th><th>${t('common.reviews')}</th><th>${t('common.trend')}</th></tr></thead>
             <tbody>
-              ${data.teachers.sort((a, b) => (b.scores.avg_overall || 0) - (a.scores.avg_overall || 0)).map(t => `
+              ${data.teachers.sort((a, b) => (b.scores.avg_overall || 0) - (a.scores.avg_overall || 0)).map(tchr => `
                 <tr>
-                  <td><strong>${t.full_name}</strong></td>
-                  <td>${t.department || '-'}</td>
-                  <td style="font-weight:600;color:${scoreColor(t.scores.avg_overall || 0)}">${fmtScore(t.scores.avg_overall)}</td>
-                  <td>${t.scores.review_count}</td>
-                  <td>${t.trend ? trendArrow(t.trend.trend) : '-'}</td>
+                  <td><strong>${tchr.full_name}</strong></td>
+                  <td>${tchr.department || '-'}</td>
+                  <td style="font-weight:600;color:${scoreColor(tchr.scores.avg_overall || 0)}">${fmtScore(tchr.scores.avg_overall)}</td>
+                  <td>${tchr.scores.review_count}</td>
+                  <td>${tchr.trend ? trendArrow(tchr.trend.trend) : '-'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -2559,7 +2558,7 @@ async function renderHeadHome() {
       data: {
         labels: deptLabels,
         datasets: [{
-          label: 'Avg Score',
+          label: t('analytics.avg_score'),
           data: deptLabels.map(d => data.departments[d].avg_score),
           backgroundColor: deptLabels.map((_, i) => ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5]),
           borderRadius: 6
@@ -2579,7 +2578,7 @@ async function renderHeadHome() {
     chartInstances.headUsers = new Chart(headUsersCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Students', 'Teachers', 'School Heads', 'Admins'],
+        labels: [t('chart.students_label'), t('chart.teachers_label'), t('chart.school_heads_label'), t('chart.admins_label')],
         datasets: [{
           data: [stats.total_students, stats.total_teachers, stats.total_school_heads || 0, stats.total_admins || 0],
           backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
@@ -2604,9 +2603,9 @@ async function renderHeadHome() {
     chartInstances.headReviews = new Chart(headReviewsCtx, {
       type: 'bar',
       data: {
-        labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+        labels: [t('chart.1_star'), t('chart.2_stars'), t('chart.3_stars'), t('chart.4_stars'), t('chart.5_stars')],
         datasets: [{
-          label: 'Reviews',
+          label: t('common.reviews'),
           data: [hrd[1] || 0, hrd[2] || 0, hrd[3] || 0, hrd[4] || 0, hrd[5] || 0],
           backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6'],
           borderRadius: 6
@@ -2628,31 +2627,31 @@ async function renderHeadTeachers() {
 
   el.innerHTML = `
     <div class="grid grid-2">
-      ${data.teachers.map(t => `
+      ${data.teachers.map(teacher => `
         <div class="card" style="margin-bottom:0">
           <div class="card-header">
-            <h3>${t.full_name}</h3>
-            <span style="color:var(--gray-500);font-size:0.85rem">${t.department || ''}</span>
+            <h3>${teacher.full_name}</h3>
+            <span style="color:var(--gray-500);font-size:0.85rem">${teacher.department || ''}</span>
           </div>
           <div class="card-body">
             <div style="display:flex;justify-content:space-between;margin-bottom:16px">
               <div>
-                <div style="font-size:0.8rem;color:var(--gray-500)">Subject</div>
-                <div style="font-weight:500">${t.subject}</div>
+                <div style="font-size:0.8rem;color:var(--gray-500)">${t('common.subject')}</div>
+                <div style="font-weight:500">${teacher.subject}</div>
               </div>
               <div style="text-align:center">
-                <div style="font-size:0.8rem;color:var(--gray-500)">Overall Rating</div>
-                <div style="font-size:1.5rem;font-weight:700;color:${scoreColor(t.scores.avg_overall || 0)}">${fmtScore(t.scores.avg_overall)}</div>
+                <div style="font-size:0.8rem;color:var(--gray-500)">${t('head.overall_rating')}</div>
+                <div style="font-size:1.5rem;font-weight:700;color:${scoreColor(teacher.scores.avg_overall || 0)}">${fmtScore(teacher.scores.avg_overall)}</div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:0.8rem;color:var(--gray-500)">Reviews</div>
-                <div style="font-weight:500">${t.scores.review_count}</div>
+                <div style="font-size:0.8rem;color:var(--gray-500)">${t('head.reviews')}</div>
+                <div style="font-weight:500">${teacher.scores.review_count}</div>
               </div>
             </div>
             ${['avg_clarity', 'avg_engagement', 'avg_fairness', 'avg_supportiveness', 'avg_preparation', 'avg_workload'].map(key => {
               const label = key.replace('avg_', '');
               const capName = label.charAt(0).toUpperCase() + label.slice(1);
-              const val = t.scores[key] || 0;
+              const val = teacher.scores[key] || 0;
               return `<div style="margin-bottom:8px">
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;margin-bottom:3px">
                   <span style="display:flex;align-items:center;gap:3px">${capName}${criteriaInfoIcon(capName)}</span><span style="font-weight:600">${val}/5</span>
@@ -2660,9 +2659,9 @@ async function renderHeadTeachers() {
                 <div class="progress-bar"><div class="progress-fill blue" style="width:${(val/5)*100}%"></div></div>
               </div>`;
             }).join('')}
-            ${t.trend ? `<div style="margin-top:12px;font-size:0.85rem">Trend: ${trendArrow(t.trend.trend)} <span class="trend-${t.trend.trend === 'improving' ? 'up' : t.trend.trend === 'declining' ? 'down' : 'stable'}">${t.trend.trend}</span></div>` : ''}
+            ${teacher.trend ? `<div style="margin-top:12px;font-size:0.85rem">Trend: ${trendArrow(teacher.trend.trend)} <span class="trend-${teacher.trend.trend === 'improving' ? 'up' : teacher.trend.trend === 'declining' ? 'down' : 'stable'}">${teacher.trend.trend}</span></div>` : ''}
             <div style="margin-top:16px">
-              <button class="btn btn-primary" style="width:100%;font-size:0.85rem" onclick="viewTeacherFeedback(${t.id})">View Feedback</button>
+              <button class="btn btn-primary" style="width:100%;font-size:0.85rem" onclick="viewTeacherFeedback(${teacher.id})">${t('admin.view_feedback')}</button>
             </div>
           </div>
         </div>
@@ -2679,7 +2678,7 @@ async function renderHeadClassrooms() {
     <div class="card">
       <div class="table-container">
         <table>
-          <thead><tr><th>Subject</th><th>Teacher</th><th>Grade</th><th>Students</th></tr></thead>
+          <thead><tr><th>${t('common.subject')}</th><th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.students')}</th></tr></thead>
           <tbody>
             ${data.classrooms.map(c => `
               <tr>
@@ -2706,17 +2705,17 @@ async function renderHeadAnalytics() {
       <div class="card-body">
         <table>
           <thead>
-            <tr><th>Teacher</th><th><span style="display:flex;align-items:center;gap:3px">Clarity${criteriaInfoIcon('Clarity')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Engagement${criteriaInfoIcon('Engagement')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Fairness${criteriaInfoIcon('Fairness')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Supportiveness${criteriaInfoIcon('Supportiveness')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Preparation${criteriaInfoIcon('Preparation')}</span></th><th><span style="display:flex;align-items:center;gap:3px">Workload${criteriaInfoIcon('Workload')}</span></th><th>Final</th></tr>
+            <tr><th>${t('common.teacher')}</th><th><span style="display:flex;align-items:center;gap:3px">${t('criteria.clarity')}${criteriaInfoIcon('Clarity')}</span></th><th><span style="display:flex;align-items:center;gap:3px">${t('criteria.engagement')}${criteriaInfoIcon('Engagement')}</span></th><th><span style="display:flex;align-items:center;gap:3px">${t('criteria.fairness')}${criteriaInfoIcon('Fairness')}</span></th><th><span style="display:flex;align-items:center;gap:3px">${t('criteria.supportiveness')}${criteriaInfoIcon('Supportiveness')}</span></th><th><span style="display:flex;align-items:center;gap:3px">${t('criteria.preparation')}${criteriaInfoIcon('Preparation')}</span></th><th><span style="display:flex;align-items:center;gap:3px">${t('criteria.workload')}${criteriaInfoIcon('Workload')}</span></th><th>${t('head.final')}</th></tr>
           </thead>
           <tbody>
-            ${data.teachers.map(t => {
-              const s = t.scores;
+            ${data.teachers.map(tchr => {
+              const s = tchr.scores;
               const cell = (val) => {
                 const bg = !val ? 'var(--gray-100)' : val >= 4 ? 'var(--success-bg)' : val >= 3 ? 'var(--warning-bg)' : 'var(--danger-bg)';
                 const color = !val ? 'var(--gray-400)' : val >= 4 ? '#047857' : val >= 3 ? '#92400e' : '#dc2626';
                 return `<td style="background:${bg};color:${color};font-weight:600;text-align:center">${fmtScore(val)}</td>`;
               };
-              return `<tr><td><strong>${t.full_name}</strong></td>${cell(s.avg_clarity)}${cell(s.avg_engagement)}${cell(s.avg_fairness)}${cell(s.avg_supportiveness)}${cell(s.avg_preparation)}${cell(s.avg_workload)}${cell(s.avg_overall)}</tr>`;
+              return `<tr><td><strong>${tchr.full_name}</strong></td>${cell(s.avg_clarity)}${cell(s.avg_engagement)}${cell(s.avg_fairness)}${cell(s.avg_supportiveness)}${cell(s.avg_preparation)}${cell(s.avg_workload)}${cell(s.avg_overall)}</tr>`;
             }).join('')}
           </tbody>
         </table>
@@ -2741,7 +2740,7 @@ async function renderHeadForms() {
         : announcements.map(a => announcementCardHTML(a, true)).join('')}
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -2787,7 +2786,7 @@ async function renderAdminForms() {
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -2813,11 +2812,11 @@ function renderAdminFormCards(forms) {
           </div>
         </div>
         <div class="card-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px">
-          ${f.status === 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormBuilder(${f.id})">Edit Questions</button>` : ''}
-          ${f.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="adminSetFormStatus(${f.id},'active')">Activate</button>` : ''}
-          ${f.status === 'active' ? `<button class="btn btn-sm btn-outline" onclick="adminSetFormStatus(${f.id},'closed')">Close</button>` : ''}
-          ${f.response_count > 0 || f.status !== 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormResults(${f.id})">Results</button>` : ''}
-          ${f.status !== 'active' ? `<button class="btn btn-sm btn-danger" onclick="adminDeleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">Delete</button>` : ''}
+          ${f.status === 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormBuilder(${f.id})">${t('forms.edit_questions')}</button>` : ''}
+          ${f.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="adminSetFormStatus(${f.id},'active')">${t('forms.activate')}</button>` : ''}
+          ${f.status === 'active' ? `<button class="btn btn-sm btn-outline" onclick="adminSetFormStatus(${f.id},'closed')">${t('forms.close_btn')}</button>` : ''}
+          ${f.response_count > 0 || f.status !== 'draft' ? `<button class="btn btn-sm btn-outline" onclick="openFormResults(${f.id})">${t('forms.results')}</button>` : ''}
+          ${f.status !== 'active' ? `<button class="btn btn-sm btn-danger" onclick="adminDeleteForm(${f.id},'${f.title.replace(/'/g, "\\'")}')">${t('common.delete')}</button>` : ''}
         </div>
       </div>
     `).join('')}
@@ -2837,7 +2836,7 @@ async function filterAdminFormsByOrg(orgId) {
 async function adminSetFormStatus(formId, status) {
   try {
     await API.patch(`/forms/${formId}`, { status });
-    toast(`Form ${status}`);
+    toast(status === 'active' ? t('forms.form_activated') : t('forms.form_closed'));
     renderAdminForms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -2879,7 +2878,7 @@ async function showAdminCreateFormModal() {
       </div>
       <div class="form-group">
         <label>${t('forms.desc_label')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label>
-        <textarea class="form-control" id="adminFormDesc" rows="2" placeholder="What is this form about?"></textarea>
+        <textarea class="form-control" id="adminFormDesc" rows="2" placeholder="${t('forms.desc_placeholder')}"></textarea>
       </div>
       ${orgPickerHTML}
       <div class="form-group">
@@ -3005,9 +3004,9 @@ async function renderAdminHome() {
   let trendHtml = '';
   if (withData.length >= 2) {
     const diff = withData[withData.length - 1].avg_overall - withData[0].avg_overall;
-    const dir = diff > 0.1 ? { icon: '↑', text: 'Improving', color: '#16a34a', bg: '#dcfce7' }
-      : diff < -0.1 ? { icon: '↓', text: 'Declining', color: '#dc2626', bg: '#fee2e2' }
-      : { icon: '→', text: 'Stable', color: '#6b7280', bg: '#f3f4f6' };
+    const dir = diff > 0.1 ? { icon: '↑', text: t('analytics.improving'), color: '#16a34a', bg: '#dcfce7' }
+      : diff < -0.1 ? { icon: '↓', text: t('analytics.declining'), color: '#dc2626', bg: '#fee2e2' }
+      : { icon: '→', text: t('analytics.stable'), color: '#6b7280', bg: '#f3f4f6' };
     trendHtml = `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${dir.bg};border-radius:16px;font-size:0.82rem;font-weight:600;color:${dir.color}">${dir.icon} ${dir.text}</span>`;
   }
 
@@ -3150,7 +3149,7 @@ async function renderAdminHome() {
         data: {
           labels,
           datasets: [{
-            label: 'Org Average',
+            label: t('admin.org_avg_label'),
             data: scores,
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59,130,246,0.08)',
@@ -3226,10 +3225,10 @@ async function renderAdminOrgs() {
                 <td>${org.teacher_count || 0}</td>
                 <td>${org.student_count || 0}</td>
                 <td>
-                  <button class="btn btn-sm btn-outline" onclick="editOrganization(${index})">Edit</button>
-                  <button class="btn btn-sm btn-outline" onclick="viewOrgMembers(${org.id}, '${org.name.replace(/'/g, "\\'")}')">Members</button>
-                  <button class="btn btn-sm btn-outline" onclick="viewOrgStats(${org.id}, '${org.name.replace(/'/g, "\\'")}')">Stats</button>
-                  <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="deleteOrganization(${org.id}, '${org.name.replace(/'/g, "\\'")}', ${org.total_members || 0})">Delete</button>
+                  <button class="btn btn-sm btn-outline" onclick="editOrganization(${index})">${t('common.edit')}</button>
+                  <button class="btn btn-sm btn-outline" onclick="viewOrgMembers(${org.id}, '${org.name.replace(/'/g, "\\'")}')">${t('admin.org_members')}</button>
+                  <button class="btn btn-sm btn-outline" onclick="viewOrgStats(${org.id}, '${org.name.replace(/'/g, "\\'")}')">${t('admin.stats')}</button>
+                  <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="deleteOrganization(${org.id}, '${org.name.replace(/'/g, "\\'")}', ${org.total_members || 0})">${t('common.delete')}</button>
                 </td>
               </tr>
             `).join('')}
@@ -3241,7 +3240,7 @@ async function renderAdminOrgs() {
 
 async function viewOrgStats(orgId, orgName) {
   openModal(`
-    <div class="modal-header"><h3>${orgName} — Period Trend</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('admin.period_trend_title', {name: orgName})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="loading" style="padding:32px"><div class="spinner"></div></div>
     </div>
@@ -3266,9 +3265,9 @@ async function viewOrgStats(orgId, orgName) {
     let trendHtml = '';
     if (withData.length >= 2) {
       const diff = withData[withData.length-1].avg_overall - withData[0].avg_overall;
-      const dir = diff > 0.1 ? { icon: '↑', text: 'Improving', color: '#16a34a', bg: '#dcfce7' }
-        : diff < -0.1 ? { icon: '↓', text: 'Declining', color: '#dc2626', bg: '#fee2e2' }
-        : { icon: '→', text: 'Stable', color: '#6b7280', bg: '#f3f4f6' };
+      const dir = diff > 0.1 ? { icon: '↑', text: t('analytics.improving'), color: '#16a34a', bg: '#dcfce7' }
+        : diff < -0.1 ? { icon: '↓', text: t('analytics.declining'), color: '#dc2626', bg: '#fee2e2' }
+        : { icon: '→', text: t('analytics.stable'), color: '#6b7280', bg: '#f3f4f6' };
       trendHtml = `<span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:${dir.bg};border-radius:16px;font-size:0.82rem;font-weight:600;color:${dir.color}">${dir.icon} ${dir.text}</span>`;
     }
 
@@ -3313,7 +3312,7 @@ async function viewOrgStats(orgId, orgName) {
         type: 'line',
         data: {
           labels: periods.map(p => p.period_name),
-          datasets: [{ label: 'Org Average', data: scores, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.3, pointRadius: 6, pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2, spanGaps: true }]
+          datasets: [{ label: t('admin.org_avg_label'), data: scores, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.3, pointRadius: 6, pointBackgroundColor: pointColors, pointBorderColor: '#fff', pointBorderWidth: 2, spanGaps: true }]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
@@ -3329,7 +3328,7 @@ async function viewOrgStats(orgId, orgName) {
 }
 
 function _buildUserRows(users) {
-  if (users.length === 0) return `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px">No users found</td></tr>`;
+  if (users.length === 0) return `<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px">${t('admin.no_users')}</td></tr>`;
   return users.map(u => {
     const isSelf = u.id === currentUser.id;
     const canDelete = !isSelf && (
@@ -3341,17 +3340,17 @@ function _buildUserRows(users) {
     <tr>
       <td><strong>${u.full_name}</strong></td>
       <td style="font-size:0.8rem;color:var(--gray-500)">${u.email}</td>
-      <td><span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${u.role.replace('_', ' ')}</span></td>
+      <td><span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), org_admin: t('common.org_admin'), super_admin: t('common.super_admin')}[u.role] || u.role}</span></td>
       <td>${u.grade_or_position || '-'}</td>
-      <td>${u.suspended ? '<span class="badge badge-rejected">Suspended</span>' : '<span class="badge badge-approved">Active</span>'}</td>
+      <td>${u.suspended ? `<span class="badge badge-rejected">${t('common.suspended')}</span>` : `<span class="badge badge-approved">${t('common.active')}</span>`}</td>
       <td>
         <div class="action-dropdown" id="dropdown-${u.id}">
-          <button class="action-dropdown-trigger" onclick="toggleActionMenu(${u.id}, event)" title="Actions">⋮</button>
+          <button class="action-dropdown-trigger" onclick="toggleActionMenu(${u.id}, event)" title="${t('common.actions')}">⋮</button>
           <div class="action-dropdown-menu" id="dropdown-menu-${u.id}">
-            <button class="action-dropdown-item" onclick="closeActionMenus();editUserById(${u.id})">Edit</button>
-            <button class="action-dropdown-item" onclick="closeActionMenus();resetPassword(${u.id}, '${safeName}')">Reset Password</button>
-            ${!isSelf ? `<button class="action-dropdown-item" onclick="closeActionMenus();toggleSuspend(${u.id})">${u.suspended ? 'Unsuspend' : 'Suspend'}</button>` : ''}
-            ${canDelete ? `<button class="action-dropdown-item danger" onclick="closeActionMenus();deleteUser(${u.id}, '${safeName}')">Delete Account</button>` : ''}
+            <button class="action-dropdown-item" onclick="closeActionMenus();editUserById(${u.id})">${t('common.edit')}</button>
+            <button class="action-dropdown-item" onclick="closeActionMenus();resetPassword(${u.id}, '${safeName}')">${t('admin.reset_password')}</button>
+            ${!isSelf ? `<button class="action-dropdown-item" onclick="closeActionMenus();toggleSuspend(${u.id})">${u.suspended ? t('admin.unsuspend') : t('admin.suspend')}</button>` : ''}
+            ${canDelete ? `<button class="action-dropdown-item danger" onclick="closeActionMenus();deleteUser(${u.id}, '${safeName}')">${t('admin.delete_account')}</button>` : ''}
           </div>
         </div>
       </td>
@@ -3408,7 +3407,7 @@ async function renderAdminUsers(refetch = true) {
       <button class="btn btn-primary" onclick="showCreateUser()">${t('admin.add_user')}</button>
     </div>
     <div style="margin-bottom:16px">
-      <input type="text" class="form-control" id="userSearchInput" placeholder="Search by name or email…"
+      <input type="text" class="form-control" id="userSearchInput" placeholder="${t('admin.search_users')}"
         style="max-width:320px"
         value="${window._userSearch || ''}"
         oninput="window._userSearch=this.value;_filterUserTable()">
@@ -3437,51 +3436,51 @@ async function showCreateUser() {
   }
 
   openModal(`
-    <div class="modal-header"><h3>Create User</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('admin.create_user_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Full Name</label>
+        <label>${t('account.full_name')}</label>
         <input type="text" class="form-control" id="newUserName" required>
       </div>
       <div class="form-group">
-        <label>Email</label>
+        <label>${t('account.email')}</label>
         <input type="email" class="form-control" id="newUserEmail" required>
       </div>
       <div class="form-group">
-        <label>Password</label>
+        <label>${t('admin.password')}</label>
         <input type="password" class="form-control" id="newUserPassword" required>
       </div>
       <div class="form-group">
-        <label>Role</label>
+        <label>${t('account.role')}</label>
         <select class="form-control" id="newUserRole" onchange="onNewUserRoleChange(this.value)">
-          <option value="student">Student</option>
-          <option value="teacher">Teacher</option>
-          <option value="school_head">School Head</option>
-          <option value="org_admin">Organization Admin</option>
+          <option value="student">${t('common.student')}</option>
+          <option value="teacher">${t('common.teacher')}</option>
+          <option value="school_head">${t('common.school_head')}</option>
+          <option value="org_admin">${t('common.org_admin')}</option>
         </select>
       </div>
       <div id="orgFields" style="display:none">
         <div class="form-group">
-          <label>Organization <span style="color:var(--danger)">*</span></label>
+          <label>${t('admin.organization')} <span style="color:var(--danger)">*</span></label>
           <select class="form-control" id="newUserOrgId">
-            <option value="">Select organization...</option>
+            <option value="">${t('admin.select_org')}</option>
             ${orgOptions}
           </select>
         </div>
       </div>
       <div class="form-group">
-        <label>Grade / Position</label>
-        <input type="text" class="form-control" id="newUserGrade" placeholder="e.g. Grade 10 or Mathematics Teacher">
+        <label>${t('admin.grade_position_label')}</label>
+        <input type="text" class="form-control" id="newUserGrade" placeholder="${t('admin.grade_position_placeholder')}">
       </div>
       <div id="teacherFields" style="display:none">
-        <div class="form-group"><label>Subject</label><input type="text" class="form-control" id="newTeacherSubject"></div>
-        <div class="form-group"><label>Department</label><input type="text" class="form-control" id="newTeacherDept"></div>
-        <div class="form-group"><label>Years of Experience</label><input type="number" class="form-control" id="newTeacherExp" min="0"></div>
+        <div class="form-group"><label>${t('account.subject')}</label><input type="text" class="form-control" id="newTeacherSubject"></div>
+        <div class="form-group"><label>${t('account.department')}</label><input type="text" class="form-control" id="newTeacherDept"></div>
+        <div class="form-group"><label>${t('admin.years_experience')}</label><input type="number" class="form-control" id="newTeacherExp" min="0"></div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="createUser()">Create</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="createUser()">${t('common.create')}</button>
     </div>
   `);
 }
@@ -3512,12 +3511,12 @@ async function createUser() {
     body.org_id = parseInt(orgSelect.value);
   }
   if ((body.role === 'school_head' || body.role === 'org_admin') && !body.org_id) {
-    return toast('Please select an organization for this role', 'error');
+    return toast(t('admin.org_required_for_role'), 'error');
   }
-  if (!body.full_name || !body.email || !body.password) return toast('Fill required fields', 'error');
+  if (!body.full_name || !body.email || !body.password) return toast(t('admin.fill_required'), 'error');
   try {
     await API.post('/admin/users', body);
-    toast('User created');
+    toast(t('admin.user_created'));
     closeModal();
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
@@ -3530,34 +3529,34 @@ function editUserById(id) {
 
 function editUser(user) {
   openModal(`
-    <div class="modal-header"><h3>Edit User: ${user.full_name}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-header"><h3>${t('admin.edit_user_title', {name: user.full_name})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Full Name</label>
+        <label>${t('account.full_name')}</label>
         <input type="text" class="form-control" id="editUserName" value="${user.full_name}">
       </div>
       <div class="form-group">
-        <label>Email</label>
+        <label>${t('account.email')}</label>
         <input type="email" class="form-control" id="editUserEmail" value="${user.email}">
       </div>
       <div class="form-group">
-        <label>Grade / Position</label>
+        <label>${t('admin.grade_position_label')}</label>
         <input type="text" class="form-control" id="editUserGrade" value="${user.grade_or_position || ''}">
       </div>
       <div class="form-group">
-        <label>Role</label>
+        <label>${t('account.role')}</label>
         <select class="form-control" id="editUserRole">
-          <option value="student" ${user.role === 'student' ? 'selected' : ''}>Student</option>
-          <option value="teacher" ${user.role === 'teacher' ? 'selected' : ''}>Teacher</option>
-          <option value="school_head" ${user.role === 'school_head' ? 'selected' : ''}>School Head</option>
-          <option value="org_admin" ${user.role === 'org_admin' ? 'selected' : ''}>Organization Admin</option>
-          <option value="super_admin" ${user.role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+          <option value="student" ${user.role === 'student' ? 'selected' : ''}>${t('common.student')}</option>
+          <option value="teacher" ${user.role === 'teacher' ? 'selected' : ''}>${t('common.teacher')}</option>
+          <option value="school_head" ${user.role === 'school_head' ? 'selected' : ''}>${t('common.school_head')}</option>
+          <option value="org_admin" ${user.role === 'org_admin' ? 'selected' : ''}>${t('common.org_admin')}</option>
+          <option value="super_admin" ${user.role === 'super_admin' ? 'selected' : ''}>${t('common.super_admin')}</option>
         </select>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveUserEdit(${user.id})">Save Changes</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="saveUserEdit(${user.id})">${t('admin.save_changes')}</button>
     </div>
   `);
 }
@@ -3569,25 +3568,25 @@ async function saveUserEdit(userId) {
     grade_or_position: document.getElementById('editUserGrade').value,
     role: document.getElementById('editUserRole').value
   };
-  if (!body.full_name || !body.email) return toast('Name and email required', 'error');
+  if (!body.full_name || !body.email) return toast(t('admin.name_email_required'), 'error');
   try {
     await API.put(`/admin/users/${userId}`, body);
-    toast('User updated successfully');
+    toast(t('admin.user_updated'));
     closeModal();
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 async function resetPassword(userId, userName) {
-  const newPassword = prompt(`Enter new password for ${userName}:`);
+  const newPassword = prompt(t('admin.enter_new_password', {name: userName}));
   if (!newPassword) return;
-  if (newPassword.length < 8) return toast('Password must be at least 8 characters', 'error');
+  if (newPassword.length < 8) return toast(t('admin.password_min_8'), 'error');
 
-  const confirmed = await confirmDialog(`Reset password for ${userName}?`, 'Reset', 'Cancel');
+  const confirmed = await confirmDialog(t('admin.reset_password_confirm', {name: userName}), t('admin.reset'), t('common.cancel'));
   if (!confirmed) return;
 
   API.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
-    .then(() => toast('Password reset successfully'))
+    .then(() => toast(t('admin.password_reset')))
     .catch(err => toast(err.message, 'error'));
 }
 
@@ -3601,14 +3600,14 @@ async function toggleSuspend(userId) {
 
 async function deleteUser(userId, userName) {
   const confirmed = await confirmWithText(
-    `Permanently delete the account of <strong>${userName}</strong>? This cannot be undone.`,
+    t('admin.delete_user_confirm', {name: userName}),
     userName,
-    'All their reviews, classroom memberships, and data will be permanently removed.'
+    t('admin.delete_user_details')
   );
   if (!confirmed) return;
   try {
     await API.delete(`/admin/users/${userId}`);
-    toast(`${userName} has been permanently deleted`);
+    toast(t('admin.user_deleted', {name: userName}));
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -3884,9 +3883,9 @@ async function renderAdminClassrooms() {
                 <td><a href="#" onclick="event.preventDefault();viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')" style="color:var(--primary);font-weight:600">${c.student_count || 0}</a></td>
                 <td><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px">${formatJoinCode(c.join_code)}</code></td>
                 <td>
-                  <button class="btn btn-sm btn-outline" onclick="viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Members</button>
-                  <button class="btn btn-sm btn-outline" onclick='editClassroom(${JSON.stringify(c)})'>Edit</button>
-                  <button class="btn btn-sm btn-danger" onclick="deleteClassroom(${c.id}, '${c.subject}')">Delete</button>
+                  <button class="btn btn-sm btn-outline" onclick="viewClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">${t('teacher.members')}</button>
+                  <button class="btn btn-sm btn-outline" onclick='editClassroom(${JSON.stringify(c)})'>${t('common.edit')}</button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteClassroom(${c.id}, '${c.subject}')">${t('common.delete')}</button>
                 </td>
               </tr>
               `;
@@ -3901,27 +3900,27 @@ async function renderAdminClassrooms() {
 function showCreateClassroom() {
   API.get('/admin/teachers').then(teachers => {
     openModal(`
-      <div class="modal-header"><h3>Create Classroom</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-header"><h3>${t('admin.create_classroom_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
         <div class="form-group">
-          <label>Subject *</label>
-          <input type="text" class="form-control" id="newClassroomSubject" placeholder="e.g. Mathematics, English">
+          <label>${t('admin.subject_required')}</label>
+          <input type="text" class="form-control" id="newClassroomSubject" placeholder="${t('admin.subject_placeholder')}">
         </div>
         <div class="form-group">
-          <label>Grade Level *</label>
-          <input type="text" class="form-control" id="newClassroomGrade" placeholder="e.g. Grade 10, Year 12">
+          <label>${t('admin.grade_required')}</label>
+          <input type="text" class="form-control" id="newClassroomGrade" placeholder="${t('admin.grade_placeholder')}">
         </div>
         <div class="form-group">
-          <label>Teacher *</label>
+          <label>${t('admin.teacher_required')}</label>
           <select class="form-control" id="newClassroomTeacher">
-            <option value="">Select teacher...</option>
-            ${teachers.map(t => `<option value="${t.id}">${t.full_name} - ${t.subject || 'No subject'}</option>`).join('')}
+            <option value="">${t('admin.select_teacher')}</option>
+            ${teachers.map(tchr => `<option value="${tchr.id}">${tchr.full_name} - ${tchr.subject || t('admin.no_subject')}</option>`).join('')}
           </select>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="createClassroom()">Create</button>
+        <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+        <button class="btn btn-primary" onclick="createClassroom()">${t('common.create')}</button>
       </div>
     `);
   });
@@ -3934,11 +3933,11 @@ async function createClassroom() {
     teacher_id: parseInt(document.getElementById('newClassroomTeacher').value)
   };
   if (!body.subject || !body.grade_level || !body.teacher_id) {
-    return toast('All fields are required', 'error');
+    return toast(t('admin.all_fields_required'), 'error');
   }
   try {
     await API.post('/classrooms', body);
-    toast('Classroom created successfully');
+    toast(t('admin.classroom_created'));
     closeModal();
     renderAdminClassrooms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3947,26 +3946,26 @@ async function createClassroom() {
 function editClassroom(classroom) {
   API.get('/admin/teachers').then(teachers => {
     openModal(`
-      <div class="modal-header"><h3>Edit Classroom: ${classroom.subject}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-header"><h3>${t('admin.edit_classroom_title', {subject: classroom.subject})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
         <div class="form-group">
-          <label>Subject</label>
+          <label>${t('common.subject')}</label>
           <input type="text" class="form-control" id="editClassroomSubject" value="${classroom.subject}">
         </div>
         <div class="form-group">
-          <label>Grade Level</label>
+          <label>${t('admin.grade_level')}</label>
           <input type="text" class="form-control" id="editClassroomGrade" value="${classroom.grade_level}">
         </div>
         <div class="form-group">
-          <label>Teacher</label>
+          <label>${t('common.teacher')}</label>
           <select class="form-control" id="editClassroomTeacher">
-            ${teachers.map(t => `<option value="${t.id}" ${t.id === classroom.teacher_id ? 'selected' : ''}>${t.full_name} - ${t.subject || 'No subject'}</option>`).join('')}
+            ${teachers.map(tchr => `<option value="${tchr.id}" ${tchr.id === classroom.teacher_id ? 'selected' : ''}>${tchr.full_name} - ${tchr.subject || t('admin.no_subject')}</option>`).join('')}
           </select>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveClassroomEdit(${classroom.id})">Save Changes</button>
+        <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+        <button class="btn btn-primary" onclick="saveClassroomEdit(${classroom.id})">${t('admin.save_changes')}</button>
       </div>
     `);
   });
@@ -3980,18 +3979,18 @@ async function saveClassroomEdit(classroomId) {
   };
   try {
     await API.put(`/admin/classrooms/${classroomId}`, body);
-    toast('Classroom updated successfully');
+    toast(t('admin.classroom_updated'));
     closeModal();
     renderAdminClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
 async function deleteClassroom(classroomId, subject) {
-  const confirmed = await confirmDialog(`Delete classroom "${subject}"? This will remove all student enrollments.`, 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('admin.delete_classroom_confirm', {subject}), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/admin/classrooms/${classroomId}`);
-    toast('Classroom deleted successfully');
+    toast(t('admin.classroom_deleted'));
     renderAdminClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4000,12 +3999,12 @@ async function viewClassroomMembers(classroomId, subject) {
   try {
     const members = await API.get(`/classrooms/${classroomId}/members`);
     openModal(`
-      <div class="modal-header"><h3>Members: ${subject}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-header"><h3>${t('admin.members_title', {subject})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body" style="min-width:0">
         ${members.length === 0
-          ? '<p style="color:var(--gray-500)">No students enrolled yet.</p>'
+          ? `<p style="color:var(--gray-500)">${t('admin.no_students_enrolled')}</p>`
           : `<div style="overflow-x:auto"><table style="width:100%">
-              <thead><tr><th>Name</th><th>Email</th><th>Grade/Position</th><th>Joined</th><th style="width:80px">Action</th></tr></thead>
+              <thead><tr><th>${t('common.name')}</th><th>${t('common.email')}</th><th>${t('admin.grade_position_col')}</th><th>${t('common.joined')}</th><th style="width:80px">${t('common.actions')}</th></tr></thead>
               <tbody>
                 ${members.map(m => `
                   <tr id="member-row-${m.student_id}">
@@ -4013,27 +4012,27 @@ async function viewClassroomMembers(classroomId, subject) {
                     <td>${m.email}</td>
                     <td>${m.grade_or_position || '-'}</td>
                     <td>${m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '-'}</td>
-                    <td><button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem" onclick="removeStudentFromClassroom(${classroomId}, ${m.student_id}, '${m.full_name.replace(/'/g, "\\'")}', '${subject.replace(/'/g, "\\'")}')">Remove</button></td>
+                    <td><button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem" onclick="removeStudentFromClassroom(${classroomId}, ${m.student_id}, '${m.full_name.replace(/'/g, "\\'")}', '${subject.replace(/'/g, "\\'")}')">${t('admin.remove')}</button></td>
                   </tr>
                 `).join('')}
               </tbody>
             </table></div>`
         }
-        <p style="margin-top:12px;color:var(--gray-500);font-size:0.85rem">${members.length} student(s) enrolled</p>
+        <p style="margin-top:12px;color:var(--gray-500);font-size:0.85rem">${t('admin.students_enrolled', {count: members.length})}</p>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal()">Close</button>
+        <button class="btn btn-outline" onclick="closeModal()">${t('common.close')}</button>
       </div>
     `);
-  } catch (err) { toast('Failed to load members: ' + err.message, 'error'); }
+  } catch (err) { toast(t('admin.failed_load_members') + err.message, 'error'); }
 }
 
 async function removeStudentFromClassroom(classroomId, studentId, studentName, subject) {
-  const confirmed = await confirmDialog(`Remove <strong>${studentName}</strong> from <strong>${subject}</strong>?`, 'Remove', 'Cancel');
+  const confirmed = await confirmDialog(t('admin.remove_confirm', {student: studentName, subject}), t('admin.remove'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/classrooms/${classroomId}/members/${studentId}`);
-    toast(`${studentName} removed from classroom`);
+    toast(t('admin.student_removed', {name: studentName}));
     viewClassroomMembers(classroomId, subject);
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4067,7 +4066,7 @@ async function renderAdminModerate() {
                 <input type="checkbox" class="review-select-cb" value="${r.id}" onchange="updateApproveSelectedBtn()" style="margin-top:4px;width:16px;height:16px;cursor:pointer">
                 <div>
                   <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
-                  <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
+                  <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">${t('moderate.from_label')} <strong>${r.student_name}</strong> (${r.student_email})</div>
                 </div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
@@ -4118,10 +4117,10 @@ async function renderAdminModerate() {
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
               <div>
                 <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
-                <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
+                <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">${t('moderate.from_label')} <strong>${r.student_name}</strong> (${r.student_email})</div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-                <span class="badge badge-flagged">Flagged</span>
+                <span class="badge badge-flagged">${t('common.flagged_badge')}</span>
                 <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
               </div>
             </div>
@@ -4169,10 +4168,10 @@ async function renderAdminFlagged() {
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
               <div>
                 <div><strong>${r.teacher_name}</strong> <span style="color:var(--gray-500);font-size:0.85rem">&middot; ${r.classroom_subject} &middot; ${r.term_name} &middot; ${r.period_name}</span></div>
-                <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">From: <strong>${r.student_name}</strong> (${r.student_email})</div>
+                <div style="font-size:0.85rem;color:var(--gray-500);margin-top:4px">${t('moderate.from_label')} <strong>${r.student_name}</strong> (${r.student_email})</div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-                <span class="badge badge-flagged">Flagged</span>
+                <span class="badge badge-flagged">${t('common.flagged_badge')}</span>
                 <span style="font-size:0.78rem;color:var(--gray-400)">${r.created_at ? new Date(r.created_at).toLocaleString() : ''}</span>
               </div>
             </div>
@@ -4304,10 +4303,10 @@ async function saveTeacherEdit(teacherId) {
     experience_years: parseInt(document.getElementById('editTeacherExp').value) || 0,
     bio: document.getElementById('editTeacherBio').value
   };
-  if (!body.full_name) return toast('Name is required', 'error');
+  if (!body.full_name) return toast(t('admin.name_required'), 'error');
   try {
     await API.put(`/admin/teachers/${teacherId}`, body);
-    toast('Teacher profile updated successfully');
+    toast(t('admin.teacher_updated'));
     closeModal();
     renderAdminTeachers();
   } catch (err) { toast(err.message, 'error'); }
@@ -4342,7 +4341,7 @@ async function renderAdminTeachers() {
   el.innerHTML = `
     ${inviteCodeHTML}
     <div class="card">
-      <div class="card-header"><h3>All Teachers (${teachers.length})</h3></div>
+      <div class="card-header"><h3>${t('admin.all_teachers', {count: teachers.length})}</h3></div>
       <div class="card-body">
         <table>
           <thead>
@@ -4381,7 +4380,7 @@ async function viewTeacherFeedback(teacherId) {
   const data = await API.get(`/admin/teacher/${teacherId}/feedback`);
   openModal(`
     <div class="modal-header">
-      <h2>Feedback for ${data.teacher.full_name}</h2>
+      <h2>${t('admin.feedback_for', {name: data.teacher.full_name})}</h2>
       <button onclick="closeModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer">&times;</button>
     </div>
     <div class="modal-body">
@@ -4410,7 +4409,7 @@ async function viewTeacherFeedback(teacherId) {
       </div>
 
       <div style="max-height:400px;overflow-y:auto">
-        ${data.reviews.length === 0 ? '<div class="empty-state"><p>No approved reviews yet</p></div>' : data.reviews.map(r => `
+        ${data.reviews.length === 0 ? `<div class="empty-state"><p>${t('admin.no_approved_reviews')}</p></div>` : data.reviews.map(r => `
           <div style="padding:12px;border:1px solid var(--gray-200);border-radius:var(--radius-md);margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
               <div style="font-size:0.85rem;color:var(--gray-500)">${new Date(r.created_at).toLocaleDateString()}</div>
@@ -4423,12 +4422,12 @@ async function viewTeacherFeedback(teacherId) {
               ${r.classroom_subject} (${r.grade_level}) &middot; ${r.term_name} &middot; ${r.period_name}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:8px;background:var(--gray-50);border-radius:var(--radius-sm)">
-              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Clarity</strong>${criteriaInfoIcon('Clarity')}: ${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</div>
-              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Engagement</strong>${criteriaInfoIcon('Engagement')}: ${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</div>
-              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Fairness</strong>${criteriaInfoIcon('Fairness')}: ${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</div>
-              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Supportiveness</strong>${criteriaInfoIcon('Supportiveness')}: ${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</div>
-              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Preparation</strong>${criteriaInfoIcon('Preparation')}: ${ratingText(r.preparation_rating)} ${starsHTML(r.preparation_rating, 'small')}</div>
-              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>Workload</strong>${criteriaInfoIcon('Workload')}: ${ratingText(r.workload_rating)} ${starsHTML(r.workload_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>${t('criteria.clarity')}</strong>${criteriaInfoIcon('Clarity')}: ${r.clarity_rating}/5 ${starsHTML(r.clarity_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>${t('criteria.engagement')}</strong>${criteriaInfoIcon('Engagement')}: ${r.engagement_rating}/5 ${starsHTML(r.engagement_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>${t('criteria.fairness')}</strong>${criteriaInfoIcon('Fairness')}: ${r.fairness_rating}/5 ${starsHTML(r.fairness_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>${t('criteria.supportiveness')}</strong>${criteriaInfoIcon('Supportiveness')}: ${r.supportiveness_rating}/5 ${starsHTML(r.supportiveness_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>${t('criteria.preparation')}</strong>${criteriaInfoIcon('Preparation')}: ${ratingText(r.preparation_rating)} ${starsHTML(r.preparation_rating, 'small')}</div>
+              <div style="font-size:0.85rem;display:flex;align-items:center;gap:3px"><strong>${t('criteria.workload')}</strong>${criteriaInfoIcon('Workload')}: ${ratingText(r.workload_rating)} ${starsHTML(r.workload_rating, 'small')}</div>
             </div>
             ${r.feedback_text ? `<div style="padding:8px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.9rem;margin-top:8px">${r.feedback_text}</div>` : ''}
           </div>
@@ -4466,7 +4465,7 @@ async function exportTeacherPDF(teacherId) {
         <h1>${tchr.full_name}</h1>
         <p style="color:#6b7280;margin-top:4px">${[tchr.subject, tchr.department].filter(Boolean).join(' · ')}</p>
         ${orgs ? `<span class="chip">🏫 ${orgs}</span>` : ''}
-        ${tchr.experience_years ? `<span class="chip">📅 ${tchr.experience_years} years experience</span>` : ''}
+        ${tchr.experience_years ? `<span class="chip">📅 ${tchr.experience_years} ${t('pdf.years_experience')}</span>` : ''}
       </div>
       <div style="text-align:right">
         <div style="font-size:0.75rem;color:#9ca3af">${t('pdf.report_label')}</div>
@@ -4476,8 +4475,8 @@ async function exportTeacherPDF(teacherId) {
     ${tchr.bio ? `<div style="margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:8px"><p style="font-size:0.9rem;color:#374151;line-height:1.6">${tchr.bio}</p></div>` : ''}
     <h2>${t('pdf.performance_summary')}</h2>
     <div style="display:flex;gap:32px;align-items:center;margin-bottom:24px">
-      <div style="text-align:center"><div class="score-big" style="color:${s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#ca8a04' : '#dc2626'}">${fmtScore(s.avg_overall)}</div><div class="score-sub">Overall Rating / 5.00</div></div>
-      <div style="text-align:center"><div class="score-big">${s.review_count}</div><div class="score-sub">Total Reviews</div></div>
+      <div style="text-align:center"><div class="score-big" style="color:${s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#ca8a04' : '#dc2626'}">${fmtScore(s.avg_overall)}</div><div class="score-sub">${t('pdf.overall_rating_label')}</div></div>
+      <div style="text-align:center"><div class="score-big">${s.review_count}</div><div class="score-sub">${t('pdf.total_reviews_label')}</div></div>
     </div>
     <h2>${t('pdf.rating_breakdown')}</h2>
     <div class="grid">
@@ -4511,7 +4510,7 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
     : activePeriod;
 
   if (!currentPeriod && !activePeriod) {
-    el.innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>No feedback periods</h3><p>Create a feedback period to track submissions</p></div></div></div>';
+    el.innerHTML = `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('admin.no_feedback_periods')}</h3><p>${t('admin.create_period_hint')}</p></div></div></div>`;
     return;
   }
 
@@ -4533,11 +4532,11 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div>
-        <label style="margin-right:10px;font-weight:600">Term:</label>
+        <label style="margin-right:10px;font-weight:600">${t('admin.term_filter_label')}</label>
         <select class="form-control" style="display:inline-block;width:auto" onchange="renderAdminSubmissions(parseInt(this.value))">
           ${termOptions.map(p => `
             <option value="${p.id}" ${p.id === periodToShow.id ? 'selected' : ''}>
-              ${p.term_name}${p.active_status !== 1 ? ' (Closed)' : ''}
+              ${p.term_name}${p.active_status !== 1 ? ' ' + t('admin.period_closed_badge') : ''}
             </option>
           `).join('')}
         </select>
@@ -4546,26 +4545,26 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
 
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <h3>Submission Overview — ${periodToShow.term_name}</h3>
+        <h3>${t('admin.submission_overview_period', {name: periodToShow.term_name})}</h3>
       </div>
       <div class="card-body">
         <div class="grid grid-4" style="margin-bottom:24px">
-          <div class="stat-card"><div class="stat-label">Total Classrooms</div><div class="stat-value">${overview.summary.total_classrooms}</div></div>
-          <div class="stat-card"><div class="stat-label">Total Students</div><div class="stat-value">${overview.summary.total_students}</div></div>
-          <div class="stat-card"><div class="stat-label">Submitted</div><div class="stat-value" style="color:var(--success)">${overview.summary.total_submitted}</div></div>
-          <div class="stat-card"><div class="stat-label">Completion Rate</div><div class="stat-value" style="color:${overview.summary.overall_completion_rate >= 70 ? 'var(--success)' : overview.summary.overall_completion_rate >= 50 ? 'var(--warning)' : 'var(--danger)'}">${overview.summary.overall_completion_rate}%</div></div>
+          <div class="stat-card"><div class="stat-label">${t('admin.total_classrooms')}</div><div class="stat-value">${overview.summary.total_classrooms}</div></div>
+          <div class="stat-card"><div class="stat-label">${t('admin.total_students')}</div><div class="stat-value">${overview.summary.total_students}</div></div>
+          <div class="stat-card"><div class="stat-label">${t('admin.submitted_col')}</div><div class="stat-value" style="color:var(--success)">${overview.summary.total_submitted}</div></div>
+          <div class="stat-card"><div class="stat-label">${t('admin.completion_rate')}</div><div class="stat-value" style="color:${overview.summary.overall_completion_rate >= 70 ? 'var(--success)' : overview.summary.overall_completion_rate >= 50 ? 'var(--warning)' : 'var(--danger)'}">${overview.summary.overall_completion_rate}%</div></div>
         </div>
 
         <table>
           <thead>
             <tr>
-              <th>Classroom</th>
-              <th>Teacher</th>
-              <th>Total Students</th>
-              <th>Submitted</th>
-              <th>Not Submitted</th>
-              <th>Completion Rate</th>
-              <th>Actions</th>
+              <th>${t('admin.classroom_col')}</th>
+              <th>${t('admin.teacher_col')}</th>
+              <th>${t('admin.total_students_col')}</th>
+              <th>${t('admin.submitted_col')}</th>
+              <th>${t('admin.not_submitted_col')}</th>
+              <th>${t('admin.completion_rate_col')}</th>
+              <th>${t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -4584,7 +4583,7 @@ async function renderAdminSubmissions(selectedPeriodId = null) {
                     <span style="font-weight:600;min-width:40px">${c.completion_rate}%</span>
                   </div>
                 </td>
-                <td><button class="btn btn-sm btn-outline" onclick="viewClassroomSubmissions(${c.id}, ${periodToShow.id})">View Details</button></td>
+                <td><button class="btn btn-sm btn-outline" onclick="viewClassroomSubmissions(${c.id}, ${periodToShow.id})">${t('admin.view_details')}</button></td>
               </tr>
             `).join('')}
           </tbody>
@@ -4604,18 +4603,18 @@ async function viewClassroomSubmissions(classroomId, periodId) {
     </div>
     <div class="modal-body">
       <div style="margin-bottom:20px">
-        <strong>${data.summary.submitted}/${data.summary.total_students}</strong> students submitted (${data.summary.completion_rate}%)
+        <strong>${t('admin.students_submitted', {submitted: data.summary.submitted, total: data.summary.total_students, rate: data.summary.completion_rate})}</strong>
       </div>
 
       <div style="max-height:400px;overflow-y:auto">
         <table>
           <thead>
             <tr>
-              <th>Student</th>
-              <th>Grade</th>
-              <th>Status</th>
-              <th>Rating</th>
-              <th>Submitted At</th>
+              <th>${t('admin.student_col')}</th>
+              <th>${t('admin.grade_col')}</th>
+              <th>${t('admin.status_col')}</th>
+              <th>${t('admin.rating_col')}</th>
+              <th>${t('admin.submitted_at')}</th>
             </tr>
           </thead>
           <tbody>
@@ -4625,8 +4624,8 @@ async function viewClassroomSubmissions(classroomId, periodId) {
                 <td>${s.grade_or_position || '-'}</td>
                 <td>
                   ${s.submitted
-                    ? `<span class="badge badge-approved" style="white-space:nowrap">Submitted</span>`
-                    : `<span class="badge badge-rejected" style="white-space:nowrap">Not Submitted</span>`}
+                    ? `<span class="badge badge-approved" style="white-space:nowrap">${t('common.submitted')}</span>`
+                    : `<span class="badge badge-rejected" style="white-space:nowrap">${t('common.not_submitted')}</span>`}
                 </td>
                 <td>${s.submitted ? starsHTML(s.overall_rating) : '-'}</td>
                 <td>${s.submitted_at ? new Date(s.submitted_at).toLocaleString() : '-'}</td>
@@ -4646,20 +4645,20 @@ async function renderAdminApplications() {
 
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <p style="color:var(--gray-500)">${applications.length} application(s) from schools and institutions</p>
+      <p style="color:var(--gray-500)">${t('admin.applications_count', {count: applications.length})}</p>
     </div>
     ${applications.length === 0 ? `
       <div class="card"><div class="card-body">
         <div class="empty-state">
-          <h3>No applications yet</h3>
-          <p>When schools apply through the landing page, they will appear here.</p>
+          <h3>${t('admin.no_applications')}</h3>
+          <p>${t('admin.no_applications_hint')}</p>
         </div>
       </div></div>
     ` : `
       <div class="card">
         <div class="table-container">
           <table>
-            <thead><tr><th>Date</th><th>Organization</th><th>Contact</th><th>Email</th><th>Phone</th><th>Message</th><th>Actions</th></tr></thead>
+            <thead><tr><th>${t('common.date')}</th><th>${t('admin.organization')}</th><th>${t('admin.contact_col')}</th><th>${t('common.email')}</th><th>${t('admin.phone_col')}</th><th>${t('common.message')}</th><th>${t('common.actions')}</th></tr></thead>
             <tbody>
               ${applications.map(a => `
                 <tr>
@@ -4670,7 +4669,7 @@ async function renderAdminApplications() {
                   <td style="font-size:0.85rem">${a.phone ? `<a href="tel:${a.phone}" style="color:var(--primary)">${a.phone}</a>` : '<em style="color:var(--gray-400)">—</em>'}</td>
                   <td style="max-width:240px;font-size:0.85rem;color:var(--gray-600)">${a.message ? `<span title="${a.message}">${a.message.length > 70 ? a.message.slice(0, 70) + '…' : a.message}</span>` : '<em style="color:var(--gray-400)">—</em>'}</td>
                   <td>
-                    <button class="btn btn-sm btn-danger" onclick="deleteApplication(${a.id}, '${a.org_name.replace(/'/g, "\\'")}')">Delete</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteApplication(${a.id}, '${a.org_name.replace(/'/g, "\\'")}')">${t('common.delete')}</button>
                   </td>
                 </tr>
               `).join('')}
@@ -4686,11 +4685,11 @@ async function renderAdminApplications() {
 }
 
 async function deleteApplication(id, orgName) {
-  const confirmed = await confirmDialog(`Delete application from "${orgName}"? This cannot be undone.`, 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('admin.delete_app_confirm', {name: orgName}), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
   try {
     await API.delete(`/admin/applications/${id}`);
-    toast('Application deleted');
+    toast(t('admin.app_deleted'));
     renderAdminApplications();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4702,56 +4701,56 @@ async function renderAdminSupport() {
   const el = document.getElementById('contentArea');
 
   const categoryLabels = {
-    technical: 'Technical Issue / Bug',
-    account: 'Account & Login',
-    question: 'General Question',
-    feature: 'Feature Request',
-    other: 'Other'
+    technical: t('support.category_technical'),
+    account: t('support.category_account'),
+    question: t('support.category_question'),
+    feature: t('support.category_feature'),
+    other: t('support.category_other')
   };
 
   el.innerHTML = `
     <div class="stats-grid" style="margin-bottom:20px;gap:24px">
       <div class="stat-card">
-        <div class="stat-label">Total Messages</div>
+        <div class="stat-label">${t('admin.total_messages')}</div>
         <div class="stat-value">${stats.total}</div>
       </div>
       <div class="stat-card" style="background:var(--warning-light);border-left:4px solid var(--warning)">
-        <div class="stat-label">New</div>
+        <div class="stat-label">${t('common.new')}</div>
         <div class="stat-value">${stats.new}</div>
       </div>
       <div class="stat-card" style="background:#e3f2fd;border-left:4px solid var(--primary)">
-        <div class="stat-label">In Progress</div>
+        <div class="stat-label">${t('common.in_progress')}</div>
         <div class="stat-value">${stats.in_progress}</div>
       </div>
       <div class="stat-card" style="background:var(--success-light);border-left:4px solid var(--success)">
-        <div class="stat-label">Resolved</div>
+        <div class="stat-label">${t('common.resolved')}</div>
         <div class="stat-value">${stats.resolved}</div>
       </div>
     </div>
 
     <div class="card">
       <div class="card-header">
-        <h3>Support Messages (${total} total)</h3>
+        <h3>${t('admin.support_messages_count', {count: total})}</h3>
       </div>
       <div class="card-body">
         ${messages.length === 0 ? `
           <div class="empty-state">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
-            <h3>No Support Messages</h3>
-            <p>When users submit support requests, they will appear here.</p>
+            <h3>${t('admin.no_support_title')}</h3>
+            <p>${t('admin.no_support_desc')}</p>
           </div>
         ` : `
           <div style="overflow-x:auto">
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>User</th>
-                  ${currentUser.role === 'super_admin' ? '<th>Organization</th>' : ''}
-                  <th>Category</th>
-                  <th>Subject</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>${t('common.date')}</th>
+                  <th>${t('admin.user_col')}</th>
+                  ${currentUser.role === 'super_admin' ? `<th>${t('admin.organization')}</th>` : ''}
+                  <th>${t('common.category')}</th>
+                  <th>${t('admin.subject_col')}</th>
+                  <th>${t('admin.status_col')}</th>
+                  <th>${t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -4773,10 +4772,10 @@ async function renderAdminSupport() {
                         msg.status === 'new' ? 'badge-flagged' :
                         msg.status === 'in_progress' ? 'badge-pending' :
                         'badge-approved'
-                      }">${msg.status.replace('_', ' ')}</span>
+                      }">${msg.status === 'new' ? t('common.new') : msg.status === 'in_progress' ? t('common.in_progress') : t('common.resolved')}</span>
                     </td>
                     <td style="white-space:nowrap">
-                      <button class="btn btn-sm btn-outline" onclick="viewSupportMessage(${msg.id})">View</button>
+                      <button class="btn btn-sm btn-outline" onclick="viewSupportMessage(${msg.id})">${t('admin.view')}</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -4795,90 +4794,90 @@ async function viewSupportMessage(id) {
   );
 
   if (!message) {
-    return toast('Message not found', 'error');
+    return toast(t('admin.message_not_found'), 'error');
   }
 
   const categoryLabels = {
-    technical: 'Technical Issue / Bug',
-    account: 'Account & Login',
-    question: 'General Question',
-    feature: 'Feature Request',
-    other: 'Other'
+    technical: t('support.category_technical'),
+    account: t('support.category_account'),
+    question: t('support.category_question'),
+    feature: t('support.category_feature'),
+    other: t('support.category_other')
   };
 
   openModal(`
     <div class="modal-header">
-      <h3>Support Message #${message.id}</h3>
+      <h3>${t('admin.support_message_title', {id: message.id})}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
       <div style="background:var(--gray-50);padding:16px;border-radius:8px;margin-bottom:20px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
           <div>
-            <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">FROM</div>
+            <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">${t('common.from')}</div>
             <div style="font-weight:600">${message.user_name}</div>
             <div style="font-size:0.85rem;color:var(--gray-600)">${message.user_email}</div>
             <span class="badge badge-pending" style="margin-top:4px;display:inline-block">${message.user_role}</span>
           </div>
           <div>
-            <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">DATE</div>
+            <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">${t('admin.date_label')}</div>
             <div>${new Date(message.created_at).toLocaleString()}</div>
             <div style="margin-top:8px">
-              <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">CATEGORY</div>
+              <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">${t('admin.category_label')}</div>
               <span class="badge badge-approved">${categoryLabels[message.category]}</span>
             </div>
           </div>
         </div>
 
         <div style="margin-bottom:12px">
-          <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">STATUS</div>
+          <div style="font-size:0.75rem;color:var(--gray-500);margin-bottom:4px">${t('admin.status_label')}</div>
           <span class="badge ${
             message.status === 'new' ? 'badge-flagged' :
             message.status === 'in_progress' ? 'badge-pending' :
             'badge-approved'
-          }">${message.status.replace('_', ' ')}</span>
+          }">${message.status === 'new' ? t('common.new') : message.status === 'in_progress' ? t('common.in_progress') : t('common.resolved')}</span>
         </div>
       </div>
 
       <div style="margin-bottom:20px">
-        <div style="font-weight:600;margin-bottom:8px">Subject:</div>
+        <div style="font-weight:600;margin-bottom:8px">${t('admin.subject_label')}</div>
         <div style="font-size:1.1rem">${message.subject}</div>
       </div>
 
       <div style="margin-bottom:20px">
-        <div style="font-weight:600;margin-bottom:8px">Message:</div>
+        <div style="font-weight:600;margin-bottom:8px">${t('admin.message_label')}</div>
         <div style="background:#fff;padding:16px;border:1px solid var(--gray-200);border-radius:8px;white-space:pre-wrap">${message.message}</div>
       </div>
 
       ${message.admin_notes ? `
         <div style="margin-bottom:20px">
-          <div style="font-weight:600;margin-bottom:8px">Admin Notes:</div>
+          <div style="font-weight:600;margin-bottom:8px">${t('admin.admin_notes')}</div>
           <div style="background:var(--success-light);padding:16px;border-radius:8px;white-space:pre-wrap">${message.admin_notes}</div>
         </div>
       ` : ''}
 
       ${message.resolved_at ? `
         <div style="color:var(--gray-600);font-size:0.85rem">
-          Resolved on ${new Date(message.resolved_at).toLocaleString()}
+          ${t('admin.resolved_on', {date: new Date(message.resolved_at).toLocaleString()})}
         </div>
       ` : ''}
 
       <div style="margin-top:20px">
-        <label style="display:block;margin-bottom:8px;font-weight:600">Update Status:</label>
+        <label style="display:block;margin-bottom:8px;font-weight:600">${t('admin.update_status')}</label>
         <select class="form-control" id="supportMessageStatus" style="margin-bottom:12px">
-          <option value="new" ${message.status === 'new' ? 'selected' : ''}>New</option>
-          <option value="in_progress" ${message.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
-          <option value="resolved" ${message.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+          <option value="new" ${message.status === 'new' ? 'selected' : ''}>${t('common.new')}</option>
+          <option value="in_progress" ${message.status === 'in_progress' ? 'selected' : ''}>${t('common.in_progress')}</option>
+          <option value="resolved" ${message.status === 'resolved' ? 'selected' : ''}>${t('common.resolved')}</option>
         </select>
 
-        <label style="display:block;margin-bottom:8px;font-weight:600">Admin Notes (optional):</label>
-        <textarea class="form-control" id="supportMessageNotes" rows="3" placeholder="Add internal notes about this support request...">${message.admin_notes || ''}</textarea>
+        <label style="display:block;margin-bottom:8px;font-weight:600">${t('admin.admin_notes_label')}</label>
+        <textarea class="form-control" id="supportMessageNotes" rows="3" placeholder="${t('admin.admin_notes_placeholder')}">${message.admin_notes || ''}</textarea>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="deleteSupportMessage(${message.id})">Delete</button>
-      <button class="btn btn-outline" onclick="closeModal()">Close</button>
-      <button class="btn btn-primary" onclick="updateSupportMessage(${message.id})">Update</button>
+      <button class="btn btn-outline" onclick="deleteSupportMessage(${message.id})">${t('common.delete')}</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.close')}</button>
+      <button class="btn btn-primary" onclick="updateSupportMessage(${message.id})">${t('common.update')}</button>
     </div>
   `);
 }
@@ -4889,7 +4888,7 @@ async function updateSupportMessage(id) {
 
   try {
     await API.put(`/admin/support/messages/${id}`, { status, admin_notes });
-    toast('Support message updated successfully', 'success');
+    toast(t('admin.support_updated'), 'success');
     closeModal();
     navigateTo('admin-support');
   } catch (error) {
@@ -4898,12 +4897,12 @@ async function updateSupportMessage(id) {
 }
 
 async function deleteSupportMessage(id) {
-  const confirmed = await confirmDialog('Are you sure you want to delete this support message? This action cannot be undone.', 'Delete', 'Cancel');
+  const confirmed = await confirmDialog(t('admin.delete_support_confirm'), t('common.delete'), t('common.cancel'));
   if (!confirmed) return;
 
   try {
     await API.delete(`/admin/support/messages/${id}`);
-    toast('Support message deleted successfully', 'success');
+    toast(t('admin.support_deleted'), 'success');
     closeModal();
     navigateTo('admin-support');
   } catch (error) {
@@ -4933,11 +4932,11 @@ async function renderAdminAudit(page = 1) {
   const paginationHTML = totalPages > 1 ? `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding:0 16px">
       <div style="color:var(--gray-600);font-size:0.9rem">
-        Showing ${offset + 1}-${Math.min(offset + LOGS_PER_PAGE, totalLogs)} of ${totalLogs} logs
+        ${t('admin.showing_logs', {start: offset + 1, end: Math.min(offset + LOGS_PER_PAGE, totalLogs), total: totalLogs})}
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(1)" ${page === 1 ? 'disabled' : ''}>First</button>
-        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(1)" ${page === 1 ? 'disabled' : ''}>${t('admin.first')}</button>
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${page - 1})" ${page === 1 ? 'disabled' : ''}>${t('admin.previous')}</button>
         ${Array.from({length: Math.min(5, totalPages)}, (_, i) => {
           let pageNum;
           if (totalPages <= 5) {
@@ -4951,8 +4950,8 @@ async function renderAdminAudit(page = 1) {
           }
           return `<button class="btn ${pageNum === page ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="renderAdminAudit(${pageNum})">${pageNum}</button>`;
         }).join('')}
-        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${page + 1})" ${page === totalPages ? 'disabled' : ''}>Next</button>
-        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${totalPages})" ${page === totalPages ? 'disabled' : ''}>Last</button>
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${page + 1})" ${page === totalPages ? 'disabled' : ''}>${t('admin.next')}</button>
+        <button class="btn btn-outline btn-sm" onclick="renderAdminAudit(${totalPages})" ${page === totalPages ? 'disabled' : ''}>${t('admin.last')}</button>
       </div>
     </div>
   ` : '';
@@ -4960,24 +4959,24 @@ async function renderAdminAudit(page = 1) {
   el.innerHTML = `
     <div class="card">
       <div class="card-header">
-        <h3>Audit Logs - All Actions (${totalLogs} total)</h3>
-        <p style="margin:4px 0 0;color:var(--gray-600);font-size:0.9rem">Page ${page} of ${totalPages}</p>
+        <h3>${t('admin.audit_title', {count: totalLogs})}</h3>
+        <p style="margin:4px 0 0;color:var(--gray-600);font-size:0.9rem">${t('admin.page_info', {page, total: totalPages})}</p>
       </div>
       <div class="card-body">
         <div style="overflow-x:auto">
           <table>
             <thead>
               <tr>
-                <th>Timestamp</th>
-                <th>User</th>
-                <th>Role</th>
-                <th>Action</th>
-                <th>Description</th>
-                <th>Target</th>
+                <th>${t('admin.timestamp')}</th>
+                <th>${t('admin.user_col')}</th>
+                <th>${t('common.role')}</th>
+                <th>${t('admin.action_col')}</th>
+                <th>${t('admin.description')}</th>
+                <th>${t('admin.target')}</th>
               </tr>
             </thead>
             <tbody>
-              ${pagedLogs.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">No audit logs yet</td></tr>' : pagedLogs.map(log => `
+              ${pagedLogs.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">${t('admin.no_audit_logs')}</td></tr>` : pagedLogs.map(log => `
                 <tr>
                   <td style="white-space:nowrap;font-size:0.85rem">${new Date(log.created_at).toLocaleString()}</td>
                   <td><strong>${log.user_name}</strong></td>
@@ -5021,7 +5020,7 @@ async function renderAccount() {
               <div style="font-size:1.25rem;font-weight:600">${u.full_name}</div>
               <div style="color:var(--gray-500);font-size:0.9rem">${u.email}</div>
               <div style="margin-top:6px">
-                <span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${u.role.replace('_', ' ')}</span>
+                <span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), org_admin: t('common.org_admin'), super_admin: t('common.super_admin')}[u.role] || u.role}</span>
               </div>
             </div>
           </div>
@@ -5056,7 +5055,7 @@ async function renderAccount() {
             ` : ''}
             <div class="form-group">
               <label>${t('account.role')}</label>
-              <input type="text" class="form-control" value="${u.role.replace('_', ' ')}" disabled style="background:var(--gray-50);color:var(--gray-500);text-transform:capitalize">
+              <input type="text" class="form-control" value="${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), org_admin: t('common.org_admin'), super_admin: t('common.super_admin')}[u.role] || u.role}" disabled style="background:var(--gray-50);color:var(--gray-500);text-transform:capitalize">
             </div>
             <div class="form-group">
               <label>${t('account.member_since')}</label>
@@ -5092,11 +5091,11 @@ async function renderAccount() {
         </div>
 
         <div class="card">
-          <div class="card-header"><h3>Account Status</h3></div>
+          <div class="card-header"><h3>${t('account.account_status')}</h3></div>
           <div class="card-body">
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
-              <span>Verification</span>
-              <span class="badge badge-approved">Verified</span>
+              <span>${t('account.verification')}</span>
+              <span class="badge badge-approved">${t('common.verified')}</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
               <span>${t('account.account_status_label')}</span>
@@ -5117,7 +5116,7 @@ async function updateProfile(e) {
   e.preventDefault();
   const btn = document.getElementById('saveProfileBtn');
   btn.disabled = true;
-  btn.textContent = 'Saving...';
+  btn.textContent = t('account.saving');
   try {
     const body = {
       full_name: document.getElementById('profileName').value.trim(),
@@ -5140,12 +5139,12 @@ async function updateProfile(e) {
     document.getElementById('userName').textContent = data.user.full_name;
     const userAvatar = document.getElementById('userAvatar');
     userAvatar.textContent = data.user.full_name.split(' ').map(n => n[0]).join('');
-    toast('Profile updated');
+    toast(t('account.profile_updated'));
   } catch (err) {
     toast(err.message, 'error');
   }
   btn.disabled = false;
-  btn.textContent = 'Save Changes';
+  btn.textContent = t('account.save_changes');
 }
 
 async function changePassword(e) {
@@ -5154,18 +5153,18 @@ async function changePassword(e) {
   const confirmPw = document.getElementById('confirmPassword').value;
 
   if (newPw !== confirmPw) {
-    return toast('New passwords do not match', 'error');
+    return toast(t('account.passwords_no_match'), 'error');
   }
 
   const btn = document.getElementById('changePwBtn');
   btn.disabled = true;
-  btn.textContent = 'Changing...';
+  btn.textContent = t('account.changing');
   try {
     await API.put('/auth/change-password', {
       current_password: document.getElementById('currentPassword').value,
       new_password: newPw
     });
-    toast('Password changed successfully');
+    toast(t('account.password_changed'));
     document.getElementById('currentPassword').value = '';
     document.getElementById('newPassword').value = '';
     document.getElementById('confirmPassword').value = '';
@@ -5173,52 +5172,52 @@ async function changePassword(e) {
     toast(err.message, 'error');
   }
   btn.disabled = false;
-  btn.textContent = 'Change Password';
+  btn.textContent = t('account.change_password_btn');
 }
 
 function showSupportModal() {
   openModal(`
     <div class="modal-header">
-      <h3>Contact Support</h3>
+      <h3>${t('support.title')}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
       <p style="margin-bottom:20px;color:var(--gray-600)">
-        Have a question, found a bug, or need help? Fill out the form below and our support team will get back to you.
+        ${t('support.description')}
       </p>
       <form onsubmit="submitSupportRequest(event)">
         <div class="form-group">
-          <label>Category *</label>
+          <label>${t('support.category_label')}</label>
           <select class="form-control" id="supportCategory" required>
-            <option value="">Select a category...</option>
-            <option value="technical">Technical Issue / Bug</option>
-            <option value="account">Account & Login</option>
-            <option value="question">General Question</option>
-            <option value="feature">Feature Request</option>
-            <option value="other">Other</option>
+            <option value="">${t('support.select_category')}</option>
+            <option value="technical">${t('support.category_technical')}</option>
+            <option value="account">${t('support.category_account')}</option>
+            <option value="question">${t('support.category_question')}</option>
+            <option value="feature">${t('support.category_feature')}</option>
+            <option value="other">${t('support.category_other')}</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Subject *</label>
-          <input type="text" class="form-control" id="supportSubject" required placeholder="Brief description of your issue">
+          <label>${t('support.subject_label')}</label>
+          <input type="text" class="form-control" id="supportSubject" required placeholder="${t('support.subject_placeholder')}">
         </div>
         <div class="form-group">
-          <label>Message *</label>
-          <textarea class="form-control" id="supportMessage" rows="6" required placeholder="Provide details about your question or issue..."></textarea>
+          <label>${t('support.message_label')}</label>
+          <textarea class="form-control" id="supportMessage" rows="6" required placeholder="${t('support.message_placeholder')}"></textarea>
         </div>
         <div style="background:var(--info-bg,#e0f2fe);border:1px solid var(--info,#06b6d4);border-radius:var(--radius-md);padding:12px;margin-top:16px">
           <div style="font-size:0.85rem;color:var(--gray-700)">
-            <strong>Your info:</strong><br>
-            Name: ${currentUser.full_name}<br>
-            Email: ${currentUser.email}<br>
-            Role: ${currentUser.role}
+            <strong>${t('support.your_info')}</strong><br>
+            ${t('support.name_label', {name: currentUser.full_name})}<br>
+            ${t('support.email_label', {email: currentUser.email})}<br>
+            ${t('support.role_label', {role: currentUser.role})}
           </div>
         </div>
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitSupportRequest(event)">Send Request</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="submitSupportRequest(event)">${t('support.send_request')}</button>
     </div>
   `);
 }
@@ -5231,20 +5230,20 @@ async function submitSupportRequest(e) {
   const message = document.getElementById('supportMessage').value;
 
   if (!category || !subject || !message) {
-    return toast('Please fill in all fields', 'error');
+    return toast(t('support.fill_all_fields'), 'error');
   }
 
   if (subject.trim().length < 3) {
-    return toast('Subject must be at least 3 characters', 'error');
+    return toast(t('support.subject_min_3'), 'error');
   }
 
   if (message.trim().length < 10) {
-    return toast('Message must be at least 10 characters', 'error');
+    return toast(t('support.message_min_10'), 'error');
   }
 
   try {
     await API.post('/support/message', { category, subject, message });
-    toast('Support request submitted! An administrator will review it shortly.', 'success');
+    toast(t('support.submitted'), 'success');
     closeModal();
   } catch (error) {
     toast(error.message || 'Failed to submit support request', 'error');
@@ -5265,7 +5264,7 @@ function createOrganization() {
         </div>
         <div class="form-group">
           <label>${t('admin.org_slug')}</label>
-          <input type="text" class="form-control" id="createOrgSlug" required pattern="[a-z0-9-]+" placeholder="lowercase-with-dashes">
+          <input type="text" class="form-control" id="createOrgSlug" required pattern="[a-z0-9-]+" placeholder="${t('admin.org_slug_placeholder')}">
         </div>
         <div class="form-group">
           <label>${t('admin.contact_email')}</label>
@@ -5300,8 +5299,8 @@ function createOrganization() {
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveNewOrganization()">Create Organization</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="saveNewOrganization()">${t('admin.create_org')}</button>
     </div>
   `);
 }
@@ -5396,8 +5395,8 @@ function editOrganization(orgIndex) {
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveOrganizationEdit(${org.id})">Save Changes</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
+      <button class="btn btn-primary" onclick="saveOrganizationEdit(${org.id})">${t('admin.save_changes')}</button>
     </div>
   `);
 
@@ -5410,7 +5409,7 @@ function editOrganization(orgIndex) {
     if (el) el.textContent = data.invite_code || '—';
   }).catch(() => {
     const el = document.getElementById('superInviteCode');
-    if (el) el.textContent = 'Error';
+    if (el) el.textContent = t('common.error');
   });
 }
 
@@ -5489,7 +5488,7 @@ async function viewOrgMembers(orgId, orgName) {
                   <td><span class="badge ${m.role_in_org === 'org_admin' ? 'badge-flagged' : m.role_in_org === 'teacher' ? 'badge-active' : 'badge-pending'}">${m.role_in_org}</span></td>
                   <td style="font-size:0.85rem">${new Date(m.joined_at).toLocaleDateString()}</td>
                   <td>
-                    <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="removeOrgMember(${orgId}, ${m.user_id}, '${m.full_name.replace(/'/g, "\\'")}', '${orgName.replace(/'/g, "\\'")}')">Remove</button>
+                    <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="removeOrgMember(${orgId}, ${m.user_id}, '${m.full_name.replace(/'/g, "\\'")}', '${orgName.replace(/'/g, "\\'")}')">${t('admin.remove')}</button>
                   </td>
                 </tr>
               `).join('')}
@@ -5497,7 +5496,7 @@ async function viewOrgMembers(orgId, orgName) {
         </table>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-primary" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="closeModal()">${t('common.close')}</button>
       </div>
     `);
   } catch (error) {
@@ -5526,11 +5525,11 @@ async function confirmRegenerateInviteCode() {
 
 async function deleteOrganization(orgId, orgName, memberCount) {
   const warningMsg = memberCount > 0
-    ? `⚠️ WARNING: This organization has ${memberCount} active member${memberCount > 1 ? 's' : ''}. Deleting it will remove ALL associated data including teachers, students, classrooms, reviews, and terms. This action is IRREVERSIBLE!`
-    : 'This action will permanently delete the organization and cannot be undone.';
+    ? t('admin.delete_org_warning', {count: memberCount})
+    : t('admin.delete_org_simple');
 
   const confirmed = await confirmWithText(
-    `Are you sure you want to permanently delete "${orgName}"?`,
+    t('admin.delete_org_confirm', {name: orgName}),
     'Delete',
     warningMsg
   );
@@ -5593,7 +5592,7 @@ function richTextToolbar(editorId) {
         style="border:1px solid var(--gray-200);background:var(--gray-50);border-radius:4px;padding:3px 10px;font-weight:${cmd==='bold'?'700':'400'};font-style:${cmd==='italic'?'italic':'normal'};text-decoration:${cmd==='underline'?'underline':'none'};cursor:pointer;font-size:0.85rem">${label}</button>`
     ).join('')}
   </div>
-  <div id="${editorId}" contenteditable="true" style="min-height:100px;padding:10px;border:1px solid var(--gray-200);border-radius:6px;font-size:0.92rem;line-height:1.6;outline:none" placeholder="Write your announcement..."></div>`;
+  <div id="${editorId}" contenteditable="true" style="min-height:100px;padding:10px;border:1px solid var(--gray-200);border-radius:6px;font-size:0.92rem;line-height:1.6;outline:none" placeholder="${t('ann.write_placeholder')}"></div>`;
 }
 
 async function renderAdminAnnouncements() {
@@ -5611,7 +5610,7 @@ async function renderAdminAnnouncements() {
         : announcements.map(a => announcementCardHTML(a, true)).join('')}
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -5630,7 +5629,7 @@ async function renderTeacherAnnouncements() {
         : announcements.map(a => announcementCardHTML(a, a.creator_id === (currentUser?.id))).join('')}
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -5649,7 +5648,7 @@ async function renderHeadAnnouncements() {
         : announcements.map(a => announcementCardHTML(a, true)).join('')}
     `;
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${err.message}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
 }
 
@@ -5661,7 +5660,7 @@ async function showCreateAnnouncementModal() {
 
   const classroomSelect = classrooms.length > 0 ? `
     <div class="form-group" id="annClassroomsGroup" style="display:none">
-      <label>Target Classrooms</label>
+      <label>${t('ann.target_classrooms_label')}</label>
       <div style="max-height:160px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:6px;padding:8px">
         ${classrooms.map(c => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
           <input type="checkbox" name="annClassroom" value="${c.id}">
