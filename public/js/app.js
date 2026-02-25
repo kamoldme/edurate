@@ -3436,10 +3436,11 @@ function closeActionMenus() {
 // Close dropdowns when clicking anywhere outside
 document.addEventListener('click', closeActionMenus);
 
-// Close announcement classroom popups when clicking outside
+// Close fixed announcement classroom popup when clicking outside
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('[id^="ann-cls-popup-"]') && !e.target.closest('[onclick*="ann-cls-popup"]')) {
-    document.querySelectorAll('[id^="ann-cls-popup-"]').forEach(el => el.style.display = 'none');
+  const popup = document.getElementById('_annClsPopup');
+  if (popup && popup.style.display !== 'none' && !popup.contains(e.target) && !e.target.closest('[data-ann-cls-btn]')) {
+    popup.style.display = 'none';
   }
 });
 
@@ -5641,29 +5642,56 @@ async function removeOrgMember(orgId, userId, userName, orgName) {
 
 // ============ ANNOUNCEMENTS ============
 
+function showAnnClassrooms(btn, labels) {
+  let popup = document.getElementById('_annClsPopup');
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = '_annClsPopup';
+    popup.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:10px 14px;min-width:160px;max-width:280px;display:none';
+    document.body.appendChild(popup);
+  }
+  // Toggle off if already open for this button
+  if (popup.style.display !== 'none' && popup._srcBtn === btn) {
+    popup.style.display = 'none';
+    popup._srcBtn = null;
+    return;
+  }
+  popup._srcBtn = btn;
+  popup.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:0.72rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em">${t('nav.classrooms')}</span>
+      <button type="button" onclick="document.getElementById('_annClsPopup').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--gray-400);line-height:1;padding:0;margin-left:12px">&times;</button>
+    </div>
+    ${labels.map(l => `<div style="padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:0.85rem;color:var(--gray-700)">${l}</div>`).join('')}
+  `;
+  const rect = btn.getBoundingClientRect();
+  popup.style.display = 'block';
+  // Position below the badge, clamped to viewport
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (left + 280 > window.innerWidth - 8) left = window.innerWidth - 288;
+  if (left < 8) left = 8;
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+}
+
 function announcementCardHTML(a, canDelete, isStudent = false) {
   const date = new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   let targetMeta;
   if (isStudent) {
-    // Students just see the date — no classroom targeting info shown
-    targetMeta = date;
+    // Students see who sent it and which classroom(s)
+    const from = a.creator_name ? `${a.creator_name}` : '';
+    const cls = a.classroom_labels?.length > 0 ? a.classroom_labels[0] : '';
+    const parts = [from, cls, date].filter(Boolean);
+    targetMeta = parts.join(' &middot; ');
   } else if (a.target_type === 'classrooms' && a.classroom_labels?.length > 0) {
-    // Teachers/admins: clickable badge that shows a small popup
-    const popupId = `ann-cls-popup-${a.id}`;
-    const labels = a.classroom_labels.map(l => `<div style="padding:4px 0;border-bottom:1px solid var(--gray-100);font-size:0.85rem">${l}</div>`).join('');
-    targetMeta = `<span style="position:relative;display:inline-block">
-      <span onclick="document.getElementById('${popupId}').style.display=document.getElementById('${popupId}').style.display==='none'?'block':'none';event.stopPropagation()"
-        style="cursor:pointer;background:var(--gray-100);border-radius:10px;padding:2px 8px;font-size:0.75rem;color:var(--gray-600);user-select:none">
-        ${a.classroom_labels.length} ${a.classroom_labels.length === 1 ? t('common.classroom') : t('nav.classrooms')} &#9660;
-      </span>
-      <div id="${popupId}" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:#fff;border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 12px;min-width:160px;max-width:260px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:0.75rem;font-weight:600;color:var(--gray-500);text-transform:uppercase">${t('nav.classrooms')}</span>
-          <button type="button" onclick="document.getElementById('${popupId}').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--gray-400);line-height:1;padding:0">&times;</button>
-        </div>
-        ${labels}
-      </div>
+    // Teachers/admins: clickable badge using fixed popup (won't be clipped)
+    const labelsJson = escAttr(JSON.stringify(a.classroom_labels));
+    const count = a.classroom_labels.length;
+    targetMeta = `<span data-ann-cls-btn onclick="showAnnClassrooms(this,JSON.parse(this.dataset.labels));event.stopPropagation()" data-labels="${labelsJson}"
+      style="cursor:pointer;background:var(--gray-100);border-radius:10px;padding:2px 9px;font-size:0.75rem;color:var(--gray-600);user-select:none">
+      ${count} ${count === 1 ? t('common.classroom') : t('nav.classrooms')} &#9660;
     </span> &middot; ${date}`;
   } else {
     const targetLabel = a.target_type === 'org' ? t('ann.org_wide') : a.target_type === 'all' ? t('ann.all_orgs') : t('ann.selected_classrooms');
@@ -5671,14 +5699,14 @@ function announcementCardHTML(a, canDelete, isStudent = false) {
   }
 
   return `
-    <div class="card" style="margin-bottom:16px" onclick="document.querySelectorAll('[id^=ann-cls-popup-]').forEach(el=>el.style.display='none')">
+    <div class="card" style="margin-bottom:16px">
       <div class="card-body">
         <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
           <div>
             <h3 style="margin:0 0 4px;font-size:1.05rem">${a.title}</h3>
             <span style="font-size:0.78rem;color:var(--gray-400)">${targetMeta}</span>
           </div>
-          ${canDelete ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);flex-shrink:0" onclick="event.stopPropagation();deleteAnnouncement(${a.id})">${t('common.delete')}</button>` : ''}
+          ${canDelete ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);flex-shrink:0" onclick="deleteAnnouncement(${a.id})">${t('common.delete')}</button>` : ''}
         </div>
         <div style="color:var(--gray-700);line-height:1.6;font-size:0.92rem">${a.content}</div>
       </div>
