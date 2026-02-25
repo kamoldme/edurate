@@ -4677,7 +4677,7 @@ async function exportTeacherPDF(teacherId) {
     }
 
     /* ── TWO-COLUMN BODY (CSS table = reliable in print) ── */
-    .body-tbl  { width: calc(100% - 48px); border-collapse: collapse; margin: 0 24px; }
+    .body-tbl  { width: 95%; border-collapse: collapse; margin: 0 auto; }
     .col-left  { width: 36%; vertical-align: top; padding: 22px 22px 22px 0; border-right: 1.5px solid #e2e8f0; }
     .col-right { vertical-align: top; padding: 22px 24px 22px 28px; }
 
