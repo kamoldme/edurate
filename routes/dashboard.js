@@ -236,9 +236,9 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
 
     // 1 query: rating distributions
     const distData = db.prepare(`
-      SELECT teacher_id, overall_rating as rating, COUNT(*) as count
-      FROM reviews WHERE approved_status = 1 ${termFilter} ${orgFilter2}
-      GROUP BY teacher_id, overall_rating
+      SELECT r.teacher_id, r.overall_rating as rating, COUNT(*) as count
+      FROM reviews r WHERE r.approved_status = 1 ${termFilter} ${orgFilter2}
+      GROUP BY r.teacher_id, r.overall_rating
     `).all(...bulkParams);
 
     // 1 query: period scores for trend (only if active term exists)

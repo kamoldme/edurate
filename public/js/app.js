@@ -3588,6 +3588,7 @@ async function createUser() {
   try {
     await API.post('/admin/users', body);
     toast(t('admin.user_created'));
+    invalidateCache('/admin/stats', '/admin/users', '/admin/teachers');
     closeModal();
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
@@ -3643,6 +3644,7 @@ async function saveUserEdit(userId) {
   try {
     await API.put(`/admin/users/${userId}`, body);
     toast(t('admin.user_updated'));
+    invalidateCache('/admin/users', '/admin/teachers', '/admin/stats');
     closeModal();
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
@@ -3665,6 +3667,7 @@ async function toggleSuspend(userId) {
   try {
     const data = await API.put(`/admin/users/${userId}/suspend`);
     toast(data.message);
+    invalidateCache('/admin/users', '/admin/stats');
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -3679,6 +3682,7 @@ async function deleteUser(userId, userName) {
   try {
     await API.delete(`/admin/users/${userId}`);
     toast(t('admin.user_deleted', {name: userName}));
+    invalidateCache('/admin/users', '/admin/stats', '/admin/teachers', '/dashboard');
     renderAdminUsers();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -3762,6 +3766,7 @@ async function createFeedbackPeriod(termId) {
   try {
     await API.post('/admin/feedback-periods', { term_id: termId, name, start_date, end_date });
     toast(t('admin.period_added'));
+    invalidateCache('/admin/terms', '/dashboard');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3790,6 +3795,7 @@ async function updatePeriod(periodId) {
   try {
     await API.put(`/admin/feedback-periods/${periodId}`, { name, start_date, end_date });
     toast(t('admin.period_updated'));
+    invalidateCache('/admin/terms', '/dashboard');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3804,14 +3810,30 @@ async function deletePeriod(periodId, periodName) {
   try {
     await API.delete(`/admin/feedback-periods/${periodId}`);
     toast(t('admin.period_deleted'));
+    invalidateCache('/admin/terms', '/dashboard', '/reviews');
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
-function showCreateTerm() {
+async function showCreateTerm() {
+  let orgPickerHTML = '';
+  if (currentUser.role === 'super_admin') {
+    try {
+      const orgs = await cachedGet('/organizations', CACHE_TTL.long);
+      orgPickerHTML = `
+        <div class="form-group">
+          <label>${t('admin.org_label')} *</label>
+          <select class="form-control" id="termOrgId">
+            <option value="">${t('admin.select_org')}</option>
+            ${orgs.map(o => `<option value="${o.id}"${currentOrg === o.id ? ' selected' : ''}>${o.name}</option>`).join('')}
+          </select>
+        </div>`;
+    } catch (e) { /* silently skip org picker if fetch fails */ }
+  }
   openModal(`
     <div class="modal-header"><h3>${t('admin.create_term_modal')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
+      ${orgPickerHTML}
       <div class="form-group"><label>${t('admin.term_name')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label><input type="text" class="form-control" id="termName" placeholder="${t('admin.term_name_placeholder')}"></div>
       <div class="form-group"><label>${t('admin.start_date')}</label><input type="date" class="form-control" id="termStart"></div>
       <div class="form-group"><label>${t('admin.end_date')}</label><input type="date" class="form-control" id="termEnd"></div>
@@ -3828,9 +3850,19 @@ async function createTerm() {
   const start_date = document.getElementById('termStart').value;
   const end_date = document.getElementById('termEnd').value;
   if (!start_date || !end_date) return toast(t('admin.dates_required'), 'error');
+  const body = { name, start_date, end_date };
+  if (currentUser.role === 'super_admin') {
+    const orgSelect = document.getElementById('termOrgId');
+    if (orgSelect && orgSelect.value) {
+      body.org_id = parseInt(orgSelect.value);
+    } else if (currentOrg) {
+      body.org_id = currentOrg;
+    }
+  }
   try {
-    await API.post('/admin/terms', { name, start_date, end_date });
+    await API.post('/admin/terms', body);
     toast(t('admin.term_created'));
+    invalidateCache('/admin/terms', '/dashboard');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3840,6 +3872,7 @@ async function activateTerm(termId) {
   try {
     await API.put(`/admin/terms/${termId}`, { active_status: 1 });
     toast(t('admin.term_activated'));
+    invalidateCache('/admin/terms', '/dashboard');
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -3848,6 +3881,7 @@ async function togglePeriod(periodId, status) {
   try {
     await API.put(`/admin/feedback-periods/${periodId}`, { active_status: status });
     toast(status ? t('admin.period_opened') : t('admin.period_closed'));
+    invalidateCache('/admin/terms', '/dashboard', '/reviews');
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -3892,6 +3926,7 @@ async function updateTerm(termId) {
   try {
     await API.put(`/admin/terms/${termId}`, { name, start_date, end_date, active_status, feedback_visible });
     toast(t('admin.term_updated'));
+    invalidateCache('/admin/terms', '/dashboard');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
@@ -3920,6 +3955,7 @@ async function deleteTerm(termId, termName) {
   try {
     await API.delete(`/admin/terms/${termId}`);
     toast(t('admin.term_deleted'), 'success');
+    invalidateCache('/admin/terms', '/dashboard', '/reviews');
     renderAdminTerms();
   } catch (err) {
     toast(err.message, 'error');
@@ -4051,6 +4087,7 @@ async function saveClassroomEdit(classroomId) {
   try {
     await API.put(`/admin/classrooms/${classroomId}`, body);
     toast(t('admin.classroom_updated'));
+    invalidateCache('/classrooms', '/dashboard');
     closeModal();
     renderAdminClassrooms();
   } catch (err) { toast(err.message, 'error'); }
@@ -4062,6 +4099,7 @@ async function deleteClassroom(classroomId, subject) {
   try {
     await API.delete(`/admin/classrooms/${classroomId}`);
     toast(t('admin.classroom_deleted'));
+    invalidateCache('/classrooms', '/dashboard', '/admin/stats');
     renderAdminClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4382,6 +4420,7 @@ async function saveTeacherEdit(teacherId) {
   try {
     await API.put(`/admin/teachers/${teacherId}`, body);
     toast(t('admin.teacher_updated'));
+    invalidateCache('/admin/teachers', '/admin/teacher', '/dashboard');
     closeModal();
     renderAdminTeachers();
   } catch (err) { toast(err.message, 'error'); }
@@ -4520,50 +4559,76 @@ async function exportTeacherPDF(teacherId) {
     const reviews = data.reviews || [];
     const orgs = tchr.org_name ? tchr.org_name : '';
     const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const ratingBar = (val) => {
-      const pct = Math.round((val / 5) * 100);
-      const color = val >= 4 ? '#16a34a' : val >= 3 ? '#ca8a04' : '#dc2626';
-      return `<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px"><div style="width:${pct}%;height:8px;background:${color};border-radius:4px"></div></div><span style="min-width:32px;font-weight:600;color:${color}">${Number(val).toFixed(2)}</span></div>`;
-    };
-    const feedbackSample = reviews.slice(0, 10).filter(r => r.feedback_text).map(r => `<li style="margin-bottom:8px;padding:8px 12px;background:#f9fafb;border-left:3px solid #d1d5db;border-radius:4px;font-size:0.85rem">${r.feedback_text}</li>`).join('');
+    const feedbackSample = reviews.some(r => r.feedback_text);
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Teacher Report — ${tchr.full_name}</title>
-    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111827;padding:40px;max-width:750px;margin:0 auto}
-    h1{font-size:1.8rem;font-weight:800;margin-bottom:4px}h2{font-size:1.1rem;font-weight:700;color:#374151;margin-bottom:16px;border-bottom:2px solid #e5e7eb;padding-bottom:8px}
-    .chip{display:inline-block;background:#f3f4f6;padding:3px 10px;border-radius:12px;font-size:0.8rem;color:#4b5563;margin-right:6px}
-    .score-big{font-size:2.5rem;font-weight:800;color:#111827}.score-sub{font-size:0.85rem;color:#6b7280}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
-    .row{padding:10px 0;border-bottom:1px solid #f3f4f6}.label{font-size:0.85rem;color:#6b7280;margin-bottom:4px}
-    @media print{body{padding:20px}}</style></head><body>
-    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:32px">
-      <div>
+    <style>
+      @page { margin: 18mm 20mm; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #111827; font-size: 13px; line-height: 1.5; }
+      h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+      h2 { font-size: 13px; font-weight: 700; color: #374151; margin: 20px 0 12px; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+      .chip { display: inline-block; background: #f3f4f6; padding: 2px 9px; border-radius: 10px; font-size: 11px; color: #4b5563; margin: 4px 4px 0 0; }
+      .score-big { font-size: 32px; font-weight: 800; }
+      .score-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+      .header-row { display: table; width: 100%; margin-bottom: 24px; }
+      .header-left { display: table-cell; vertical-align: top; }
+      .header-right { display: table-cell; vertical-align: top; text-align: right; white-space: nowrap; font-size: 11px; color: #9ca3af; width: 160px; }
+      .scores-row { display: table; width: 100%; margin-bottom: 20px; page-break-inside: avoid; }
+      .score-cell { display: table-cell; text-align: center; padding-right: 32px; }
+      .criteria-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: avoid; }
+      .criteria-table td { padding: 8px 0; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+      .criteria-table td:first-child { font-size: 12px; color: #6b7280; width: 38%; }
+      .bar-wrap { display: table; width: 100%; }
+      .bar-bg { display: table-cell; vertical-align: middle; }
+      .bar-val { display: table-cell; vertical-align: middle; text-align: right; width: 42px; font-weight: 700; font-size: 12px; }
+      .bar-inner { height: 8px; border-radius: 4px; }
+      .bg-bar { height: 8px; background: #e5e7eb; border-radius: 4px; }
+      .feedback-item { margin-bottom: 8px; padding: 8px 12px; background: #f9fafb; border-left: 3px solid #d1d5db; border-radius: 4px; font-size: 12px; page-break-inside: avoid; }
+      .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; text-align: center; }
+      @media print {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+    </style></head><body>
+    <div class="header-row">
+      <div class="header-left">
         <h1>${tchr.full_name}</h1>
-        <p style="color:#6b7280;margin-top:4px">${[tchr.subject, tchr.department].filter(Boolean).join(' · ')}</p>
-        ${orgs ? `<span class="chip">🏫 ${orgs}</span>` : ''}
-        ${tchr.experience_years ? `<span class="chip">📅 ${tchr.experience_years} ${t('pdf.years_experience')}</span>` : ''}
+        <p style="color:#6b7280;margin-top:3px;font-size:12px">${[tchr.subject, tchr.department].filter(Boolean).join(' · ')}</p>
+        <div style="margin-top:6px">
+          ${orgs ? `<span class="chip">${orgs}</span>` : ''}
+          ${tchr.experience_years ? `<span class="chip">${tchr.experience_years} ${t('pdf.years_experience')}</span>` : ''}
+        </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:0.75rem;color:#9ca3af">${t('pdf.report_label')}</div>
-        <div style="font-size:0.75rem;color:#9ca3af">${now}</div>
+      <div class="header-right">
+        <div>${t('pdf.report_label')}</div>
+        <div>${now}</div>
       </div>
     </div>
-    ${tchr.bio ? `<div style="margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:8px"><p style="font-size:0.9rem;color:#374151;line-height:1.6">${tchr.bio}</p></div>` : ''}
+    ${tchr.bio ? `<div style="margin-bottom:20px;padding:12px 16px;background:#f9fafb;border-radius:6px;border-left:3px solid #6366f1"><p style="font-size:12px;color:#374151;line-height:1.6">${tchr.bio}</p></div>` : ''}
     <h2>${t('pdf.performance_summary')}</h2>
-    <div style="display:flex;gap:32px;align-items:center;margin-bottom:24px">
-      <div style="text-align:center"><div class="score-big" style="color:${s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#ca8a04' : '#dc2626'}">${fmtScore(s.avg_overall)}</div><div class="score-sub">${t('pdf.overall_rating_label')}</div></div>
-      <div style="text-align:center"><div class="score-big">${s.review_count}</div><div class="score-sub">${t('pdf.total_reviews_label')}</div></div>
+    <div class="scores-row">
+      <div class="score-cell">
+        <div class="score-big" style="color:${s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#ca8a04' : '#dc2626'}">${fmtScore(s.avg_overall)}</div>
+        <div class="score-sub">${t('pdf.overall_rating_label')}</div>
+      </div>
+      <div class="score-cell">
+        <div class="score-big" style="color:#111827">${s.review_count}</div>
+        <div class="score-sub">${t('pdf.total_reviews_label')}</div>
+      </div>
     </div>
     <h2>${t('pdf.rating_breakdown')}</h2>
-    <div class="grid">
+    <table class="criteria-table">
       ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => {
         const val = s['avg_'+cat] || 0;
-        return `<div class="row"><div class="label">${t('criteria.' + cat)}</div>${ratingBar(val)}</div>`;
+        const pct = Math.round((val / 5) * 100);
+        const color = val >= 4 ? '#16a34a' : val >= 3 ? '#ca8a04' : '#dc2626';
+        return `<tr><td>${t('criteria.' + cat)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bg-bar"><div class="bar-inner" style="width:${pct}%;background:${color}"></div></div></div><div class="bar-val" style="color:${color}">${Number(val).toFixed(2)}</div></div></td></tr>`;
       }).join('')}
-    </div>
-    ${feedbackSample ? `<h2>${t('pdf.feedback_sample')}</h2><ul style="list-style:none;margin-bottom:24px">${feedbackSample}</ul>` : ''}
-    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#9ca3af;text-align:center">
-      ${t('pdf.footer', {date: now})}
-    </div>
+    </table>
+    ${feedbackSample ? `<h2>${t('pdf.feedback_sample')}</h2><div style="margin-bottom:20px">${reviews.slice(0, 10).filter(r => r.feedback_text).map(r => `<div class="feedback-item">${r.feedback_text}</div>`).join('')}</div>` : ''}
+    <div class="footer">${t('pdf.footer', {date: now})}</div>
     </body></html>`;
 
     const w = window.open('', '_blank');
