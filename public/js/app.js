@@ -1111,7 +1111,7 @@ async function submitReview(e, teacherId, classroomId) {
 }
 
 async function renderStudentMyReviews() {
-  const reviews = await API.get('/reviews/my-reviews');
+  const reviews = await cachedGet('/reviews/my-reviews', CACHE_TTL.short);
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
@@ -1206,6 +1206,7 @@ async function submitReviewEdit(reviewId) {
   try {
     await API.put(`/reviews/${reviewId}`, body);
     toast(t('review.updated'));
+    invalidateCache('/reviews/my-reviews');
     closeModal();
     renderStudentMyReviews();
   } catch (err) { toast(err.message, 'error'); }

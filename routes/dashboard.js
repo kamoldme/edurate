@@ -355,7 +355,9 @@ router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 's
     }
 
     const terms = db.prepare(`SELECT * FROM terms WHERE ${teacher.org_id ? 'org_id = ?' : '1=1'} ORDER BY start_date DESC`).all(...(teacher.org_id ? [teacher.org_id] : []));
-    const activeTerm = db.prepare('SELECT * FROM terms WHERE active_status = 1 LIMIT 1').get();
+    const activeTerm = teacher.org_id
+      ? db.prepare('SELECT * FROM terms WHERE active_status = 1 AND org_id = ? LIMIT 1').get(teacher.org_id)
+      : db.prepare('SELECT * FROM terms WHERE active_status = 1 LIMIT 1').get();
 
     const classrooms = db.prepare(`
       SELECT c.*, t.name as term_name,

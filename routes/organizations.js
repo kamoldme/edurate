@@ -183,16 +183,18 @@ router.delete('/:id', authorize('super_admin'), (req, res) => {
     // Get count for logging purposes
     const memberCount = db.prepare('SELECT COUNT(*) as count FROM user_organizations WHERE org_id = ?').get(orgId);
 
-    // Manually delete all associated data (SQLite CASCADE may not be fully configured)
-    db.prepare('DELETE FROM user_organizations WHERE org_id = ?').run(orgId);
-    db.prepare('DELETE FROM reviews WHERE org_id = ?').run(orgId);
-    db.prepare('DELETE FROM classroom_members WHERE classroom_id IN (SELECT id FROM classrooms WHERE org_id = ?)').run(orgId);
-    db.prepare('DELETE FROM classrooms WHERE org_id = ?').run(orgId);
-    db.prepare('DELETE FROM feedback_periods WHERE term_id IN (SELECT id FROM terms WHERE org_id = ?)').run(orgId);
-    db.prepare('DELETE FROM terms WHERE org_id = ?').run(orgId);
-    db.prepare('DELETE FROM teachers WHERE org_id = ?').run(orgId);
-    db.prepare('DELETE FROM audit_logs WHERE org_id = ?').run(orgId);
-    db.prepare('DELETE FROM organizations WHERE id = ?').run(orgId);
+    // Manually delete all associated data in a single atomic transaction
+    db.transaction(() => {
+      db.prepare('DELETE FROM user_organizations WHERE org_id = ?').run(orgId);
+      db.prepare('DELETE FROM reviews WHERE org_id = ?').run(orgId);
+      db.prepare('DELETE FROM classroom_members WHERE classroom_id IN (SELECT id FROM classrooms WHERE org_id = ?)').run(orgId);
+      db.prepare('DELETE FROM classrooms WHERE org_id = ?').run(orgId);
+      db.prepare('DELETE FROM feedback_periods WHERE term_id IN (SELECT id FROM terms WHERE org_id = ?)').run(orgId);
+      db.prepare('DELETE FROM terms WHERE org_id = ?').run(orgId);
+      db.prepare('DELETE FROM teachers WHERE org_id = ?').run(orgId);
+      db.prepare('DELETE FROM audit_logs WHERE org_id = ?').run(orgId);
+      db.prepare('DELETE FROM organizations WHERE id = ?').run(orgId);
+    })();
 
     logAuditEvent({
       userId: req.user.id,

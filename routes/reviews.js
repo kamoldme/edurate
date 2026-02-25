@@ -2,7 +2,6 @@ const express = require('express');
 const db = require('../database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { moderateText, sanitizeInput } = require('../utils/moderation');
-const { calculateFinalScore } = require('../utils/scoring');
 const { logAuditEvent } = require('../utils/audit');
 
 const router = express.Router();
@@ -336,7 +335,7 @@ router.put('/:id', authenticate, authorize('student'), (req, res) => {
 });
 
 // POST /api/reviews/:id/flag - flag a review
-router.post('/:id/flag', authenticate, (req, res) => {
+router.post('/:id/flag', authenticate, authorize('teacher', 'school_head', 'org_admin', 'super_admin'), (req, res) => {
   try {
     const review = db.prepare('SELECT * FROM reviews WHERE id = ?').get(req.params.id);
     if (!review) return res.status(404).json({ error: 'Review not found' });

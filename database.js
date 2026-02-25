@@ -14,7 +14,7 @@ db.exec(`
     full_name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'school_head', 'admin')),
+    role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'school_head', 'org_admin', 'super_admin')),
     grade_or_position TEXT,
     school_id INTEGER DEFAULT 1,
     verified_status INTEGER DEFAULT 0,
@@ -736,6 +736,7 @@ try {
     );
     CREATE INDEX IF NOT EXISTS idx_announcements_org ON announcements(org_id);
     CREATE INDEX IF NOT EXISTS idx_announcements_creator ON announcements(creator_id);
+    CREATE INDEX IF NOT EXISTS idx_announcement_classrooms_classroom ON announcement_classrooms(classroom_id);
   `);
 } catch (err) {
   console.error('Migration error (announcements):', err.message);

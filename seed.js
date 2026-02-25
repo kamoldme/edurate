@@ -6,6 +6,13 @@ console.log('Seeding EduRate database with multi-organization data...\n');
 // Clear existing data (audit_logs intentionally excluded — logs must survive reseeds)
 db.exec(`
   DELETE FROM teacher_responses;
+  DELETE FROM form_answers;
+  DELETE FROM form_responses;
+  DELETE FROM form_classrooms;
+  DELETE FROM form_questions;
+  DELETE FROM forms;
+  DELETE FROM announcement_classrooms;
+  DELETE FROM announcements;
   DELETE FROM reviews;
   DELETE FROM classroom_members;
   DELETE FROM classrooms;
@@ -15,6 +22,8 @@ db.exec(`
   DELETE FROM user_organizations;
   DELETE FROM users;
   DELETE FROM organizations;
+  DELETE FROM verification_codes;
+  DELETE FROM org_applications;
 `);
 
 const hash = (pw) => bcrypt.hashSync(pw, 12);

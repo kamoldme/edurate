@@ -265,7 +265,7 @@ router.delete('/:id', authenticate, authorize('teacher', 'super_admin', 'org_adm
 });
 
 // POST /api/classrooms/:id/regenerate-code - teacher regenerates join code
-router.post('/:id/regenerate-code', authenticate, authorize('teacher', 'admin'), (req, res) => {
+router.post('/:id/regenerate-code', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
