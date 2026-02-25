@@ -4586,84 +4586,200 @@ async function exportTeacherPDF(teacherId) {
     const tchr = data.teacher;
     const s = data.scores;
     const reviews = data.reviews || [];
-    const orgs = tchr.org_name ? tchr.org_name : '';
     const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const feedbackSample = reviews.some(r => r.feedback_text);
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Teacher Report — ${tchr.full_name}</title>
-    <style>
-      @page { margin: 18mm 20mm; }
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #111827; font-size: 13px; line-height: 1.5; }
-      h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
-      h2 { font-size: 13px; font-weight: 700; color: #374151; margin: 20px 0 12px; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-      .chip { display: inline-block; background: #f3f4f6; padding: 2px 9px; border-radius: 10px; font-size: 11px; color: #4b5563; margin: 4px 4px 0 0; }
-      .score-big { font-size: 32px; font-weight: 800; }
-      .score-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
-      .header-row { display: table; width: 100%; margin-bottom: 24px; }
-      .header-left { display: table-cell; vertical-align: top; }
-      .header-right { display: table-cell; vertical-align: top; text-align: right; white-space: nowrap; font-size: 11px; color: #9ca3af; width: 160px; }
-      .scores-row { display: table; width: 100%; margin-bottom: 20px; page-break-inside: avoid; }
-      .score-cell { display: table-cell; text-align: center; padding-right: 32px; }
-      .criteria-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: avoid; }
-      .criteria-table td { padding: 8px 0; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-      .criteria-table td:first-child { font-size: 12px; color: #6b7280; width: 38%; }
-      .bar-wrap { display: table; width: 100%; }
-      .bar-bg { display: table-cell; vertical-align: middle; }
-      .bar-val { display: table-cell; vertical-align: middle; text-align: right; width: 42px; font-weight: 700; font-size: 12px; }
-      .bar-inner { height: 8px; border-radius: 4px; }
-      .bg-bar { height: 8px; background: #e5e7eb; border-radius: 4px; }
-      .feedback-item { margin-bottom: 8px; padding: 8px 12px; background: #f9fafb; border-left: 3px solid #d1d5db; border-radius: 4px; font-size: 12px; page-break-inside: avoid; }
-      .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; text-align: center; }
-      @media print {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
-      }
-    </style></head><body>
-    <div class="header-row">
-      <div class="header-left">
-        <h1>${tchr.full_name}</h1>
-        <p style="color:#6b7280;margin-top:3px;font-size:12px">${[tchr.subject, tchr.department].filter(Boolean).join(' · ')}</p>
-        <div style="margin-top:6px">
-          ${orgs ? `<span class="chip">${orgs}</span>` : ''}
-          ${tchr.experience_years ? `<span class="chip">${tchr.experience_years} ${t('pdf.years_experience')}</span>` : ''}
+    const overallColor = s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#d97706' : '#dc2626';
+    const stars = (val) => {
+      const full = Math.round(val || 0);
+      return Array.from({length: 5}, (_, i) => `<span style="color:${i < full ? '#f59e0b' : '#d1d5db'};font-size:14px">&#9733;</span>`).join('');
+    };
+    const bar = (val) => {
+      const pct = Math.round(((val || 0) / 5) * 100);
+      const color = val >= 4 ? '#16a34a' : val >= 3 ? '#d97706' : '#dc2626';
+      return `<div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:9px;background:#e5e7eb;border-radius:5px;overflow:hidden">
+          <div style="width:${pct}%;height:9px;background:${color};border-radius:5px"></div>
         </div>
-      </div>
-      <div class="header-right">
-        <div>${t('pdf.report_label')}</div>
-        <div>${now}</div>
-      </div>
+        <span style="width:34px;text-align:right;font-weight:700;font-size:12px;color:${color}">${val ? Number(val).toFixed(1) : '—'}</span>
+      </div>`;
+    };
+
+    const feedbackQuotes = reviews.filter(r => r.feedback_text).slice(0, 6);
+
+    const html = `<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <title>${tchr.full_name} — ${t('pdf.report_label')}</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 210mm; min-height: 297mm; font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; font-size: 13px; line-height: 1.55; background: #fff; }
+
+    /* ── HEADER ── */
+    .header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 36px 48px 32px;
+      position: relative;
+    }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-name { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+    .header-title { margin-top: 6px; font-size: 13px; color: #93c5fd; letter-spacing: 0.02em; }
+    .header-badge {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: #bfdbfe;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .header-badge strong { display: block; font-size: 13px; color: #fff; }
+    .header-meta { margin-top: 20px; display: flex; gap: 24px; flex-wrap: wrap; }
+    .header-meta-item { font-size: 12px; color: #93c5fd; }
+    .header-meta-item strong { color: #fff; }
+    .header-divider { height: 3px; background: linear-gradient(90deg, #3b82f6, #60a5fa, transparent); margin-top: 24px; }
+
+    /* ── BODY ── */
+    .body { display: flex; min-height: 0; }
+    .sidebar { width: 190px; flex-shrink: 0; background: #f8fafc; border-right: 1px solid #e2e8f0; padding: 28px 20px; }
+    .main { flex: 1; padding: 28px 40px 36px 36px; }
+
+    /* ── SECTION HEADERS ── */
+    .section-title {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin: 22px 0 12px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* ── SIDEBAR SCORE ── */
+    .big-score { font-size: 48px; font-weight: 800; line-height: 1; }
+    .big-score-label { font-size: 10px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .stat-row { margin-bottom: 14px; }
+    .stat-number { font-size: 24px; font-weight: 700; color: #1e293b; }
+    .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ── CRITERIA ROWS ── */
+    .criteria-row { margin-bottom: 11px; }
+    .criteria-label { font-size: 11px; color: #475569; margin-bottom: 4px; font-weight: 500; }
+
+    /* ── FEEDBACK QUOTE ── */
+    .quote {
+      background: #f8fafc;
+      border-left: 3px solid #3b82f6;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      border-radius: 0 6px 6px 0;
+      font-size: 12px;
+      color: #334155;
+      line-height: 1.6;
+      page-break-inside: avoid;
+    }
+    .quote::before { content: '\\201C'; font-size: 18px; color: #93c5fd; font-weight: 700; line-height: 0; vertical-align: -4px; margin-right: 3px; }
+    .quote::after  { content: '\\201D'; font-size: 18px; color: #93c5fd; font-weight: 700; line-height: 0; vertical-align: -4px; margin-left: 3px; }
+
+    /* ── BIO ── */
+    .bio { font-size: 12px; color: #475569; line-height: 1.65; }
+
+    /* ── FOOTER ── */
+    .footer { padding: 14px 48px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #94a3b8; }
+    .footer strong { color: #64748b; }
+
+    @media print {
+      html, body { width: 210mm; }
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+      .header, .sidebar, .quote { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-name">${tchr.full_name}</div>
+      <div class="header-title">${[tchr.subject, tchr.department].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>
     </div>
-    ${tchr.bio ? `<div style="margin-bottom:20px;padding:12px 16px;background:#f9fafb;border-radius:6px;border-left:3px solid #6366f1"><p style="font-size:12px;color:#374151;line-height:1.6">${tchr.bio}</p></div>` : ''}
-    <h2>${t('pdf.performance_summary')}</h2>
-    <div class="scores-row">
-      <div class="score-cell">
-        <div class="score-big" style="color:${s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#ca8a04' : '#dc2626'}">${fmtScore(s.avg_overall)}</div>
-        <div class="score-sub">${t('pdf.overall_rating_label')}</div>
-      </div>
-      <div class="score-cell">
-        <div class="score-big" style="color:#111827">${s.review_count}</div>
-        <div class="score-sub">${t('pdf.total_reviews_label')}</div>
-      </div>
+    <div class="header-badge">
+      <strong>${t('pdf.report_label')}</strong>
+      ${now}
     </div>
-    <h2>${t('pdf.rating_breakdown')}</h2>
-    <table class="criteria-table">
-      ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => {
-        const val = s['avg_'+cat] || 0;
-        const pct = Math.round((val / 5) * 100);
-        const color = val >= 4 ? '#16a34a' : val >= 3 ? '#ca8a04' : '#dc2626';
-        return `<tr><td>${t('criteria.' + cat)}</td><td><div class="bar-wrap"><div class="bar-bg"><div class="bg-bar"><div class="bar-inner" style="width:${pct}%;background:${color}"></div></div></div><div class="bar-val" style="color:${color}">${Number(val).toFixed(2)}</div></div></td></tr>`;
-      }).join('')}
-    </table>
-    ${feedbackSample ? `<h2>${t('pdf.feedback_sample')}</h2><div style="margin-bottom:20px">${reviews.slice(0, 10).filter(r => r.feedback_text).map(r => `<div class="feedback-item">${r.feedback_text}</div>`).join('')}</div>` : ''}
-    <div class="footer">${t('pdf.footer', {date: now})}</div>
-    </body></html>`;
+  </div>
+  <div class="header-meta">
+    ${tchr.org_name ? `<div class="header-meta-item"><strong>${tchr.org_name}</strong></div>` : ''}
+    ${tchr.experience_years ? `<div class="header-meta-item"><strong>${tchr.experience_years}</strong> ${t('pdf.years_experience')}</div>` : ''}
+    <div class="header-meta-item"><strong>${s.review_count || 0}</strong> ${t('pdf.total_reviews_label').toLowerCase()}</div>
+  </div>
+  <div class="header-divider"></div>
+</div>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="section-title">${t('pdf.overall_rating_label')}</div>
+    <div class="big-score" style="color:${overallColor}">${s.avg_overall ? Number(s.avg_overall).toFixed(1) : '—'}</div>
+    <div style="margin-top:6px">${stars(s.avg_overall)}</div>
+    <div class="big-score-label">out of 5.0</div>
+
+    <div class="section-title" style="margin-top:24px">${t('pdf.total_reviews_label')}</div>
+    <div class="stat-row">
+      <div class="stat-number">${s.review_count || 0}</div>
+      <div class="stat-label">${t('pdf.total_reviews_label')}</div>
+    </div>
+
+    ${tchr.experience_years ? `
+    <div class="section-title">${t('pdf.years_experience')}</div>
+    <div class="stat-row">
+      <div class="stat-number">${tchr.experience_years}</div>
+      <div class="stat-label">${t('pdf.years_experience')}</div>
+    </div>` : ''}
+
+    ${tchr.bio ? `
+    <div class="section-title">Bio</div>
+    <div class="bio">${tchr.bio}</div>` : ''}
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="section-title">${t('pdf.rating_breakdown')}</div>
+    ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => `
+      <div class="criteria-row">
+        <div class="criteria-label">${t('criteria.' + cat)}</div>
+        ${bar(s['avg_' + cat])}
+      </div>
+    `).join('')}
+
+    ${feedbackQuotes.length ? `
+    <div class="section-title" style="margin-top:28px">${t('pdf.feedback_sample')}</div>
+    ${feedbackQuotes.map(r => `<div class="quote">${r.feedback_text}</div>`).join('')}
+    ` : ''}
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span>${t('pdf.footer', {date: now})}</span>
+  <strong>EduRate</strong>
+</div>
+
+</body></html>`;
 
     const w = window.open('', '_blank');
     w.document.write(html);
     w.document.close();
-    setTimeout(() => w.print(), 500);
+    setTimeout(() => w.print(), 600);
   } catch (err) { toast(err.message, 'error'); }
 }
 
