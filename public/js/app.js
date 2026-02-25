@@ -4588,192 +4588,223 @@ async function exportTeacherPDF(teacherId) {
     const reviews = data.reviews || [];
     const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const overallColor = s.avg_overall >= 4 ? '#16a34a' : s.avg_overall >= 3 ? '#d97706' : '#dc2626';
-    const stars = (val) => {
-      const full = Math.round(val || 0);
-      return Array.from({length: 5}, (_, i) => `<span style="color:${i < full ? '#f59e0b' : '#d1d5db'};font-size:14px">&#9733;</span>`).join('');
-    };
-    const bar = (val) => {
-      const pct = Math.round(((val || 0) / 5) * 100);
-      const color = val >= 4 ? '#16a34a' : val >= 3 ? '#d97706' : '#dc2626';
-      return `<div style="display:flex;align-items:center;gap:8px">
-        <div style="flex:1;height:9px;background:#e5e7eb;border-radius:5px;overflow:hidden">
-          <div style="width:${pct}%;height:9px;background:${color};border-radius:5px"></div>
-        </div>
-        <span style="width:34px;text-align:right;font-weight:700;font-size:12px;color:${color}">${val ? Number(val).toFixed(1) : '—'}</span>
-      </div>`;
+    const oc = (s.avg_overall || 0) >= 4 ? '#15803d' : (s.avg_overall || 0) >= 3 ? '#b45309' : '#b91c1c';
+    const barColor = (v) => (v || 0) >= 4 ? '#15803d' : (v || 0) >= 3 ? '#b45309' : '#b91c1c';
+
+    // Stars using ★/☆ — inline print-color-adjust on each span
+    const stars = (v) => {
+      const n = Math.round(v || 0);
+      return Array.from({length:5}, (_,i) =>
+        `<span style="-webkit-print-color-adjust:exact;print-color-adjust:exact;color:${i<n?'#f59e0b':'#d1d5db'};font-size:16px;letter-spacing:1px">&#9733;</span>`
+      ).join('');
     };
 
-    const feedbackQuotes = reviews.filter(r => r.feedback_text).slice(0, 6);
+    // Bar built with two table-cells (colored fill + gray remainder) — survives print
+    const bar = (v) => {
+      if (!v) return `<span style="color:#9ca3af;font-size:11px">—</span>`;
+      const pct  = Math.round((v / 5) * 100);
+      const rest = 100 - pct;
+      const col  = barColor(v);
+      return `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        <tr>
+          <td style="padding:0;vertical-align:middle">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;overflow:hidden;border-radius:3px">
+              <tr>
+                <td width="${pct}%" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:${col};height:10px;line-height:10px;font-size:0"> </td>
+                ${rest > 0 ? `<td width="${rest}%" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#e5e7eb;height:10px;line-height:10px;font-size:0"> </td>` : ''}
+              </tr>
+            </table>
+          </td>
+          <td style="width:38px;text-align:right;padding-left:8px;font-weight:700;font-size:12px;color:${col};white-space:nowrap;vertical-align:middle">${Number(v).toFixed(1)}</td>
+        </tr>
+      </table>`;
+    };
+
+    const quotes = reviews.filter(r => r.feedback_text).slice(0, 6);
 
     const html = `<!DOCTYPE html>
-<html><head>
+<html lang="en"><head>
   <meta charset="utf-8">
-  <title>${tchr.full_name} — ${t('pdf.report_label')}</title>
+  <title>${tchr.full_name} — Teacher Performance Report</title>
   <style>
-    @page { size: A4; margin: 0; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 210mm; min-height: 297mm; font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; font-size: 13px; line-height: 1.55; background: #fff; }
+    /* ── PAGE: 85% content width on A4 (16mm each side ≈ 7.5%) ── */
+    @page { size: A4 portrait; margin: 22mm 16mm; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Force backgrounds to print in all browsers */
+    html, body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #1e293b;
+      font-size: 12px;
+      line-height: 1.55;
+      -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+    }
 
     /* ── HEADER ── */
-    .header {
+    .hdr {
+      -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
       background: #1e3a5f;
       color: #fff;
-      padding: 36px 48px 32px;
-      position: relative;
+      padding: 26px 28px 22px;
+      border-radius: 6px 6px 0 0;
     }
-    .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
-    .header-name { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
-    .header-title { margin-top: 6px; font-size: 13px; color: #93c5fd; letter-spacing: 0.02em; }
-    .header-badge {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 6px;
-      padding: 6px 14px;
-      font-size: 11px;
-      color: #bfdbfe;
-      text-align: right;
-      white-space: nowrap;
+    .hdr-name  { font-size: 26px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.1; }
+    .hdr-sub   { font-size: 12.5px; color: #93c5fd; margin-top: 5px; }
+    .hdr-right { text-align: right; white-space: nowrap; vertical-align: top; padding-left: 20px; }
+    .hdr-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #93c5fd; }
+    .hdr-date  { font-size: 11px; color: #bfdbfe; margin-top: 3px; }
+    .hdr-pills { margin-top: 14px; }
+    .pill {
+      -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+      display: inline-block;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 100px;
+      padding: 3px 11px;
+      font-size: 10px;
+      color: #dbeafe;
+      margin: 2px 3px 0 0;
     }
-    .header-badge strong { display: block; font-size: 13px; color: #fff; }
-    .header-meta { margin-top: 20px; display: flex; gap: 24px; flex-wrap: wrap; }
-    .header-meta-item { font-size: 12px; color: #93c5fd; }
-    .header-meta-item strong { color: #fff; }
-    .header-divider { height: 3px; background: linear-gradient(90deg, #3b82f6, #60a5fa, transparent); margin-top: 24px; }
+    .accent {
+      -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+      height: 4px;
+      background: #3b82f6;
+    }
 
-    /* ── BODY ── */
-    .body { display: flex; min-height: 0; }
-    .sidebar { width: 190px; flex-shrink: 0; background: #f8fafc; border-right: 1px solid #e2e8f0; padding: 28px 20px; }
-    .main { flex: 1; padding: 28px 40px 36px 36px; }
+    /* ── TWO-COLUMN BODY (CSS table = reliable in print) ── */
+    .body-tbl  { width: 100%; border-collapse: collapse; }
+    .col-left  { width: 36%; vertical-align: top; padding: 22px 22px 22px 0; border-right: 1.5px solid #e2e8f0; }
+    .col-right { vertical-align: top; padding: 22px 0 22px 24px; }
 
-    /* ── SECTION HEADERS ── */
-    .section-title {
+    /* ── SCORE BOX ── */
+    .score-box {
+      -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+      background: #eff6ff;
+      border: 2px solid #bfdbfe;
+      border-radius: 8px;
+      text-align: center;
+      padding: 16px 12px 14px;
+      margin-bottom: 18px;
+    }
+    .score-num   { font-size: 46px; font-weight: 800; line-height: 1; }
+    .score-denom { font-size: 15px; font-weight: 400; color: #64748b; }
+    .score-lbl   { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.09em; color: #64748b; margin-top: 5px; }
+
+    /* ── SECTION LABEL ── */
+    .sec {
       font-size: 9px;
       font-weight: 700;
-      letter-spacing: 0.12em;
       text-transform: uppercase;
+      letter-spacing: 0.12em;
       color: #64748b;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 6px;
-      margin: 22px 0 12px;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 5px;
+      margin: 18px 0 10px;
     }
-    .section-title:first-child { margin-top: 0; }
+    .sec:first-child { margin-top: 0; }
 
-    /* ── SIDEBAR SCORE ── */
-    .big-score { font-size: 48px; font-weight: 800; line-height: 1; }
-    .big-score-label { font-size: 10px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
-    .stat-row { margin-bottom: 14px; }
-    .stat-number { font-size: 24px; font-weight: 700; color: #1e293b; }
-    .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-n { font-size: 22px; font-weight: 700; color: #0f172a; }
+    .stat-l { font-size: 9.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.07em; }
 
-    /* ── CRITERIA ROWS ── */
-    .criteria-row { margin-bottom: 11px; }
-    .criteria-label { font-size: 11px; color: #475569; margin-bottom: 4px; font-weight: 500; }
+    /* ── CRITERIA ── */
+    .crit   { margin-bottom: 11px; }
+    .crit-n { font-size: 11.5px; color: #374151; font-weight: 500; margin-bottom: 5px; }
 
-    /* ── FEEDBACK QUOTE ── */
-    .quote {
+    /* ── FEEDBACK ── */
+    .q {
+      -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
       background: #f8fafc;
       border-left: 3px solid #3b82f6;
-      padding: 10px 14px;
-      margin-bottom: 10px;
-      border-radius: 0 6px 6px 0;
-      font-size: 12px;
+      padding: 9px 13px;
+      margin-bottom: 8px;
+      font-size: 11px;
       color: #334155;
-      line-height: 1.6;
+      line-height: 1.65;
       page-break-inside: avoid;
     }
-    .quote::before { content: '\\201C'; font-size: 18px; color: #93c5fd; font-weight: 700; line-height: 0; vertical-align: -4px; margin-right: 3px; }
-    .quote::after  { content: '\\201D'; font-size: 18px; color: #93c5fd; font-weight: 700; line-height: 0; vertical-align: -4px; margin-left: 3px; }
-
-    /* ── BIO ── */
-    .bio { font-size: 12px; color: #475569; line-height: 1.65; }
 
     /* ── FOOTER ── */
-    .footer { padding: 14px 48px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #94a3b8; }
-    .footer strong { color: #64748b; }
-
-    @media print {
-      html, body { width: 210mm; }
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-      .header, .sidebar, .quote { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .ftr {
+      margin-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 9px;
+      font-size: 9.5px;
+      color: #94a3b8;
+      text-align: center;
     }
   </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="header-top">
-    <div>
-      <div class="header-name">${tchr.full_name}</div>
-      <div class="header-title">${[tchr.subject, tchr.department].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>
-    </div>
-    <div class="header-badge">
-      <strong>${t('pdf.report_label')}</strong>
-      ${now}
-    </div>
-  </div>
-  <div class="header-meta">
-    ${tchr.org_name ? `<div class="header-meta-item"><strong>${tchr.org_name}</strong></div>` : ''}
-    ${tchr.experience_years ? `<div class="header-meta-item"><strong>${tchr.experience_years}</strong> ${t('pdf.years_experience')}</div>` : ''}
-    <div class="header-meta-item"><strong>${s.review_count || 0}</strong> ${t('pdf.total_reviews_label').toLowerCase()}</div>
-  </div>
-  <div class="header-divider"></div>
+<!-- HEADER (table for reliable print layout) -->
+<div class="hdr">
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td style="vertical-align:top">
+      <div class="hdr-name">${tchr.full_name}</div>
+      <div class="hdr-sub">${[tchr.subject, tchr.department].filter(Boolean).join(' &nbsp;&middot;&nbsp; ') || '&nbsp;'}</div>
+      <div class="hdr-pills">
+        ${tchr.org_name           ? `<span class="pill">${tchr.org_name}</span>` : ''}
+        ${tchr.experience_years   ? `<span class="pill">${tchr.experience_years} ${t('pdf.years_experience')}</span>` : ''}
+        <span class="pill">${s.review_count || 0} ${t('pdf.total_reviews_label').toLowerCase()}</span>
+      </div>
+    </td>
+    <td class="hdr-right">
+      <div class="hdr-label">${t('pdf.report_label')}</div>
+      <div class="hdr-date">${now}</div>
+    </td>
+  </tr></table>
 </div>
+<div class="accent"></div>
 
-<!-- BODY -->
-<div class="body">
+<!-- TWO-COLUMN BODY -->
+<table class="body-tbl"><tr>
 
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="section-title">${t('pdf.overall_rating_label')}</div>
-    <div class="big-score" style="color:${overallColor}">${s.avg_overall ? Number(s.avg_overall).toFixed(1) : '—'}</div>
-    <div style="margin-top:6px">${stars(s.avg_overall)}</div>
-    <div class="big-score-label">out of 5.0</div>
-
-    <div class="section-title" style="margin-top:24px">${t('pdf.total_reviews_label')}</div>
-    <div class="stat-row">
-      <div class="stat-number">${s.review_count || 0}</div>
-      <div class="stat-label">${t('pdf.total_reviews_label')}</div>
+  <!-- LEFT: score + stats + bio -->
+  <td class="col-left">
+    <div class="score-box">
+      <div class="score-num" style="color:${oc}">${s.avg_overall ? Number(s.avg_overall).toFixed(1) : '—'}<span class="score-denom"> / 5</span></div>
+      <div style="margin:7px 0 2px">${stars(s.avg_overall)}</div>
+      <div class="score-lbl">${t('pdf.overall_rating_label')}</div>
     </div>
+
+    <div class="sec">${t('pdf.total_reviews_label')}</div>
+    <div class="stat-n">${s.review_count || 0}</div>
+    <div class="stat-l">${t('pdf.total_reviews_label')}</div>
 
     ${tchr.experience_years ? `
-    <div class="section-title">${t('pdf.years_experience')}</div>
-    <div class="stat-row">
-      <div class="stat-number">${tchr.experience_years}</div>
-      <div class="stat-label">${t('pdf.years_experience')}</div>
-    </div>` : ''}
+    <div class="sec">${t('pdf.years_experience')}</div>
+    <div class="stat-n">${tchr.experience_years}</div>
+    <div class="stat-l">${t('pdf.years_experience')}</div>` : ''}
 
     ${tchr.bio ? `
-    <div class="section-title">Bio</div>
-    <div class="bio">${tchr.bio}</div>` : ''}
-  </div>
+    <div class="sec">About</div>
+    <div style="font-size:11px;color:#475569;line-height:1.65;font-style:italic">${tchr.bio}</div>` : ''}
+  </td>
 
-  <!-- MAIN -->
-  <div class="main">
-    <div class="section-title">${t('pdf.rating_breakdown')}</div>
+  <!-- RIGHT: rating bars + feedback quotes -->
+  <td class="col-right">
+    <div class="sec" style="margin-top:0">${t('pdf.rating_breakdown')}</div>
     ${['clarity','engagement','fairness','supportiveness','preparation','workload'].map(cat => `
-      <div class="criteria-row">
-        <div class="criteria-label">${t('criteria.' + cat)}</div>
+      <div class="crit">
+        <div class="crit-n">${t('criteria.' + cat)}</div>
         ${bar(s['avg_' + cat])}
-      </div>
-    `).join('')}
+      </div>`).join('')}
 
-    ${feedbackQuotes.length ? `
-    <div class="section-title" style="margin-top:28px">${t('pdf.feedback_sample')}</div>
-    ${feedbackQuotes.map(r => `<div class="quote">${r.feedback_text}</div>`).join('')}
-    ` : ''}
-  </div>
-</div>
+    ${quotes.length ? `
+      <div class="sec" style="margin-top:22px">${t('pdf.feedback_sample')}</div>
+      ${quotes.map(r => `<div class="q">${r.feedback_text}</div>`).join('')}` : ''}
+  </td>
 
-<!-- FOOTER -->
-<div class="footer">
-  <span>${t('pdf.footer', {date: now})}</span>
-  <strong>EduRate</strong>
-</div>
+</tr></table>
 
+<div class="ftr">${t('pdf.footer', {date: now})} &nbsp;&bull;&nbsp; <strong style="color:#475569">EduRate</strong></div>
 </body></html>`;
 
     const w = window.open('', '_blank');
