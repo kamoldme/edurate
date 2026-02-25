@@ -53,7 +53,8 @@ function getVisibleAnnouncements(userId, userRole, orgId, classroomIds = []) {
 // GET /api/announcements - list announcements relevant to current user
 router.get('/', authenticate, (req, res) => {
   try {
-    const { role, id: userId, org_id: orgId } = req.user;
+    const { role, id: userId, org_id: rawOrgId } = req.user;
+    let orgId = rawOrgId;
     let classroomIds = [];
 
     if (role === 'teacher') {
@@ -65,6 +66,12 @@ router.get('/', authenticate, (req, res) => {
     } else if (role === 'student') {
       classroomIds = db.prepare('SELECT classroom_id FROM classroom_members WHERE student_id = ?')
         .all(userId).map(c => c.classroom_id);
+      // Students register with org_id = NULL — derive from classroom memberships
+      if (!orgId && classroomIds.length > 0) {
+        const ph = classroomIds.map(() => '?').join(',');
+        const row = db.prepare(`SELECT org_id FROM classrooms WHERE id IN (${ph}) AND org_id IS NOT NULL LIMIT 1`).get(...classroomIds);
+        orgId = row?.org_id || null;
+      }
     }
 
     const announcements = getVisibleAnnouncements(userId, role, orgId, classroomIds);

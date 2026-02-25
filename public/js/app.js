@@ -179,7 +179,7 @@ function buildNavigation() {
       { id: 'student-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'student-review', label: t('nav.write_review'), icon: 'review' },
       { id: 'student-my-reviews', label: t('nav.my_reviews'), icon: 'chart' },
-      { id: 'student-forms', label: t('nav.forms'), icon: 'review' }
+      { id: 'student-forms', label: t('nav.announcements'), icon: 'review' }
     ];
   } else if (role === 'teacher') {
     items = [
@@ -322,7 +322,7 @@ function navigateTo(view) {
     'admin-home': t('title.admin_dashboard'),
     'admin-orgs': t('title.organizations'),
     'admin-applications': t('title.organizations'),
-    'student-forms': t('nav.forms'),
+    'student-forms': t('nav.announcements'),
     'teacher-forms': t('nav.forms'),
     'admin-forms': t('nav.forms'),
     'admin-users': t('title.user_management'),
@@ -1307,48 +1307,51 @@ async function viewTeacherProfile(teacherId) {
   }
 }
 
-// ============ STUDENT FORMS ============
+// ============ STUDENT ANNOUNCEMENTS & FORMS ============
 async function renderStudentForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
-    const forms = await API.get('/forms/student/available');
+    const [announcements, forms] = await Promise.all([
+      cachedGet('/announcements', CACHE_TTL.medium).catch(() => []),
+      API.get('/forms/student/available').catch(() => [])
+    ]);
 
-    if (forms.length === 0) {
-      el.innerHTML = `
-        <h2 style="margin-bottom:24px">${t('forms.title')}</h2>
-        <div class="card"><div class="card-body">
-          <div class="empty-state">
-            <h3>${t('forms.no_active')}</h3>
-            <p>${t('forms.no_active_msg')}</p>
-          </div>
-        </div></div>`;
-      return;
-    }
+    const announcementsHTML = `
+      <div style="margin-bottom:32px">
+        <h2 style="margin-bottom:16px">${t('nav.announcements')}</h2>
+        ${announcements.length === 0
+          ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.no_announcements_student')}</p></div></div></div>`
+          : announcements.map(a => announcementCardHTML(a, false)).join('')}
+      </div>`;
 
-    el.innerHTML = `
-      <h2 style="margin-bottom:24px">${t('forms.title_count', {count: forms.length})}</h2>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${forms.map(f => `
-          <div class="card" style="border-left:4px solid ${f.already_submitted ? 'var(--gray-300)' : 'var(--primary)'}">
-            <div class="card-body" style="display:flex;align-items:center;gap:16px">
-              <div style="flex:1">
-                <h3 style="margin:0 0 4px">${f.title}</h3>
-                <div style="font-size:0.82rem;color:var(--gray-500);margin-bottom:${f.description ? '6px' : '0'}">
-                  ${f.classroom_subject} &middot; ${f.grade_level} &middot; ${f.teacher_name}
+    const formsHTML = forms.length === 0 ? '' : `
+      <div>
+        <h2 style="margin-bottom:16px">${t('forms.title_count', {count: forms.length})}</h2>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${forms.map(f => `
+            <div class="card" style="border-left:4px solid ${f.already_submitted ? 'var(--gray-300)' : 'var(--primary)'}">
+              <div class="card-body" style="display:flex;align-items:center;gap:16px">
+                <div style="flex:1">
+                  <h3 style="margin:0 0 4px">${f.title}</h3>
+                  <div style="font-size:0.82rem;color:var(--gray-500);margin-bottom:${f.description ? '6px' : '0'}">
+                    ${f.classroom_subject} &middot; ${f.grade_level} &middot; ${f.teacher_name}
+                  </div>
+                  ${f.description ? `<p style="font-size:0.85rem;color:var(--gray-600);margin:0">${f.description}</p>` : ''}
                 </div>
-                ${f.description ? `<p style="font-size:0.85rem;color:var(--gray-600);margin:0">${f.description}</p>` : ''}
-              </div>
-              <div style="text-align:center;flex-shrink:0">
-                <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:6px">${t('forms.question_count', {count: f.question_count, s: f.question_count !== 1 ? 's' : ''})}</div>
-                ${f.already_submitted
-                  ? `<span style="background:#dcfce7;color:#15803d;padding:4px 12px;border-radius:12px;font-size:0.82rem;font-weight:600">${t('forms.submitted')}</span>`
-                  : `<button class="btn btn-primary btn-sm" onclick="openStudentForm(${f.id})">${t('forms.fill_out')}</button>`}
+                <div style="text-align:center;flex-shrink:0">
+                  <div style="font-size:0.75rem;color:var(--gray-400);margin-bottom:6px">${t('forms.question_count', {count: f.question_count, s: f.question_count !== 1 ? 's' : ''})}</div>
+                  ${f.already_submitted
+                    ? `<span style="background:#dcfce7;color:#15803d;padding:4px 12px;border-radius:12px;font-size:0.82rem;font-weight:600">${t('forms.submitted')}</span>`
+                    : `<button class="btn btn-primary btn-sm" onclick="openStudentForm(${f.id})">${t('forms.fill_out')}</button>`}
+                </div>
               </div>
             </div>
-          </div>
-        `).join('')}
+          `).join('')}
+        </div>
       </div>`;
+
+    el.innerHTML = announcementsHTML + formsHTML;
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
@@ -4266,7 +4269,7 @@ async function moderateReview(id, action) {
   try {
     await API.put(`/admin/reviews/${id}/${action}`);
     toast(action === 'approve' ? t('admin.review_approved') : t('admin.review_rejected'));
-    invalidateCache('/admin/stats', '/dashboard');
+    invalidateCache('/admin/stats', '/dashboard', '/admin/teachers', '/admin/teacher');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4277,7 +4280,7 @@ async function bulkApproveAll(reviewIds) {
   try {
     await API.post('/admin/reviews/bulk-approve', { review_ids: reviewIds });
     toast(t('admin.bulk_approved', {count: reviewIds.length}), 'success');
-    invalidateCache('/admin/stats', '/dashboard');
+    invalidateCache('/admin/stats', '/dashboard', '/admin/teachers', '/admin/teacher');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4304,7 +4307,7 @@ async function approveSelectedReviews() {
   try {
     await API.post('/admin/reviews/bulk-approve', { review_ids: ids });
     toast(t('moderate.approved_selected_toast', {count: ids.length}), 'success');
-    invalidateCache('/admin/stats', '/dashboard');
+    invalidateCache('/admin/stats', '/dashboard', '/admin/teachers', '/admin/teacher');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4321,7 +4324,7 @@ async function deleteReview(id) {
   try {
     await API.delete(`/admin/reviews/${id}`);
     toast(t('admin.review_deleted'));
-    invalidateCache('/admin/stats', '/dashboard');
+    invalidateCache('/admin/stats', '/dashboard', '/admin/teachers', '/admin/teacher');
     if (currentView === 'admin-moderate') renderAdminModerate();
     else if (currentView === 'admin-flagged') renderAdminFlagged();
   } catch (err) { toast(err.message, 'error'); }
@@ -5794,6 +5797,7 @@ async function submitAnnouncement() {
   try {
     await API.post('/announcements', { title, content, target_type, classroom_ids });
     toast(t('ann.posted'), 'success');
+    invalidateCache('/announcements');
     closeModal();
     const view = currentView;
     if (view) navigateTo(view);
@@ -5806,6 +5810,7 @@ async function deleteAnnouncement(id) {
   try {
     await API.delete(`/announcements/${id}`);
     toast(t('ann.deleted'));
+    invalidateCache('/announcements');
     const view = currentView;
     if (view) navigateTo(view);
   } catch (err) { toast(err.message, 'error'); }
