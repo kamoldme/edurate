@@ -23,15 +23,24 @@ router.get('/tags', authenticate, (req, res) => {
 // GET /api/reviews/eligible-teachers - teachers student can review
 router.get('/eligible-teachers', authenticate, authorize('student'), (req, res) => {
   try {
+    // Students register with org_id = NULL — derive org from classroom memberships
+    const studentOrgRow = db.prepare(`
+      SELECT DISTINCT c.org_id FROM classroom_members cm
+      JOIN classrooms c ON cm.classroom_id = c.id
+      WHERE cm.student_id = ? AND c.org_id IS NOT NULL
+      LIMIT 1
+    `).get(req.user.id);
+    const studentOrgId = studentOrgRow?.org_id ?? req.user.org_id;
+
     // Get active feedback period scoped to student's org
-    const activePeriod = db.prepare(`
+    const activePeriod = studentOrgId ? db.prepare(`
       SELECT fp.* FROM feedback_periods fp
       JOIN terms t ON fp.term_id = t.id
       WHERE fp.active_status = 1 AND t.active_status = 1
         AND t.org_id = ?
       ORDER BY fp.id ASC
       LIMIT 1
-    `).get(req.user.org_id);
+    `).get(studentOrgId) : null;
 
     if (!activePeriod) {
       return res.json({ period: null, teachers: [] });
@@ -110,15 +119,24 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
       return res.status(400).json({ error: 'Invalid classroom-teacher combination' });
     }
 
+    // Students register with org_id = NULL — derive org from classroom memberships
+    const studentOrgRow2 = db.prepare(`
+      SELECT DISTINCT c.org_id FROM classroom_members cm
+      JOIN classrooms c ON cm.classroom_id = c.id
+      WHERE cm.student_id = ? AND c.org_id IS NOT NULL
+      LIMIT 1
+    `).get(req.user.id);
+    const submitOrgId = studentOrgRow2?.org_id ?? req.user.org_id;
+
     // Get active feedback period scoped to student's org
-    const activePeriod = db.prepare(`
+    const activePeriod = submitOrgId ? db.prepare(`
       SELECT fp.* FROM feedback_periods fp
       JOIN terms t ON fp.term_id = t.id
       WHERE fp.active_status = 1 AND t.active_status = 1
         AND t.org_id = ?
       ORDER BY fp.id ASC
       LIMIT 1
-    `).get(req.user.org_id);
+    `).get(submitOrgId) : null;
     if (!activePeriod) {
       return res.status(400).json({ error: 'No active feedback period' });
     }
