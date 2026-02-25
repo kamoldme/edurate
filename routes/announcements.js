@@ -10,10 +10,12 @@ function getVisibleAnnouncements(userId, userRole, orgId, classroomIds = []) {
   const params = [];
   let query = `
     SELECT a.*, u.full_name as creator_name,
-      GROUP_CONCAT(DISTINCT ac.classroom_id) as classroom_ids
+      GROUP_CONCAT(DISTINCT ac.classroom_id) as classroom_ids,
+      GROUP_CONCAT(DISTINCT c.subject || ' ' || COALESCE(c.grade_level, '')) as classroom_labels
     FROM announcements a
     JOIN users u ON a.creator_id = u.id
     LEFT JOIN announcement_classrooms ac ON ac.announcement_id = a.id
+    LEFT JOIN classrooms c ON c.id = ac.classroom_id
     WHERE (
   `;
 
@@ -76,10 +78,11 @@ router.get('/', authenticate, (req, res) => {
 
     const announcements = getVisibleAnnouncements(userId, role, orgId, classroomIds);
 
-    // Parse classroom_ids string into array
+    // Parse classroom_ids and classroom_labels strings into arrays
     const parsed = announcements.map(a => ({
       ...a,
-      classroom_ids: a.classroom_ids ? a.classroom_ids.split(',').map(Number) : []
+      classroom_ids: a.classroom_ids ? a.classroom_ids.split(',').map(Number) : [],
+      classroom_labels: a.classroom_labels ? a.classroom_labels.split(',').map(s => s.trim()).filter(Boolean) : []
     }));
 
     res.json(parsed);
