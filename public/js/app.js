@@ -2723,8 +2723,9 @@ async function renderHeadTeachers() {
               </div>`;
             }).join('')}
             ${teacher.trend ? `<div style="margin-top:12px;font-size:0.85rem">Trend: ${trendArrow(teacher.trend.trend)} <span class="trend-${teacher.trend.trend === 'improving' ? 'up' : teacher.trend.trend === 'declining' ? 'down' : 'stable'}">${teacher.trend.trend}</span></div>` : ''}
-            <div style="margin-top:16px">
-              <button class="btn btn-primary" style="width:100%;font-size:0.85rem" onclick="viewTeacherFeedback(${teacher.id})">${t('admin.view_feedback')}</button>
+            <div style="margin-top:16px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="flex:1;font-size:0.85rem" onclick="viewTeacherFeedback(${teacher.id})">${t('admin.view_feedback')}</button>
+              <button class="btn btn-outline" style="font-size:0.85rem" onclick="exportTeacherPDF(${teacher.id})" title="${t('admin.export_pdf')}">PDF</button>
             </div>
           </div>
         </div>
@@ -2741,14 +2742,15 @@ async function renderHeadClassrooms() {
     <div class="card">
       <div class="table-container">
         <table>
-          <thead><tr><th>${t('common.subject')}</th><th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.students')}</th></tr></thead>
+          <thead><tr><th>${t('common.subject')}</th><th>${t('common.teacher')}</th><th>${t('common.grade')}</th><th>${t('common.students')}</th><th>${t('common.actions')}</th></tr></thead>
           <tbody>
             ${data.classrooms.map(c => `
               <tr>
                 <td><strong>${c.subject}</strong></td>
                 <td>${c.teacher_name}</td>
                 <td>${c.grade_level}</td>
-                <td>${c.student_count}</td>
+                <td><a href="#" onclick="event.preventDefault();viewHeadClassroomMembers(${c.id},'${c.subject.replace(/'/g, "\\'")}')" style="color:var(--primary);font-weight:600">${c.student_count || 0}</a></td>
+                <td><button class="btn btn-sm btn-outline" onclick="viewHeadClassroomMembers(${c.id},'${c.subject.replace(/'/g, "\\'")}')">${t('teacher.members')}</button></td>
               </tr>
             `).join('')}
           </tbody>
@@ -2756,6 +2758,33 @@ async function renderHeadClassrooms() {
       </div>
     </div>
   `;
+}
+
+async function viewHeadClassroomMembers(classroomId, subject) {
+  try {
+    const members = await API.get(`/classrooms/${classroomId}/members`);
+    openModal(`
+      <div class="modal-header"><h3>${t('admin.members_title', {subject})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+      <div class="modal-body" style="min-width:0">
+        ${members.length === 0
+          ? `<p style="color:var(--gray-500)">${t('admin.no_students_enrolled')}</p>`
+          : `<div style="overflow-x:auto"><table style="width:100%">
+              <thead><tr><th>${t('common.name')}</th><th>${t('common.email')}</th><th>${t('admin.grade_position_col')}</th><th>${t('common.joined')}</th></tr></thead>
+              <tbody>
+                ${members.map(m => `
+                  <tr>
+                    <td><strong>${m.full_name}</strong></td>
+                    <td>${m.email}</td>
+                    <td>${m.grade_or_position || '-'}</td>
+                    <td>${m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '-'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table></div>`}
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">${t('common.close')}</button></div>
+    `);
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 async function renderHeadAnalytics() {

@@ -214,7 +214,7 @@ body {
 .top-bar {
   background: #fff;
   border-bottom: 1px solid var(--gray-200);
-  padding: 16px 32px;
+  padding: 18px 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -236,7 +236,7 @@ body {
 }
 
 .content-area {
-  padding: 28px 32px;
+  padding: 36px 48px;
 }
 
 /* ============ CARDS ============ */
@@ -921,8 +921,8 @@ tbody tr:last-child td { border-bottom: none; }
 @media (max-width: 1024px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
-  .content-area { padding: 24px 20px; }
-  .top-bar { padding: 14px 20px; }
+  .content-area { padding: 28px 32px; }
+  .top-bar { padding: 16px 32px; }
 }
 
 /* Tablet portrait / small tablet */
