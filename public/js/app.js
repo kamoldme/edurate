@@ -130,7 +130,7 @@ async function loadApplicationBadge() {
 
 async function loadOrganizations() {
   try {
-    const orgs = await API.get('/organizations');
+    const orgs = await cachedGet('/organizations', CACHE_TTL.long);
     const selector = document.getElementById('orgSwitcher');
     if (selector) {
       orgs.forEach(org => {
@@ -374,6 +374,59 @@ function navigateTo(view) {
   if (viewFunctions[view]) {
     viewFunctions[view]().catch(err => {
       content.innerHTML = `<div class="empty-state"><h3>${t('common.error_loading')}</h3><p>${err.message}</p></div>`;
+    });
+  }
+}
+
+// ============ TAG TRANSLATION ============
+const TAG_I18N_MAP = {
+  'Clear explanations': 'tag.clear_explanations',
+  'Engaging lessons': 'tag.engaging_lessons',
+  'Fair grading': 'tag.fair_grading',
+  'Supportive': 'tag.supportive',
+  'Well-prepared': 'tag.well_prepared',
+  'Good examples': 'tag.good_examples',
+  'Encourages participation': 'tag.encourages_participation',
+  'Respectful': 'tag.respectful',
+  'Needs clearer explanations': 'tag.needs_clearer_explanations',
+  'Too fast-paced': 'tag.too_fast_paced',
+  'Too slow-paced': 'tag.too_slow_paced',
+  'More examples needed': 'tag.more_examples_needed',
+  'More interactive': 'tag.more_interactive',
+  'Better organization': 'tag.better_organization',
+  'More feedback needed': 'tag.more_feedback_needed',
+  'Challenging but good': 'tag.challenging_but_good'
+};
+function translateTag(tag) {
+  const key = TAG_I18N_MAP[tag];
+  return key ? t(key) : tag;
+}
+
+// ============ API CACHE ============
+// Simple in-memory cache to avoid re-fetching the same data on every sidebar click.
+// Mutations (submit review, approve, etc.) call invalidateCache() to bust stale entries.
+const _apiCache = {};
+const CACHE_TTL = {
+  short: 30 * 1000,   // 30s — dashboard data, reviews
+  medium: 60 * 1000,  // 60s — classrooms, users, forms lists
+  long: 5 * 60 * 1000 // 5min — tags, organizations (rarely change)
+};
+
+async function cachedGet(url, ttl = CACHE_TTL.short) {
+  const now = Date.now();
+  const entry = _apiCache[url];
+  if (entry && now - entry.ts < ttl) return entry.data;
+  const data = await API.get(url);
+  _apiCache[url] = { data, ts: now };
+  return data;
+}
+
+function invalidateCache(...patterns) {
+  if (patterns.length === 0) {
+    Object.keys(_apiCache).forEach(k => delete _apiCache[k]);
+  } else {
+    Object.keys(_apiCache).forEach(k => {
+      if (patterns.some(p => k.includes(p))) delete _apiCache[k];
     });
   }
 }
@@ -673,7 +726,7 @@ function _dismissWarning() {
 
 // ============ STUDENT VIEWS ============
 async function renderStudentHome() {
-  const data = await API.get('/dashboard/student');
+  const data = await cachedGet('/dashboard/student');
   const el = document.getElementById('contentArea');
 
   const periodInfo = data.active_period
@@ -748,7 +801,7 @@ async function renderStudentHome() {
 
   // Fetch eligible count and mark reviewed classrooms
   try {
-    const eligible = await API.get('/reviews/eligible-teachers');
+    const eligible = await cachedGet('/reviews/eligible-teachers');
     const remaining = eligible.teachers.filter(t => !t.already_reviewed).length;
     document.getElementById('eligibleCount').textContent = remaining;
     // Mark classrooms where student already submitted a review this period
@@ -762,7 +815,7 @@ async function renderStudentHome() {
 }
 
 async function renderStudentClassrooms() {
-  const classrooms = await API.get('/classrooms');
+  const classrooms = await cachedGet('/classrooms', CACHE_TTL.medium);
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
@@ -815,6 +868,7 @@ async function joinClassroom() {
   try {
     const data = await API.post('/classrooms/join', { join_code: code });
     toast(data.message);
+    invalidateCache('/dashboard/student', '/classrooms', '/reviews/eligible-teachers');
     closeModal();
     navigateTo('student-classrooms');
   } catch (err) { toast(err.message, 'error'); }
@@ -826,6 +880,7 @@ async function leaveClassroom(id, name) {
   try {
     await API.delete(`/classrooms/${id}/leave`);
     toast(t('student.left_classroom'));
+    invalidateCache('/dashboard/student', '/classrooms', '/reviews/eligible-teachers');
     navigateTo('student-classrooms');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -833,8 +888,8 @@ async function leaveClassroom(id, name) {
 async function renderStudentReview() {
   const el = document.getElementById('contentArea');
   try {
-    const data = await API.get('/reviews/eligible-teachers');
-    const tags = await API.get('/reviews/tags');
+    const data = await cachedGet('/reviews/eligible-teachers');
+    const tags = await cachedGet('/reviews/tags', CACHE_TTL.long);
 
     if (!data.period) {
       el.innerHTML = `<div class="empty-state"><h3>${t('student.no_active_period_title')}</h3><p>${t('student.no_active_period_desc')}</p></div>`;
@@ -893,7 +948,7 @@ async function renderStudentReview() {
               <div class="form-group">
                 <label>${t('student.feedback_tags_label')}</label>
                 <div class="tag-container" id="tags-${teacher.teacher_id}">
-                  ${tags.map(tag => `<div class="tag" onclick="this.classList.toggle('selected')" data-tag="${tag}">${tag}</div>`).join('')}
+                  ${tags.map(tag => `<div class="tag" onclick="this.classList.toggle('selected')" data-tag="${tag}">${translateTag(tag)}</div>`).join('')}
                 </div>
               </div>
               <div class="form-group">
@@ -1050,6 +1105,7 @@ async function submitReview(e, teacherId, classroomId) {
       tags: selectedTags
     });
     toast(t('student.review_submitted'));
+    invalidateCache('/dashboard/student', '/reviews/eligible-teachers', '/reviews/my-reviews');
     navigateTo('student-review');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1087,7 +1143,7 @@ async function renderStudentMyReviews() {
               ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
               ${JSON.parse(r.tags || '[]').length > 0 ? `
                 <div class="review-tags">
-                  ${JSON.parse(r.tags).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                  ${JSON.parse(r.tags).map(tag => `<span class="tag">${translateTag(tag)}</span>`).join('')}
                 </div>
               ` : ''}
             </div>
@@ -1103,7 +1159,7 @@ async function editMyReview(reviewId) {
   if (!review) return toast(t('review.not_found'), 'error');
   if (review.approved_status === 1) return toast(t('review.cannot_edit_approved'), 'error');
 
-  const tags = await API.get('/reviews/tags').catch(() => []);
+  const tags = await cachedGet('/reviews/tags', CACHE_TTL.long).catch(() => []);
   const currentTags = JSON.parse(review.tags || '[]');
 
   openModal(`
@@ -1125,7 +1181,7 @@ async function editMyReview(reviewId) {
       <div class="form-group">
         <label>${t('review.tags_label')}</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
-          ${tags.map(tag => `<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="${escAttr(tag)}" ${currentTags.includes(tag) ? 'checked' : ''}> ${tag}</label>`).join('')}
+          ${tags.map(tag => `<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" value="${escAttr(tag)}" ${currentTags.includes(tag) ? 'checked' : ''}> ${translateTag(tag)}</label>`).join('')}
         </div>
       </div>
     </div>
@@ -1231,7 +1287,7 @@ async function viewTeacherProfile(teacherId) {
                   ${r.feedback_text ? `<p style="margin:0;color:var(--gray-700)">${r.feedback_text}</p>` : `<p style="margin:0;color:var(--gray-400);font-style:italic">${t('profile.no_written_feedback')}</p>`}
                   ${r.tags && r.tags !== '[]' ? `
                     <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
-                      ${JSON.parse(r.tags).map(tag => `<span class="badge badge-pending">${tag}</span>`).join('')}
+                      ${JSON.parse(r.tags).map(tag => `<span class="badge badge-pending">${translateTag(tag)}</span>`).join('')}
                     </div>
                   ` : ''}
                 </div>
@@ -1420,7 +1476,7 @@ async function submitStudentForm(formId) {
 
 // ============ TEACHER VIEWS ============
 async function renderTeacherHome() {
-  const data = await API.get('/dashboard/teacher');
+  const data = await cachedGet('/dashboard/teacher');
   const el = document.getElementById('contentArea');
   const s = data.overall_scores;
 
@@ -1543,7 +1599,7 @@ async function renderTeacherHome() {
 }
 
 async function renderTeacherClassrooms() {
-  const data = await API.get('/dashboard/teacher');
+  const data = await cachedGet('/dashboard/teacher');
   window._teacherTerms = data.all_terms || [];
   window._teacherActiveTerm = data.active_term || null;
   const el = document.getElementById('contentArea');
@@ -1625,6 +1681,7 @@ async function createClassroomTeacher() {
   try {
     const data = await API.post('/classrooms', { subject, grade_level });
     toast(t('teacher.classroom_created', {code: formatJoinCode(data.join_code)}));
+    invalidateCache('/dashboard/teacher', '/classrooms', '/forms');
     closeModal();
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
@@ -1636,6 +1693,7 @@ async function archiveClassroomTeacher(id, subject) {
   try {
     await API.patch(`/classrooms/${id}`, { active_status: 0 });
     toast(t('teacher.archived_msg'));
+    invalidateCache('/dashboard/teacher', '/classrooms');
     renderTeacherClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1644,6 +1702,7 @@ async function unarchiveClassroomTeacher(id) {
   try {
     await API.patch(`/classrooms/${id}`, { active_status: 1 });
     toast(t('teacher.reactivated_msg'));
+    invalidateCache('/dashboard/teacher', '/classrooms');
     renderTeacherClassrooms();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1686,6 +1745,7 @@ async function deleteClassroomTeacher(id, subject) {
   try {
     await API.delete(`/classrooms/${id}`);
     toast(t('teacher.classroom_deleted'));
+    invalidateCache('/dashboard/teacher', '/classrooms', '/forms');
     navigateTo('teacher-classrooms');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -1717,7 +1777,7 @@ async function viewClassroomMembers(classroomId, subject) {
 }
 
 async function renderTeacherFeedback() {
-  const data = await API.get('/dashboard/teacher');
+  const data = await cachedGet('/dashboard/teacher');
   const el = document.getElementById('contentArea');
 
   // Separate approved and pending reviews
@@ -1845,7 +1905,7 @@ function renderTeacherReviewCard(r) {
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100)">${ratingGridHTML(r)}</div>
     ${r.feedback_text ? `<div class="review-text">${r.feedback_text}</div>` : ''}
-    ${tags.length > 0 ? `<div class="review-tags">${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
+    ${tags.length > 0 ? `<div class="review-tags">${tags.map(tag => `<span class="tag">${translateTag(tag)}</span>`).join('')}</div>` : ''}
   </div>`;
 }
 
@@ -1916,7 +1976,7 @@ function showCompletionRatesModal() {
 }
 
 async function renderTeacherAnalytics() {
-  const data = await API.get('/dashboard/teacher');
+  const data = await cachedGet('/dashboard/teacher');
   const el = document.getElementById('contentArea');
 
   const periods = data.trend?.periods || [];
@@ -2075,9 +2135,9 @@ async function renderTeacherForms() {
   el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
     const [forms, classrooms, announcements] = await Promise.all([
-      API.get('/forms'),
-      API.get('/classrooms'),
-      API.get('/announcements').catch(() => [])
+      cachedGet('/forms', CACHE_TTL.medium),
+      cachedGet('/classrooms', CACHE_TTL.medium),
+      cachedGet('/announcements', CACHE_TTL.medium).catch(() => [])
     ]);
 
     const statusBadge = s => {
@@ -2196,7 +2256,7 @@ async function createForm() {
     toast(t('forms.created_msg'));
     await renderTeacherForms();
     // Open builder for the newly created form — get the first draft
-    const forms = await API.get('/forms');
+    const forms = await cachedGet('/forms', CACHE_TTL.medium);
     const newest = forms.find(f => f.title === title && f.status === 'draft');
     if (newest) openFormBuilder(newest.id);
   } catch (err) { toast(err.message, 'error'); }
@@ -2495,8 +2555,8 @@ async function openFormResults(formId) {
 // ============ SCHOOL HEAD VIEWS ============
 async function renderHeadHome() {
   const [data, stats] = await Promise.all([
-    API.get('/dashboard/school-head'),
-    API.get('/admin/stats')
+    cachedGet('/dashboard/school-head'),
+    cachedGet('/admin/stats')
   ]);
   const el = document.getElementById('contentArea');
 
@@ -2622,7 +2682,7 @@ async function renderHeadHome() {
 }
 
 async function renderHeadTeachers() {
-  const data = await API.get('/dashboard/school-head');
+  const data = await cachedGet('/dashboard/school-head');
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
@@ -2671,7 +2731,7 @@ async function renderHeadTeachers() {
 }
 
 async function renderHeadClassrooms() {
-  const data = await API.get('/dashboard/school-head');
+  const data = await cachedGet('/dashboard/school-head');
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
@@ -2696,7 +2756,7 @@ async function renderHeadClassrooms() {
 }
 
 async function renderHeadAnalytics() {
-  const data = await API.get('/dashboard/school-head');
+  const data = await cachedGet('/dashboard/school-head');
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
@@ -2729,7 +2789,7 @@ async function renderHeadForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const announcements = await API.get('/announcements');
+    const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
@@ -2750,9 +2810,9 @@ async function renderAdminForms() {
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   try {
     const [forms, orgs, announcements] = await Promise.all([
-      API.get('/forms'),
-      currentUser.role === 'super_admin' ? API.get('/organizations') : Promise.resolve([]),
-      API.get('/announcements').catch(() => [])
+      cachedGet('/forms', CACHE_TTL.medium),
+      currentUser.role === 'super_admin' ? cachedGet('/organizations', CACHE_TTL.long) : Promise.resolve([]),
+      cachedGet('/announcements', CACHE_TTL.medium).catch(() => [])
     ]);
 
     const orgFilterHTML = currentUser.role === 'super_admin' ? `
@@ -2856,7 +2916,7 @@ async function adminDeleteForm(formId, title) {
 async function showAdminCreateFormModal() {
   let orgs = [];
   if (currentUser.role === 'super_admin') {
-    try { orgs = await API.get('/organizations'); } catch (e) { orgs = []; }
+    try { orgs = await cachedGet('/organizations', CACHE_TTL.long); } catch (e) { orgs = []; }
   }
 
   const orgPickerHTML = currentUser.role === 'super_admin' ? `
@@ -2992,7 +3052,7 @@ async function createAdminForm() {
 async function renderAdminHome() {
   const isOrgAdmin = currentUser.role === 'org_admin';
   const [stats, periodTrend] = await Promise.all([
-    API.get('/admin/stats'),
+    cachedGet('/admin/stats'),
     isOrgAdmin ? API.get('/admin/org-period-trend').catch(() => []) : Promise.resolve([])
   ]);
   const el = document.getElementById('contentArea');
@@ -3187,7 +3247,7 @@ async function renderAdminOrgs() {
   // Force direct API call without org filter
   const savedOrg = currentOrg;
   currentOrg = null; // Temporarily disable org filtering
-  const orgs = await API.get('/organizations');
+  const orgs = await cachedGet('/organizations', CACHE_TTL.long);
   currentOrg = savedOrg; // Restore org filter
 
   // Cache orgs for editing
@@ -3430,7 +3490,7 @@ async function showCreateUser() {
   let orgOptions = '';
   if (currentUser && currentUser.role === 'super_admin') {
     try {
-      const orgs = await API.get('/organizations');
+      const orgs = await cachedGet('/organizations', CACHE_TTL.long);
       orgOptions = orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
     } catch (_) {}
   }
@@ -3613,7 +3673,7 @@ async function deleteUser(userId, userName) {
 }
 
 async function renderAdminTerms() {
-  const terms = await API.get('/admin/terms');
+  const terms = await cachedGet('/admin/terms', CACHE_TTL.medium);
   const el = document.getElementById('contentArea');
 
   el.innerHTML = `
@@ -3898,7 +3958,7 @@ async function renderAdminClassrooms() {
 }
 
 function showCreateClassroom() {
-  API.get('/admin/teachers').then(teachers => {
+  cachedGet('/admin/teachers', CACHE_TTL.medium).then(teachers => {
     openModal(`
       <div class="modal-header"><h3>${t('admin.create_classroom_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
@@ -3944,7 +4004,7 @@ async function createClassroom() {
 }
 
 function editClassroom(classroom) {
-  API.get('/admin/teachers').then(teachers => {
+  cachedGet('/admin/teachers', CACHE_TTL.medium).then(teachers => {
     openModal(`
       <div class="modal-header"><h3>${t('admin.edit_classroom_title', {subject: classroom.subject})}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
       <div class="modal-body">
@@ -4092,7 +4152,7 @@ async function renderAdminModerate() {
             ${r.feedback_text ? `<div class="review-text" style="margin-bottom:12px">${r.feedback_text}</div>` : `<p style="color:var(--gray-400);font-size:0.85rem;font-style:italic;margin-bottom:12px">${t('review.no_written_feedback')}</p>`}
             ${JSON.parse(r.tags || '[]').length > 0 ? `
               <div class="review-tags" style="margin-bottom:16px">
-                ${JSON.parse(r.tags).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                ${JSON.parse(r.tags).map(tag => `<span class="tag">${translateTag(tag)}</span>`).join('')}
               </div>
             ` : ''}
             <div style="display:flex;gap:8px;margin-top:16px">
@@ -4206,6 +4266,7 @@ async function moderateReview(id, action) {
   try {
     await API.put(`/admin/reviews/${id}/${action}`);
     toast(action === 'approve' ? t('admin.review_approved') : t('admin.review_rejected'));
+    invalidateCache('/admin/stats', '/dashboard');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4216,6 +4277,7 @@ async function bulkApproveAll(reviewIds) {
   try {
     await API.post('/admin/reviews/bulk-approve', { review_ids: reviewIds });
     toast(t('admin.bulk_approved', {count: reviewIds.length}), 'success');
+    invalidateCache('/admin/stats', '/dashboard');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4242,6 +4304,7 @@ async function approveSelectedReviews() {
   try {
     await API.post('/admin/reviews/bulk-approve', { review_ids: ids });
     toast(t('moderate.approved_selected_toast', {count: ids.length}), 'success');
+    invalidateCache('/admin/stats', '/dashboard');
     renderAdminModerate();
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -4258,6 +4321,7 @@ async function deleteReview(id) {
   try {
     await API.delete(`/admin/reviews/${id}`);
     toast(t('admin.review_deleted'));
+    invalidateCache('/admin/stats', '/dashboard');
     if (currentView === 'admin-moderate') renderAdminModerate();
     else if (currentView === 'admin-flagged') renderAdminFlagged();
   } catch (err) { toast(err.message, 'error'); }
@@ -4315,7 +4379,7 @@ async function saveTeacherEdit(teacherId) {
 // ============ ADMIN: TEACHER FEEDBACK VIEWER ============
 async function renderAdminTeachers() {
   const [teachers, inviteData] = await Promise.all([
-    API.get('/admin/teachers'),
+    cachedGet('/admin/teachers', CACHE_TTL.medium),
     currentUser.role === 'org_admin' ? API.get('/admin/invite-code').catch(e => ({ error: e.message })) : Promise.resolve(null)
   ]);
   const el = document.getElementById('contentArea');
@@ -5599,7 +5663,7 @@ async function renderAdminAnnouncements() {
   const el = document.getElementById('contentArea');
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const announcements = await API.get('/announcements');
+    const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
@@ -5618,7 +5682,7 @@ async function renderTeacherAnnouncements() {
   const el = document.getElementById('contentArea');
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const announcements = await API.get('/announcements');
+    const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
@@ -5637,7 +5701,7 @@ async function renderHeadAnnouncements() {
   const el = document.getElementById('contentArea');
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const announcements = await API.get('/announcements');
+    const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>

@@ -805,5 +805,21 @@
   "common.failed_update_org": "Failed to update organization",
   "common.failed_load_members": "Failed to load members",
   "common.failed_delete_org": "Failed to delete organization",
-  "common.failed_remove_member": "Failed to remove member"
+  "common.failed_remove_member": "Failed to remove member",
+  "tag.clear_explanations": "Clear explanations",
+  "tag.engaging_lessons": "Engaging lessons",
+  "tag.fair_grading": "Fair grading",
+  "tag.supportive": "Supportive",
+  "tag.well_prepared": "Well-prepared",
+  "tag.good_examples": "Good examples",
+  "tag.encourages_participation": "Encourages participation",
+  "tag.respectful": "Respectful",
+  "tag.needs_clearer_explanations": "Needs clearer explanations",
+  "tag.too_fast_paced": "Too fast-paced",
+  "tag.too_slow_paced": "Too slow-paced",
+  "tag.more_examples_needed": "More examples needed",
+  "tag.more_interactive": "More interactive",
+  "tag.better_organization": "Better organization",
+  "tag.more_feedback_needed": "More feedback needed",
+  "tag.challenging_but_good": "Challenging but good"
 }
