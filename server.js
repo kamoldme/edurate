@@ -140,6 +140,9 @@ app.get('/', (req, res) => {
 // Static files (AFTER specific routes)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Health check endpoint (must be before 404 handler)
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 // 404 handler
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
@@ -154,9 +157,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  EduRate Server running on port ${PORT}\n`);
+});
+
+// Prevent process crash from unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
 });
