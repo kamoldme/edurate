@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logAuditEvent } = require('../utils/audit');
+const { createNotifications } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -342,6 +343,27 @@ router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admi
     const deadline = req.body.deadline !== undefined ? (req.body.deadline || null) : form.deadline;
 
     db.prepare('UPDATE forms SET title = ?, description = ?, status = ?, deadline = ? WHERE id = ?').run(title, description, status, deadline, form.id);
+
+    // Notify enrolled students when a form is activated
+    if (status === 'active' && form.status !== 'active') {
+      const classrooms = db.prepare('SELECT classroom_id FROM form_classrooms WHERE form_id = ?').all(form.id);
+      if (classrooms.length > 0) {
+        const cids = classrooms.map(c => c.classroom_id);
+        const members = db.prepare(
+          `SELECT DISTINCT student_id AS user_id FROM classroom_members WHERE classroom_id IN (${cids.map(() => '?').join(',')})`
+        ).all(...cids);
+        const userIds = members.map(m => m.user_id);
+        createNotifications({
+          userIds,
+          orgId: form.org_id,
+          type: 'form_active',
+          title: `New form available: "${form.title}"`,
+          body: form.description ? form.description.slice(0, 80) : 'A new form is ready for you to fill out.',
+          link: 'student-forms'
+        });
+      }
+    }
+
     res.json(db.prepare('SELECT * FROM forms WHERE id = ?').get(form.id));
   } catch (err) {
     console.error('Update form error:', err);

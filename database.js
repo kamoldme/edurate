@@ -742,4 +742,28 @@ try {
   console.error('Migration error (announcements):', err.message);
 }
 
+// Migration: in-app notifications
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS in_app_notifications (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      org_id     INTEGER REFERENCES organizations(id)  ON DELETE CASCADE,
+      type       TEXT NOT NULL CHECK(type IN (
+                   'announcement', 'form_active',
+                   'period_open', 'review_approved')),
+      title      TEXT NOT NULL,
+      body       TEXT,
+      link       TEXT,
+      read       INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_notif_user    ON in_app_notifications(user_id, read);
+    CREATE INDEX IF NOT EXISTS idx_notif_org     ON in_app_notifications(org_id);
+    CREATE INDEX IF NOT EXISTS idx_notif_created ON in_app_notifications(created_at);
+  `);
+} catch (err) {
+  console.error('Migration error (notifications):', err.message);
+}
+
 module.exports = db;

@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await I18n.setLocale(data.user.language);
     }
     setupUI();
+    startNotifPolling();
     navigateTo(getDefaultView());
   } catch {
     logout();
@@ -79,11 +80,32 @@ function setupUI() {
   const avatar = document.getElementById('userAvatar');
   avatar.textContent = u.full_name.split(' ').map(n => n[0]).join('');
 
+  // Notification bell (all roles)
+  const bellHTML = `
+    <div class="notif-bell-wrap">
+      <button id="notifBellBtn" onclick="toggleNotifPanel(event)" title="Notifications"
+        style="position:relative;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;cursor:pointer;display:flex;align-items:center;color:#64748b">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span id="notifBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.65rem;font-weight:700;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></span>
+      </button>
+      <div id="notifPanel" class="notif-panel">
+        <div class="notif-panel-header">
+          <h4>Notifications</h4>
+          <button onclick="markAllNotifsRead()">Mark all read</button>
+        </div>
+        <div id="notifList"><div class="notif-empty">Loading…</div></div>
+      </div>
+    </div>`;
+
   // Add org switcher for super_admin
   const topBarActions = document.getElementById('topBarActions');
   if (u.role === 'super_admin') {
     topBarActions.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;">
+        ${bellHTML}
         <button id="appNotifBtn" onclick="navigateTo('admin-applications')" title="${t('admin.org_applications')}"
           style="position:relative;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;cursor:pointer;display:flex;align-items:center;color:#64748b">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -101,13 +123,16 @@ function setupUI() {
     loadApplicationBadge();
   } else if (u.org_name) {
     topBarActions.innerHTML = `
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--gray-100);border-radius:8px;border:1px solid var(--gray-200)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <span style="font-size:0.82rem;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${u.org_name}</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${bellHTML}
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--gray-100);border-radius:8px;border:1px solid var(--gray-200)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span style="font-size:0.82rem;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${u.org_name}</span>
+        </div>
       </div>
     `;
   } else {
-    topBarActions.innerHTML = '';
+    topBarActions.innerHTML = `<div style="display:flex;align-items:center;gap:8px;">${bellHTML}</div>`;
   }
 
   buildNavigation();
@@ -127,6 +152,105 @@ async function loadApplicationBadge() {
     }
   } catch (err) { /* silently ignore */ }
 }
+
+// ============ NOTIFICATIONS ============
+
+let _notifPollTimer = null;
+
+function startNotifPolling() {
+  loadNotifBadge();
+  if (_notifPollTimer) clearInterval(_notifPollTimer);
+  _notifPollTimer = setInterval(loadNotifBadge, 30000);
+}
+
+async function loadNotifBadge() {
+  try {
+    const { count } = await API.get('/notifications/unread-count');
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.style.display = count > 0 ? 'block' : 'none';
+  } catch (e) { /* silent */ }
+}
+
+function toggleNotifPanel(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('notifPanel');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+  } else {
+    panel.classList.add('open');
+    renderNotifList();
+  }
+}
+
+async function renderNotifList() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  try {
+    const notifs = await API.get('/notifications');
+    if (notifs.length === 0) {
+      list.innerHTML = '<div class="notif-empty">You\'re all caught up!</div>';
+      return;
+    }
+    list.innerHTML = notifs.map(n => {
+      const timeAgo = formatNotifTime(n.created_at);
+      return `<div class="notif-item ${n.read ? '' : 'unread'}" onclick="handleNotifClick(${n.id}, '${n.link || ''}')">
+        ${!n.read ? '<div class="notif-dot"></div>' : '<div style="width:8px;flex-shrink:0"></div>'}
+        <div class="notif-item-body">
+          <div class="notif-title">${escapeHtml(n.title)}</div>
+          ${n.body ? `<div class="notif-preview">${escapeHtml(n.body)}</div>` : ''}
+          <div class="notif-time">${timeAgo}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="notif-empty">Failed to load notifications.</div>';
+  }
+}
+
+async function handleNotifClick(id, link) {
+  document.getElementById('notifPanel')?.classList.remove('open');
+  try { await API.patch(`/notifications/${id}/read`, {}); } catch (e) { /* silent */ }
+  invalidateCache('/notifications');
+  loadNotifBadge();
+  if (link) navigateTo(link);
+}
+
+async function markAllNotifsRead() {
+  try {
+    await API.patch('/notifications/read-all', {});
+    invalidateCache('/notifications');
+    loadNotifBadge();
+    const list = document.getElementById('notifList');
+    if (list) list.querySelectorAll('.notif-item.unread').forEach(el => {
+      el.classList.remove('unread');
+      el.querySelector('.notif-dot')?.replaceWith(Object.assign(document.createElement('div'), { style: 'width:8px;flex-shrink:0' }));
+    });
+  } catch (e) { /* silent */ }
+}
+
+function formatNotifTime(dateStr) {
+  const diff = Math.floor((Date.now() - new Date(dateStr + 'Z').getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notifPanel');
+  if (panel && panel.classList.contains('open') && !panel.closest('.notif-bell-wrap')?.contains(e.target)) {
+    panel.classList.remove('open');
+  }
+});
 
 async function loadOrganizations() {
   try {

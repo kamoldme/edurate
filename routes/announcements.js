@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { logAuditEvent } = require('../utils/audit');
+const { createNotifications } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -150,6 +151,27 @@ router.post('/', authenticate, authorize('super_admin', 'org_admin', 'school_hea
       metadata: { target_type: effectiveTargetType, classroom_ids },
       ipAddress: req.ip, orgId: announcementOrgId
     });
+
+    // Notify affected users (non-fatal — errors are swallowed inside createNotifications)
+    const notifBody = content.length > 100 ? content.slice(0, 97) + '…' : content;
+    if (effectiveTargetType === 'classrooms' && classroom_ids?.length) {
+      const members = db.prepare(
+        `SELECT DISTINCT student_id AS user_id FROM classroom_members WHERE classroom_id IN (${classroom_ids.map(() => '?').join(',')})`
+      ).all(...classroom_ids);
+      const teachers = db.prepare(
+        `SELECT DISTINCT teacher_id AS user_id_raw FROM classrooms WHERE id IN (${classroom_ids.map(() => '?').join(',')})`
+      ).all(...classroom_ids);
+      const teacherUserIds = teachers.map(r => {
+        const t = db.prepare('SELECT user_id FROM teachers WHERE id = ?').get(r.user_id_raw);
+        return t ? t.user_id : null;
+      }).filter(Boolean);
+      const userIds = [...new Set([...members.map(m => m.user_id), ...teacherUserIds])].filter(id => id !== userId);
+      createNotifications({ userIds, orgId: announcementOrgId, type: 'announcement', title: title.trim(), body: notifBody, link: 'student-forms' });
+    } else if (announcementOrgId) {
+      const members = db.prepare('SELECT user_id FROM user_organizations WHERE org_id = ?').all(announcementOrgId);
+      const userIds = members.map(m => m.user_id).filter(id => id !== userId);
+      createNotifications({ userIds, orgId: announcementOrgId, type: 'announcement', title: title.trim(), body: notifBody, link: 'student-forms' });
+    }
 
     const created = db.prepare('SELECT * FROM announcements WHERE id = ?').get(announcementId);
     res.status(201).json(created);

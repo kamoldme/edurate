@@ -4,6 +4,7 @@ const db = require('../database');
 const { authenticate, authorize, authorizeOrg, ROLE_HIERARCHY } = require('../middleware/auth');
 const { sanitizeInput } = require('../utils/moderation');
 const { logAuditEvent, getAuditLogs, getAuditStats } = require('../utils/audit');
+const { createNotifications } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -673,6 +674,21 @@ router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_
       orgId: req.orgId
     });
 
+    // Notify all org members when a feedback period is opened
+    if (active_status === 1 && period.org_id) {
+      const members = db.prepare('SELECT user_id FROM user_organizations WHERE org_id = ?').all(period.org_id);
+      const userIds = members.map(m => m.user_id).filter(id => id !== req.user.id);
+      const periodName = name || period.name;
+      createNotifications({
+        userIds,
+        orgId: period.org_id,
+        type: 'period_open',
+        title: `Feedback period "${periodName}" is now open`,
+        body: 'You can now submit teacher reviews.',
+        link: 'student-review'
+      });
+    }
+
     res.json(updated);
   } catch (err) {
     console.error('Update period error:', err);
@@ -826,6 +842,19 @@ router.put('/reviews/:id/approve', authenticate, authorize('super_admin', 'org_a
         ipAddress: req.ip,
         orgId: req.orgId
       });
+
+      // Notify the teacher whose review was approved
+      const teacher = db.prepare('SELECT user_id FROM teachers WHERE id = ?').get(review.teacher_id);
+      if (teacher) {
+        createNotifications({
+          userIds: [teacher.user_id],
+          orgId: review.review_org_id,
+          type: 'review_approved',
+          title: 'A student review has been approved',
+          body: `Rating: ${review.overall_rating}/5`,
+          link: 'teacher-feedback'
+        });
+      }
     }
 
     res.json({ message: 'Review approved' });
