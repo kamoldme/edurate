@@ -1584,36 +1584,39 @@ tbody tr:last-child td { border-bottom: none; }
 
 .help-doc-card {
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  background: var(--gray-50);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
-  transition: box-shadow 0.15s;
+  flex-direction: column;
+  gap: 10px;
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
 }
 
-.help-doc-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+.help-doc-card:hover {
+  box-shadow: 0 6px 24px rgba(37,99,235,0.12);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
 
 .help-doc-icon {
-  font-size: 1.6rem;
+  font-size: 2rem;
   line-height: 1;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .help-doc-body { flex: 1; min-width: 0; }
 
 .help-doc-title {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--gray-800);
   margin-bottom: 6px;
 }
 
 .help-doc-text {
   font-size: 0.85rem;
-  color: var(--gray-600);
+  color: var(--gray-500);
   line-height: 1.55;
 }
 
@@ -1766,7 +1769,7 @@ tbody tr:last-child td { border-bottom: none; }
 @media (max-width: 600px) {
   .help-section-card { padding: 18px 16px; }
   .help-docs-grid { grid-template-columns: 1fr; }
-  .help-doc-card { padding: 14px; }
+  .help-doc-card { padding: 18px 20px; }
   .help-options { grid-template-columns: 1fr; }
   .help-option-card { padding: 20px 18px; }
 }

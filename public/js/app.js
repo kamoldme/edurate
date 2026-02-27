@@ -55,7 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     setupUI();
     startNotifPolling();
-    navigateTo(getDefaultView());
+    const hashView = window.location.hash.slice(1);
+    const validViews = ['student-home','student-classrooms','student-review','student-my-reviews','student-forms','teacher-home','teacher-classrooms','teacher-feedback','teacher-analytics','teacher-forms','head-home','head-teachers','head-classrooms','head-analytics','head-forms','admin-home','admin-orgs','admin-applications','admin-users','admin-terms','admin-classrooms','admin-teachers','admin-submissions','admin-moderate','admin-flagged','admin-support','admin-audit','admin-forms','admin-departments','account','help'];
+    navigateTo(hashView && validViews.includes(hashView) ? hashView : getDefaultView());
   } catch {
     logout();
   }
@@ -422,6 +424,7 @@ async function switchLanguage(lang) {
 // ============ NAVIGATION ============
 function navigateTo(view) {
   currentView = view;
+  window.location.hash = view;
   destroyCharts();
   document.querySelectorAll('.nav-item[data-view]').forEach(el => {
     el.classList.toggle('active', el.dataset.view === view);
