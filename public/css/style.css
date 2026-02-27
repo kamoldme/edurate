@@ -1544,3 +1544,130 @@ tbody tr:last-child td { border-bottom: none; }
   .modal { transition: none; }
   .toast { animation: none; }
 }
+
+/* ============ HELP TAB ============ */
+.help-wrap { max-width: 900px; }
+
+.help-section-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  padding: 28px 32px;
+}
+
+.help-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--gray-100);
+}
+
+.help-form-card {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  margin-top: 20px;
+}
+
+/* Help documentation grid */
+.help-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.help-doc-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  transition: box-shadow 0.15s;
+}
+
+.help-doc-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+
+.help-doc-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.help-doc-body { flex: 1; min-width: 0; }
+
+.help-doc-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 6px;
+}
+
+.help-doc-text {
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  line-height: 1.55;
+}
+
+/* ============ DEPARTMENTS ============ */
+.dept-card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dept-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  border-color: var(--primary);
+}
+
+.dept-card-top {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.dept-card-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dept-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 4px;
+}
+
+.dept-card-meta {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+}
+
+.dept-card-footer {
+  border-top: 1px solid var(--gray-100);
+  padding-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+  .help-section-card { padding: 18px 16px; }
+  .help-docs-grid { grid-template-columns: 1fr; }
+  .help-doc-card { padding: 14px; }
+}

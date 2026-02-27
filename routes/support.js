@@ -3,6 +3,7 @@ const db = require('../database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { sanitizeInput } = require('../utils/moderation');
 const { logAuditEvent } = require('../utils/audit');
+const { createNotifications } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -58,6 +59,21 @@ router.post('/message', authenticate, (req, res) => {
       targetId: result.lastInsertRowid,
       metadata: { category, subject: sanitizedSubject },
       ipAddress: req.ip
+    });
+
+    // Notify super_admins and the org's org_admin
+    const superAdmins = db.prepare("SELECT id FROM users WHERE role = 'super_admin'").all().map(u => u.id);
+    const orgAdmins = req.user.org_id
+      ? db.prepare("SELECT id FROM users WHERE org_id = ? AND role = 'org_admin'").all(req.user.org_id).map(u => u.id)
+      : [];
+    const adminUserIds = [...new Set([...superAdmins, ...orgAdmins])].filter(id => id !== req.user.id);
+    createNotifications({
+      userIds: adminUserIds,
+      orgId: req.user.org_id || null,
+      type: 'support_new',
+      title: 'New support message',
+      body: sanitizedSubject,
+      link: 'admin-support'
     });
 
     res.status(201).json({

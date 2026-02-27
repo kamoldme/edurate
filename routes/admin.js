@@ -1700,6 +1700,19 @@ router.put('/support/messages/:id', authenticate, authorize('super_admin', 'org_
     });
 
     const updated = db.prepare('SELECT * FROM support_messages WHERE id = ?').get(req.params.id);
+
+    // Notify the submitter when their message is resolved
+    if (status === 'resolved' && message.user_id) {
+      createNotifications({
+        userIds: [message.user_id],
+        orgId: message.org_id || null,
+        type: 'support_resolved',
+        title: 'Your support request has been resolved',
+        body: message.subject,
+        link: 'help'
+      });
+    }
+
     res.json(updated);
   } catch (err) {
     console.error('Update support message error:', err);

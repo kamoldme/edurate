@@ -394,4 +394,97 @@ router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 's
   }
 });
 
+// GET /api/dashboard/departments/:name - detail analytics for one department
+router.get('/departments/:name', authenticate, authorize('school_head', 'super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+  try {
+    const orgId = req.orgId;
+    if (!orgId && req.user.role !== 'super_admin') {
+      return res.status(400).json({ error: 'Organization context required' });
+    }
+
+    const deptName = decodeURIComponent(req.params.name);
+
+    // Teachers in this department
+    const teachers = db.prepare(
+      `SELECT * FROM teachers WHERE department = ? ${orgId ? 'AND org_id = ?' : ''}`
+    ).all(...(orgId ? [deptName, orgId] : [deptName]));
+
+    if (teachers.length === 0) {
+      return res.json({ dept_name: deptName, teachers: [], trend: [], org_averages: null });
+    }
+
+    const teacherIds = teachers.map(t => t.id);
+    const placeholders = teacherIds.map(() => '?').join(',');
+
+    // Per-teacher criterion scores (all-time approved)
+    const scoresData = db.prepare(`
+      SELECT r.teacher_id,
+        COUNT(*) as review_count,
+        ROUND(AVG(r.clarity_rating), 2) as avg_clarity,
+        ROUND(AVG(r.engagement_rating), 2) as avg_engagement,
+        ROUND(AVG(r.fairness_rating), 2) as avg_fairness,
+        ROUND(AVG(r.supportiveness_rating), 2) as avg_supportiveness,
+        ROUND(AVG(r.preparation_rating), 2) as avg_preparation,
+        ROUND(AVG(r.workload_rating), 2) as avg_workload,
+        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
+               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as avg_overall
+      FROM reviews r
+      WHERE r.approved_status = 1 AND r.teacher_id IN (${placeholders}) ${orgId ? 'AND r.org_id = ?' : ''}
+      GROUP BY r.teacher_id
+    `).all(...teacherIds, ...(orgId ? [orgId] : []));
+
+    const scoreMap = {};
+    scoresData.forEach(s => { scoreMap[s.teacher_id] = s; });
+
+    const teachersWithScores = teachers.map(t => ({
+      id: t.id,
+      full_name: t.full_name,
+      subject: t.subject,
+      avatar_url: t.avatar_url,
+      ...(scoreMap[t.id] || {
+        review_count: 0, avg_overall: null,
+        avg_clarity: null, avg_engagement: null, avg_fairness: null,
+        avg_supportiveness: null, avg_preparation: null, avg_workload: null
+      })
+    }));
+
+    // Trend: dept avg score per feedback period (all terms, scoped to org)
+    const trend = db.prepare(`
+      SELECT fp.id as period_id, fp.name as period_name, t.name as term_name, t.id as term_id,
+        COUNT(r.id) as review_count,
+        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
+               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6, 2) as avg_score
+      FROM feedback_periods fp
+      JOIN terms t ON fp.term_id = t.id
+      LEFT JOIN reviews r ON r.feedback_period_id = fp.id AND r.approved_status = 1
+        AND r.teacher_id IN (${placeholders})
+      WHERE ${orgId ? 't.org_id = ? AND' : ''} 1=1
+      GROUP BY fp.id ORDER BY t.start_date, fp.id
+    `).all(...teacherIds, ...(orgId ? [orgId] : []));
+
+    // Org-wide averages for radar chart comparison
+    const orgAvg = db.prepare(`
+      SELECT
+        ROUND(AVG(r.clarity_rating), 2) as avg_clarity,
+        ROUND(AVG(r.engagement_rating), 2) as avg_engagement,
+        ROUND(AVG(r.fairness_rating), 2) as avg_fairness,
+        ROUND(AVG(r.supportiveness_rating), 2) as avg_supportiveness,
+        ROUND(AVG(r.preparation_rating), 2) as avg_preparation,
+        ROUND(AVG(r.workload_rating), 2) as avg_workload
+      FROM reviews r
+      WHERE r.approved_status = 1 ${orgId ? 'AND r.org_id = ?' : ''}
+    `).get(...(orgId ? [orgId] : []));
+
+    res.json({
+      dept_name: deptName,
+      teachers: teachersWithScores,
+      trend,
+      org_averages: orgAvg
+    });
+  } catch (err) {
+    console.error('Department analytics error:', err);
+    res.status(500).json({ error: 'Failed to load department analytics' });
+  }
+});
+
 module.exports = router;

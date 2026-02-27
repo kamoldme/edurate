@@ -289,7 +289,9 @@ const ICONS = {
   settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
-  megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>'
+  megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>',
+  help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>',
+  department: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>'
 };
 
 function buildNavigation() {
@@ -303,7 +305,8 @@ function buildNavigation() {
       { id: 'student-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'student-review', label: t('nav.write_review'), icon: 'review' },
       { id: 'student-my-reviews', label: t('nav.my_reviews'), icon: 'chart' },
-      { id: 'student-forms', label: t('nav.announcements'), icon: 'review' }
+      { id: 'student-forms', label: t('nav.announcements'), icon: 'review' },
+      { id: 'help', label: 'Help', icon: 'help' }
     ];
   } else if (role === 'teacher') {
     items = [
@@ -311,7 +314,8 @@ function buildNavigation() {
       { id: 'teacher-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'teacher-feedback', label: t('nav.feedback'), icon: 'review' },
       { id: 'teacher-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'teacher-forms', label: t('nav.forms'), icon: 'review' }
+      { id: 'teacher-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'help', label: 'Help', icon: 'help' }
     ];
   } else if (role === 'school_head') {
     items = [
@@ -319,7 +323,9 @@ function buildNavigation() {
       { id: 'head-teachers', label: t('nav.teachers'), icon: 'users' },
       { id: 'head-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
       { id: 'head-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'head-forms', label: t('nav.forms'), icon: 'review' }
+      { id: 'admin-departments', label: 'Departments', icon: 'department' },
+      { id: 'head-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'help', label: 'Help', icon: 'help' }
     ];
   } else if (role === 'super_admin') {
     items = [
@@ -332,8 +338,10 @@ function buildNavigation() {
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
       { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'admin-departments', label: 'Departments', icon: 'department' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
-      { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
+      { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' },
+      { id: 'help', label: 'Help', icon: 'help' }
     ];
   } else if (role === 'org_admin') {
     items = [
@@ -345,8 +353,10 @@ function buildNavigation() {
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
       { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'admin-departments', label: 'Departments', icon: 'department' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
-      { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' }
+      { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' },
+      { id: 'help', label: 'Help', icon: 'help' }
     ];
   }
 
@@ -382,11 +392,7 @@ function buildNavigation() {
     `<button class="nav-item" data-view="account" onclick="navigateTo('account')">
       ${ICONS.settings}
       ${t('nav.account_details')}
-    </button>
-    ${(role !== 'super_admin' && role !== 'org_admin') ? `<button class="nav-item" onclick="showSupportModal()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
-      ${t('nav.support')}
-    </button>` : ''}</div>` + langSwitcher;
+    </button></div>` + langSwitcher;
 }
 
 function toggleLangDropdown(e) {
@@ -459,7 +465,9 @@ function navigateTo(view) {
     'admin-support': t('title.support_messages'),
     'admin-audit': t('title.audit_logs'),
     'head-forms': t('title.forms'),
-    'account': t('title.account_details')
+    'account': t('title.account_details'),
+    'help': 'Help & Support',
+    'admin-departments': 'Departments'
   };
   document.getElementById('pageTitle').textContent = titles[view] || t('common.dashboard');
 
@@ -492,7 +500,9 @@ function navigateTo(view) {
     'admin-audit': renderAdminAudit,
     'admin-forms': renderAdminForms,
     'head-forms': renderHeadForms,
-    'account': renderAccount
+    'account': renderAccount,
+    'help': renderHelp,
+    'admin-departments': renderAdminDepartments
   };
 
   if (viewFunctions[view]) {
@@ -4621,9 +4631,10 @@ async function saveTeacherEdit(teacherId) {
 
 // ============ ADMIN: TEACHER FEEDBACK VIEWER ============
 async function renderAdminTeachers() {
-  const [teachers, inviteData] = await Promise.all([
+  const [teachers, inviteData, orgDepts] = await Promise.all([
     cachedGet('/admin/teachers', CACHE_TTL.medium),
-    currentUser.role === 'org_admin' ? API.get('/admin/invite-code').catch(e => ({ error: e.message })) : Promise.resolve(null)
+    currentUser.role === 'org_admin' ? API.get('/admin/invite-code').catch(e => ({ error: e.message })) : Promise.resolve(null),
+    currentUser.role === 'org_admin' ? API.get('/departments').catch(() => []) : Promise.resolve([])
   ]);
   const el = document.getElementById('contentArea');
 
@@ -4634,13 +4645,20 @@ async function renderAdminTeachers() {
           <div style="font-weight:600;color:var(--gray-800);margin-bottom:3px">${t('admin.invite_code_title')}</div>
           <div style="font-size:0.82rem;color:var(--gray-500)">${t('admin.invite_code_hint')}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">${inviteData.invite_code || (inviteData.error ? 'Error' : '—')}</code>
-          ${inviteData.invite_code ? `
-            <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">${t('org.copy')}</button>
-            <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="confirmRegenerateInviteCode()">${t('org.regenerate')}</button>
-          ` : ''}
-        </div>
+        ${orgDepts.length === 0 ? `
+          <div style="background:var(--warning-light);border-left:4px solid var(--warning);padding:10px 16px;border-radius:8px;font-size:0.85rem">
+            <strong>Setup required:</strong> Add at least one department before sharing the invite code with teachers.
+            <button class="btn btn-sm btn-primary" style="margin-left:8px;margin-top:4px" onclick="navigateTo('admin-departments')">Manage Departments →</button>
+          </div>
+        ` : `
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <code id="inviteCodeDisplay" style="font-size:1.2rem;font-weight:700;letter-spacing:4px;background:var(--gray-100);padding:7px 14px;border-radius:8px;color:var(--gray-800)">${inviteData.invite_code || (inviteData.error ? 'Error' : '—')}</code>
+            ${inviteData.invite_code ? `
+              <button class="btn btn-sm btn-outline" onclick="copyInviteCode()">${t('org.copy')}</button>
+              <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="confirmRegenerateInviteCode()">${t('org.regenerate')}</button>
+            ` : ''}
+          </div>
+        `}
       </div>
     </div>
   ` : '';
@@ -6282,4 +6300,462 @@ async function deleteAnnouncement(id) {
     const view = currentView;
     if (view) navigateTo(view);
   } catch (err) { toast(err.message, 'error'); }
+}
+
+// ============ HELP TAB ============
+async function renderHelp() {
+  const el = document.getElementById('contentArea');
+  const role = currentUser.role;
+  const isAdmin = role === 'super_admin' || role === 'org_admin';
+
+  el.innerHTML = `
+    <div class="help-wrap">
+      <div class="help-section-card">
+        <h2 class="help-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Contact Support
+        </h2>
+        ${isAdmin ? '<div id="helpInbox">Loading support inbox…</div>' : '<div id="myHelpMessages"></div>'}
+        <div class="help-form-card">
+          <h3 style="margin-bottom:16px;font-size:1rem;color:var(--gray-700)">Send a New Message</h3>
+          <form id="helpSupportForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Category</label>
+                <select class="form-control" id="helpCategory">
+                  <option value="">Select category…</option>
+                  <option value="technical">Technical Issue</option>
+                  <option value="account">Account</option>
+                  <option value="question">Question</option>
+                  <option value="feature">Feature Request</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Subject</label>
+                <input type="text" class="form-control" id="helpSubject" placeholder="Brief description…" maxlength="200">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Message</label>
+              <textarea class="form-control" id="helpMessage" rows="5" placeholder="Describe your issue or question in detail…" maxlength="5000"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Send Message</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="help-section-card" style="margin-top:32px">
+        <h2 class="help-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
+          How to Use EduRate
+        </h2>
+        ${renderHelpDocs(role)}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('helpSupportForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const category = document.getElementById('helpCategory').value;
+    const subject = document.getElementById('helpSubject').value.trim();
+    const message = document.getElementById('helpMessage').value.trim();
+    if (!category || !subject || !message) return toast('Please fill all fields', 'error');
+    if (subject.length < 3) return toast('Subject must be at least 3 characters', 'error');
+    if (message.length < 10) return toast('Message must be at least 10 characters', 'error');
+    try {
+      await API.post('/support/message', { category, subject, message });
+      toast('Message sent! An administrator will review it shortly.', 'success');
+      document.getElementById('helpSupportForm').reset();
+    } catch (err) {
+      toast(err.message || 'Failed to send message', 'error');
+    }
+  });
+
+  if (isAdmin) {
+    try {
+      const [{ messages, total }, stats] = await Promise.all([
+        API.get('/admin/support/messages?limit=15'),
+        API.get('/admin/support/stats')
+      ]);
+      const inboxEl = document.getElementById('helpInbox');
+      if (!inboxEl) return;
+      inboxEl.innerHTML = `
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${stats.total}</div></div>
+          <div class="stat-card" style="background:var(--warning-light);border-left:4px solid var(--warning)"><div class="stat-label">New</div><div class="stat-value">${stats.new}</div></div>
+          <div class="stat-card" style="background:#e3f2fd;border-left:4px solid var(--primary)"><div class="stat-label">In Progress</div><div class="stat-value">${stats.in_progress}</div></div>
+          <div class="stat-card" style="background:var(--success-light);border-left:4px solid var(--success)"><div class="stat-label">Resolved</div><div class="stat-value">${stats.resolved}</div></div>
+        </div>
+        ${messages.length > 0 ? `
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+              <h3>Recent Support Messages</h3>
+              ${total > 15 ? `<button class="btn btn-sm btn-outline" onclick="navigateTo('admin-support')">View all ${total} →</button>` : ''}
+            </div>
+            <div class="card-body" style="overflow-x:auto">
+              <table><thead><tr><th>Date</th><th>User</th><th>Subject</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                ${messages.map(msg => `
+                  <tr>
+                    <td style="white-space:nowrap;font-size:0.82rem">${new Date(msg.created_at).toLocaleDateString()}</td>
+                    <td><strong>${escapeHtml(msg.user_name)}</strong><div style="font-size:0.78rem;color:var(--gray-400)">${msg.user_role}</div></td>
+                    <td style="max-width:240px">${escapeHtml(msg.subject)}</td>
+                    <td><span class="badge ${msg.status === 'new' ? 'badge-flagged' : msg.status === 'in_progress' ? 'badge-pending' : 'badge-approved'}">${msg.status}</span></td>
+                    <td><button class="btn btn-sm btn-outline" onclick="viewSupportMessage(${msg.id})">View</button></td>
+                  </tr>
+                `).join('')}
+              </tbody></table>
+            </div>
+          </div>
+        ` : '<div class="empty-state" style="padding:24px"><p>No support messages yet.</p></div>'}
+      `;
+    } catch (err) { /* silently fail */ }
+  } else {
+    try {
+      const msgs = await API.get('/support/my-messages');
+      const myEl = document.getElementById('myHelpMessages');
+      if (myEl && msgs.length > 0) {
+        myEl.innerHTML = `
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-header"><h3>My Previous Messages</h3></div>
+            <div class="card-body">
+              ${msgs.map(msg => `
+                <div style="padding:12px 0;border-bottom:1px solid var(--gray-100);last-child:border:none">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                    <strong style="font-size:0.95rem">${escapeHtml(msg.subject)}</strong>
+                    <span class="badge ${msg.status === 'new' ? 'badge-flagged' : msg.status === 'in_progress' ? 'badge-pending' : 'badge-approved'}" style="flex-shrink:0">${msg.status}</span>
+                  </div>
+                  <div style="font-size:0.82rem;color:var(--gray-500);margin-top:4px">${new Date(msg.created_at).toLocaleDateString()}</div>
+                  ${msg.admin_notes ? `<div style="margin-top:8px;padding:8px 12px;background:var(--success-light);border-radius:6px;font-size:0.85rem;border-left:3px solid var(--success)"><strong>Admin reply:</strong> ${escapeHtml(msg.admin_notes)}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+    } catch (err) { /* silently fail */ }
+  }
+}
+
+function renderHelpDocs(role) {
+  const sections = {
+    student: [
+      { icon: '🏫', title: 'Joining Classrooms', body: 'Go to <strong>My Classrooms</strong> and click <strong>Join Classroom</strong>. Enter the 6-digit join code provided by your teacher. Once joined, the classroom appears in your list.' },
+      { icon: '⭐', title: 'Writing Reviews', body: 'Navigate to <strong>Write a Review</strong>. Select a classroom, then rate your teacher across 6 criteria (Clarity, Engagement, Fairness, Supportiveness, Preparation, Workload). You can also add optional tags and written feedback.' },
+      { icon: '📋', title: 'My Reviews', body: 'View all reviews you have submitted under <strong>My Reviews</strong>. You can see their approval status and edit a review while it is still pending.' },
+      { icon: '📢', title: 'Announcements & Forms', body: 'Check <strong>Announcements</strong> for messages from your school or teachers. Active forms that require your input will also appear here — submit them before the deadline.' },
+      { icon: '👥', title: 'Classroom Members', body: 'On any classroom card, click <strong>Members</strong> to see who else is enrolled in that class.' },
+      { icon: '🔔', title: 'Notifications', body: 'The bell icon at the top shows in-app notifications. You will be notified when your review is approved. Click a notification to go directly to the related section.' }
+    ],
+    teacher: [
+      { icon: '🏫', title: 'Managing Classrooms', body: 'Go to <strong>My Classrooms</strong> to see all your classes. Click <strong>New Classroom</strong> to create one — give it a subject, grade level, and optionally link it to a term. Share the join code with your students so they can enroll.' },
+      { icon: '📊', title: 'Viewing Student Feedback', body: 'The <strong>Feedback</strong> tab shows all approved reviews for your classes, including criterion scores, written comments, and tags. Only approved reviews are visible to you.' },
+      { icon: '📈', title: 'Analytics', body: 'The <strong>Analytics</strong> tab shows your overall performance scores, score distribution, period-by-period trend, and how you compare to your department average.' },
+      { icon: '📝', title: 'Custom Forms & Announcements', body: 'Under <strong>Forms</strong>, you can create custom questionnaires for your students. Post class-specific announcements to keep students informed.' },
+      { icon: '📄', title: 'PDF Export', body: 'From the Feedback tab, click <strong>Export PDF</strong> to download a professional performance report you can share or print.' },
+      { icon: '🖼️', title: 'Profile & Avatar', body: 'Go to <strong>Account</strong> to update your name, subject, department, and bio. Upload a profile photo (JPG/PNG, max 5 MB) — your avatar appears on classroom cards and your performance report.' }
+    ],
+    school_head: [
+      { icon: '📊', title: 'Teacher Performance Overview', body: 'The <strong>Dashboard</strong> shows all teachers in your organization with their overall scores, review counts, and trend directions. Click a teacher row to see their detailed breakdown.' },
+      { icon: '🏢', title: 'Department Analytics', body: 'The <strong>Departments</strong> tab lists all departments. Click a department card to view: a Criterion Radar comparing your department to the org average, a Teacher Ranking bar chart, and a Trend line showing improvement over time.' },
+      { icon: '🏫', title: 'Classroom Management', body: 'View all classrooms across your organization under <strong>Classrooms</strong>. See enrollment counts and which term each classroom belongs to.' },
+      { icon: '📢', title: 'Announcements', body: 'Post announcements to your entire organization or specific classrooms via the <strong>Forms</strong> tab.' },
+      { icon: '📄', title: 'Exporting Reports', body: 'From the Teacher Performance view, click <strong>Export PDF</strong> on any teacher to generate a printable report.' }
+    ],
+    org_admin: [
+      { icon: '👥', title: 'Managing Users', body: 'The <strong>Users</strong> tab shows all staff in your organization. You can create new users, edit their roles, reset passwords, and suspend accounts if needed.' },
+      { icon: '📅', title: 'Terms & Feedback Periods', body: 'Under <strong>Terms & Periods</strong>, create academic terms and the feedback periods within them. Only one term and one period can be active at a time. Activating a period notifies all teachers.' },
+      { icon: '🛡️', title: 'Review Moderation', body: 'Approve or flag student reviews under <strong>Moderate Reviews</strong>. Approved reviews become visible to teachers. Flagged reviews are quarantined. Students are notified when their review is approved.' },
+      { icon: '📝', title: 'Forms Management', body: 'Create and manage custom forms under <strong>Forms</strong>. Activate a form to make it available to students or teachers. Deactivating hides it from users.' },
+      { icon: '🏢', title: 'Department Management', body: 'Under <strong>Departments</strong>, create and manage departments for your organization. The teacher invite code is only shown once at least one department exists. Teachers select a department during registration.' },
+      { icon: '📨', title: 'Support Messages', body: 'View and respond to support tickets submitted by your users under <strong>Support Messages</strong>. Update the status (New → In Progress → Resolved) and add admin notes. Users are notified when their ticket is resolved.' },
+      { icon: '🔍', title: 'Audit Logs', body: 'The <strong>Audit Logs</strong> tab records every significant action in your organization — logins, role changes, review approvals, and more. Filter by action type or date range.' },
+      { icon: '⚙️', title: 'Organization Settings', body: 'Your invite code and teacher/student limits are managed from the <strong>Teacher Feedback</strong> tab (invite code) or via the platform admin. To regenerate your invite code, click Regenerate next to it.' }
+    ]
+  };
+
+  const roleSections = sections[role] || sections.school_head;
+
+  return `
+    <div class="help-docs-grid">
+      ${roleSections.map(s => `
+        <div class="help-doc-card">
+          <div class="help-doc-icon">${s.icon}</div>
+          <div class="help-doc-body">
+            <h4 class="help-doc-title">${s.title}</h4>
+            <p class="help-doc-text">${s.body}</p>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ============ DEPARTMENTS ============
+async function renderAdminDepartments() {
+  const el = document.getElementById('contentArea');
+  const role = currentUser.role;
+  const departments = await API.get('/departments');
+
+  const canDelete = role === 'org_admin' || role === 'super_admin';
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <p style="color:var(--gray-500);max-width:560px">Departments help organize your teachers. The invite code is only shown to teachers after at least one department is created.</p>
+      <button class="btn btn-primary" onclick="document.getElementById('addDeptPanel').style.display='block';document.getElementById('newDeptName').focus()">+ Add Department</button>
+    </div>
+
+    <div id="addDeptPanel" style="display:none;margin-bottom:20px" class="card">
+      <div class="card-body">
+        <h3 style="margin-bottom:14px;font-size:1rem">New Department</h3>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:1;min-width:200px;margin:0">
+            <label>Name</label>
+            <input type="text" class="form-control" id="newDeptName" placeholder="e.g. Mathematics, Sciences…" maxlength="80"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();createDepartment();}">
+          </div>
+          <button class="btn btn-primary" onclick="createDepartment()">Add</button>
+          <button class="btn btn-outline" onclick="document.getElementById('addDeptPanel').style.display='none'">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    ${departments.length === 0 ? `
+      <div class="empty-state">
+        <div style="font-size:3rem;margin-bottom:12px">🏢</div>
+        <h3>No Departments Yet</h3>
+        <p>Create your first department so teachers can select one when registering with your invite code.</p>
+        <div style="margin-top:20px;padding:14px 18px;background:var(--warning-light);border-radius:8px;border-left:4px solid var(--warning);text-align:left;max-width:440px;margin-inline:auto">
+          <strong>Note:</strong> Your invite code is hidden from the teacher registration flow until at least one department is created.
+        </div>
+      </div>
+    ` : `
+      <div class="grid grid-3" id="deptCardGrid">
+        ${departments.map(d => `
+          <div class="dept-card" onclick="renderDeptDetail('${d.name.replace(/'/g, "\\'")}')">
+            <div class="dept-card-top">
+              <div class="dept-card-icon">🏢</div>
+              <div style="flex:1">
+                <div class="dept-card-name">${escapeHtml(d.name)}</div>
+                <div class="dept-card-meta">${d.teacher_count} teacher${d.teacher_count !== 1 ? 's' : ''}</div>
+              </div>
+            </div>
+            ${canDelete ? `
+              <div class="dept-card-footer" onclick="event.stopPropagation()">
+                <button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)"
+                  onclick="deleteDepartment(${d.id},'${d.name.replace(/'/g, "\\'")}',${d.teacher_count})">Delete</button>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `}
+  `;
+}
+
+async function createDepartment() {
+  const name = document.getElementById('newDeptName')?.value.trim();
+  if (!name || name.length < 2) return toast('Department name must be at least 2 characters', 'error');
+  try {
+    await API.post('/departments', { name });
+    toast('Department added', 'success');
+    invalidateCache('/departments');
+    renderAdminDepartments();
+  } catch (err) {
+    toast(err.message || 'Failed to add department', 'error');
+  }
+}
+
+async function deleteDepartment(id, name, teacherCount) {
+  if (teacherCount > 0) {
+    return toast(`Cannot delete — ${teacherCount} teacher${teacherCount !== 1 ? 's are' : ' is'} assigned to this department`, 'error');
+  }
+  if (!await confirmDialog(`Delete department "${name}"? This cannot be undone.`, 'Delete')) return;
+  try {
+    await API.delete(`/departments/${id}`);
+    toast('Department deleted', 'success');
+    invalidateCache('/departments');
+    renderAdminDepartments();
+  } catch (err) {
+    toast(err.message || 'Failed to delete department', 'error');
+  }
+}
+
+// ============ DEPARTMENT DETAIL (3 charts) ============
+async function renderDeptDetail(deptName) {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  destroyCharts();
+
+  let data;
+  try {
+    data = await API.get(`/dashboard/departments/${encodeURIComponent(deptName)}`);
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>Failed to load</h3><p>${err.message}</p></div>`;
+    return;
+  }
+
+  const { teachers, trend, org_averages } = data;
+  const criteria = ['clarity', 'engagement', 'fairness', 'supportiveness', 'preparation', 'workload'];
+  const criteriaLabels = ['Clarity', 'Engagement', 'Fairness', 'Supportiveness', 'Preparation', 'Workload'];
+
+  // Dept averages per criterion
+  const validTeachers = teachers.filter(t => t.review_count > 0);
+  const deptCriteriaAvg = criteria.map(c => {
+    const vals = validTeachers.map(t => t[`avg_${c}`]).filter(v => v !== null);
+    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 100) / 100 : 0;
+  });
+  const orgCriteriaAvg = org_averages ? criteria.map(c => org_averages[`avg_${c}`] || 0) : [];
+
+  // Teacher ranking sorted by overall score
+  const ranked = [...teachers].filter(t => t.review_count > 0).sort((a, b) => (b.avg_overall || 0) - (a.avg_overall || 0));
+
+  el.innerHTML = `
+    <div style="margin-bottom:20px">
+      <button class="btn btn-outline btn-sm" onclick="renderAdminDepartments()">← Back to Departments</button>
+    </div>
+    <h2 style="margin-bottom:4px">${escapeHtml(deptName)}</h2>
+    <p style="color:var(--gray-500);margin-bottom:24px">${teachers.length} teacher${teachers.length !== 1 ? 's' : ''} · ${validTeachers.length} with reviews</p>
+
+    ${teachers.length === 0 ? `
+      <div class="empty-state"><h3>No teachers in this department yet.</h3></div>
+    ` : `
+      <div class="grid grid-3" style="margin-bottom:32px">
+        <div class="stat-card"><div class="stat-label">Teachers</div><div class="stat-value">${teachers.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Score</div><div class="stat-value" style="color:${scoreColor(validTeachers.length ? deptCriteriaAvg.reduce((a,b)=>a+b,0)/6 : 0)}">${validTeachers.length ? fmtScore(deptCriteriaAvg.reduce((a,b)=>a+b,0)/6) : '—'}</div></div>
+        <div class="stat-card"><div class="stat-label">Total Reviews</div><div class="stat-value">${teachers.reduce((s,t)=>s+(t.review_count||0),0)}</div></div>
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:32px">
+        <!-- Chart 1: Criterion Radar -->
+        <div class="card">
+          <div class="card-header"><h3>Criterion Comparison vs Org Average</h3></div>
+          <div class="card-body"><div style="position:relative;height:280px"><canvas id="deptRadarChart"></canvas></div></div>
+        </div>
+
+        <!-- Chart 2: Teacher Ranking -->
+        <div class="card">
+          <div class="card-header"><h3>Teacher Ranking</h3></div>
+          <div class="card-body">
+            ${ranked.length === 0 ? '<div class="empty-state"><p>No review data yet.</p></div>' : `
+              <div style="position:relative;height:280px"><canvas id="deptRankChart"></canvas></div>
+            `}
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 3: Trend -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header"><h3>Department Score Trend</h3></div>
+        <div class="card-body">
+          ${trend.length < 2 ? '<div class="empty-state"><p>Not enough data across periods to show a trend yet.</p></div>' : `
+            <div style="position:relative;height:220px"><canvas id="deptTrendChart"></canvas></div>
+          `}
+        </div>
+      </div>
+
+      <!-- Teacher list -->
+      <div class="card">
+        <div class="card-header"><h3>Teachers</h3></div>
+        <div class="card-body" style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Name</th><th>Subject</th><th>Avg Score</th><th>Reviews</th></tr></thead>
+            <tbody>
+              ${teachers.map(t => `
+                <tr>
+                  <td><strong>${escapeHtml(t.full_name)}</strong></td>
+                  <td>${t.subject || '—'}</td>
+                  <td style="font-weight:600;color:${scoreColor(t.avg_overall || 0)}">${t.review_count ? fmtScore(t.avg_overall) : '—'}</td>
+                  <td>${t.review_count || 0}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `}
+  `;
+
+  if (teachers.length === 0 || validTeachers.length === 0) return;
+
+  // Render Chart 1: Radar
+  if (window.Chart && document.getElementById('deptRadarChart')) {
+    const radarDatasets = [{
+      label: escapeHtml(deptName),
+      data: deptCriteriaAvg,
+      backgroundColor: 'rgba(37,99,235,0.15)',
+      borderColor: '#2563eb',
+      borderWidth: 2,
+      pointBackgroundColor: '#2563eb'
+    }];
+    if (org_averages && orgCriteriaAvg.length) {
+      radarDatasets.push({
+        label: 'Org Average',
+        data: orgCriteriaAvg,
+        backgroundColor: 'rgba(100,116,139,0.1)',
+        borderColor: '#94a3b8',
+        borderWidth: 2,
+        borderDash: [4, 4],
+        pointBackgroundColor: '#94a3b8'
+      });
+    }
+    const radarChart = new Chart(document.getElementById('deptRadarChart'), {
+      type: 'radar',
+      data: { labels: criteriaLabels, datasets: radarDatasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, font: { size: 11 } }, pointLabels: { font: { size: 12 } } } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+    if (typeof registerChart === 'function') registerChart(radarChart);
+  }
+
+  // Render Chart 2: Horizontal bar ranking
+  if (window.Chart && ranked.length > 0 && document.getElementById('deptRankChart')) {
+    const colors = ranked.map(t => {
+      const s = t.avg_overall || 0;
+      return s >= 4 ? '#22c55e' : s >= 3 ? '#f59e0b' : '#ef4444';
+    });
+    const rankChart = new Chart(document.getElementById('deptRankChart'), {
+      type: 'bar',
+      data: {
+        labels: ranked.map(t => t.full_name.split(' ')[0]),
+        datasets: [{ label: 'Avg Score', data: ranked.map(t => t.avg_overall || 0), backgroundColor: colors }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        scales: { x: { min: 0, max: 5, ticks: { stepSize: 1 } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+    if (typeof registerChart === 'function') registerChart(rankChart);
+  }
+
+  // Render Chart 3: Trend line
+  if (window.Chart && trend.length >= 2 && document.getElementById('deptTrendChart')) {
+    const trendWithScore = trend.filter(p => p.avg_score !== null);
+    const trendChart = new Chart(document.getElementById('deptTrendChart'), {
+      type: 'line',
+      data: {
+        labels: trendWithScore.map(p => p.period_name),
+        datasets: [{
+          label: `${escapeHtml(deptName)} Avg`,
+          data: trendWithScore.map(p => p.avg_score),
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37,99,235,0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { y: { min: 0, max: 5, ticks: { stepSize: 1 } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+    if (typeof registerChart === 'function') registerChart(trendChart);
+  }
 }

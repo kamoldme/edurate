@@ -99,6 +99,14 @@
     .resend-link a:hover { text-decoration: underline; }
     .resend-link a.disabled { color: #94a3b8; pointer-events: none; }
     #step2 { display: none; }
+    .dept-select { margin-bottom: 18px; }
+    .dept-select label { display: block; color: #334155; font-size: 0.875rem; font-weight: 500; margin-bottom: 6px; }
+    .dept-select select {
+      width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px;
+      font-size: 0.95rem; font-family: inherit; background: #fff; outline: none;
+      transition: border-color 0.2s; -webkit-appearance: none;
+    }
+    .dept-select select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
 
     @media (max-width: 768px) {
       body { padding: 16px; }
@@ -183,6 +191,12 @@
         <p class="subtitle">We sent a 6-digit code to <strong id="emailDisplay"></strong></p>
         <div class="timer" id="timer">Code expires in <strong id="countdown">10:00</strong></div>
         <form id="step2Form">
+          <div id="deptSelectWrap" class="dept-select" style="display:none">
+            <label for="dept_select">Select your department <span style="color:#dc2626">*</span></label>
+            <select id="dept_select" required>
+              <option value="">— Choose a department —</option>
+            </select>
+          </div>
           <div class="form-group">
             <input type="text" id="code" class="code-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required>
           </div>
@@ -201,6 +215,7 @@
 
   <script>
     let formData = {};
+    let orgDepartments = [];
     let countdownInterval = null;
     let resendCooldown = null;
 
@@ -218,19 +233,31 @@
     }
 
     function saveState() {
-      sessionStorage.setItem('edurate_teacher_reg', JSON.stringify({ formData, codeSentAt: Date.now() }));
+      sessionStorage.setItem('edurate_teacher_reg', JSON.stringify({ formData, departments: orgDepartments, codeSentAt: Date.now() }));
     }
     function clearState() {
       sessionStorage.removeItem('edurate_teacher_reg');
     }
 
-    function showStep2() {
+    function showStep2(departments) {
       document.getElementById('step1').style.display = 'none';
       document.getElementById('step2').style.display = 'block';
       document.getElementById('emailDisplay').textContent = formData.email;
       document.getElementById('dot1').className = 'step-dot done';
       document.getElementById('dot2').className = 'step-dot active';
       document.getElementById('line1').className = 'step-line active';
+
+      // Populate department select if departments provided
+      orgDepartments = departments || orgDepartments || [];
+      const wrap = document.getElementById('deptSelectWrap');
+      const sel = document.getElementById('dept_select');
+      if (orgDepartments.length > 0) {
+        sel.innerHTML = '<option value="">— Choose a department —</option>' +
+          orgDepartments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        wrap.style.display = '';
+      } else {
+        wrap.style.display = 'none';
+      }
     }
     function showStep1() {
       document.getElementById('step1').style.display = 'block';
@@ -238,6 +265,7 @@
       document.getElementById('dot1').className = 'step-dot active';
       document.getElementById('dot2').className = 'step-dot';
       document.getElementById('line1').className = 'step-line';
+      orgDepartments = [];
     }
 
     function startCountdown(remainingSeconds) {
@@ -294,11 +322,12 @@
         const remaining = 600 - elapsed;
         if (remaining <= 0) { clearState(); return; }
         formData = state.formData;
+        orgDepartments = state.departments || [];
         document.getElementById('full_name').value = formData.full_name || '';
         document.getElementById('email').value = formData.email || '';
         document.getElementById('password').value = formData.password || '';
         document.getElementById('invite_code').value = formData.invite_code || '';
-        showStep2();
+        showStep2(orgDepartments);
         startCountdown(remaining);
         enableResendAfter(0);
       } catch { clearState(); }
@@ -343,7 +372,7 @@
           btn.textContent = 'Send Verification Code';
           return;
         }
-        showStep2();
+        showStep2(data.departments || []);
         saveState();
         document.getElementById('code').value = '';
         document.getElementById('code').focus();
@@ -368,15 +397,28 @@
         showError('Please enter a valid 6-digit code');
         return;
       }
+
+      // Validate department if required
+      const deptSel = document.getElementById('dept_select');
+      if (orgDepartments.length > 0 && !deptSel.value) {
+        showError('Please select your department');
+        return;
+      }
+
       btn.disabled = true;
       btn.textContent = 'Verifying...';
+
+      const payload = { ...formData, code };
+      if (orgDepartments.length > 0 && deptSel.value) {
+        payload.department_id = parseInt(deptSel.value);
+      }
 
       try {
         const res = await fetch('/api/auth/register-teacher', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ ...formData, code })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (!res.ok) {

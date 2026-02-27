@@ -742,7 +742,7 @@ try {
   console.error('Migration error (announcements):', err.message);
 }
 
-// Migration: in-app notifications
+// Migration: in-app notifications (initial create)
 try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS in_app_notifications (
@@ -764,6 +764,70 @@ try {
   `);
 } catch (err) {
   console.error('Migration error (notifications):', err.message);
+}
+
+// Migration: extend notification types to include support events
+try {
+  const notifCols = db.prepare("PRAGMA table_info(in_app_notifications)").all();
+  const hasTable = notifCols.length > 0;
+  if (hasTable) {
+    // Check if the CHECK constraint already includes support types by attempting a dry-run insert
+    // Easiest reliable check: recreate only if 'support_new' not in allowed types
+    // We detect by trying a temporary insert and rolling back
+    let needsMigration = false;
+    try {
+      db.prepare("INSERT INTO in_app_notifications (user_id, type, title) VALUES (0, 'support_new', 'test')").run();
+      db.prepare("DELETE FROM in_app_notifications WHERE user_id = 0 AND type = 'support_new'").run();
+    } catch (e) {
+      needsMigration = true;
+    }
+    if (needsMigration) {
+      db.exec(`
+        PRAGMA foreign_keys = OFF;
+        BEGIN;
+        CREATE TABLE in_app_notifications_new (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          org_id     INTEGER REFERENCES organizations(id)  ON DELETE CASCADE,
+          type       TEXT NOT NULL CHECK(type IN (
+                       'announcement', 'form_active', 'period_open',
+                       'review_approved', 'support_new', 'support_resolved')),
+          title      TEXT NOT NULL,
+          body       TEXT,
+          link       TEXT,
+          read       INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO in_app_notifications_new SELECT * FROM in_app_notifications;
+        DROP TABLE in_app_notifications;
+        ALTER TABLE in_app_notifications_new RENAME TO in_app_notifications;
+        CREATE INDEX IF NOT EXISTS idx_notif_user    ON in_app_notifications(user_id, read);
+        CREATE INDEX IF NOT EXISTS idx_notif_org     ON in_app_notifications(org_id);
+        CREATE INDEX IF NOT EXISTS idx_notif_created ON in_app_notifications(created_at);
+        COMMIT;
+      `);
+      db.pragma('foreign_keys = ON');
+      console.log('✅ Migration: extended notification types with support_new, support_resolved');
+    }
+  }
+} catch (err) {
+  console.error('Migration error (extend notification types):', err.message);
+}
+
+// Migration: departments table
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS departments (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      org_id     INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name       TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(org_id, name)
+    );
+    CREATE INDEX IF NOT EXISTS idx_departments_org ON departments(org_id);
+  `);
+} catch (err) {
+  console.error('Migration error (departments):', err.message);
 }
 
 module.exports = db;

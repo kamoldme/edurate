@@ -93,7 +93,8 @@ router.get('/:id', authorize('super_admin', 'org_admin'), (req, res) => {
       SELECT o.*,
         (SELECT COUNT(*) FROM user_organizations uo WHERE uo.org_id = o.id AND uo.role_in_org = 'teacher') as teacher_count,
         (SELECT COUNT(*) FROM user_organizations uo WHERE uo.org_id = o.id AND uo.role_in_org = 'student') as student_count,
-        (SELECT COUNT(*) FROM user_organizations uo WHERE uo.org_id = o.id) as total_members
+        (SELECT COUNT(*) FROM user_organizations uo WHERE uo.org_id = o.id) as total_members,
+        (SELECT COUNT(*) FROM departments d WHERE d.org_id = o.id) as department_count
       FROM organizations o WHERE o.id = ?
     `).get(orgId);
 

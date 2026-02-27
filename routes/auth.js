@@ -192,7 +192,15 @@ router.post('/send-teacher-code', async (req, res) => {
 
     await sendVerificationCode(email, code);
 
-    res.json({ message: 'Verification code sent to your email' });
+    // Return departments so the registration form can show a picker
+    const departments = db.prepare('SELECT id, name FROM departments WHERE org_id = ? ORDER BY name').all(org.id);
+
+    res.json({
+      message: 'Verification code sent to your email',
+      org_id: org.id,
+      org_name: org.name,
+      departments
+    });
   } catch (err) {
     console.error('Send teacher code error:', err.message);
     res.status(500).json({ error: 'Failed to send verification code. Please try again.' });
@@ -202,7 +210,7 @@ router.post('/send-teacher-code', async (req, res) => {
 // POST /api/auth/register-teacher - complete teacher self-registration via org invite code + email verification
 router.post('/register-teacher', async (req, res) => {
   try {
-    const { full_name, email, password, invite_code, code } = req.body;
+    const { full_name, email, password, invite_code, code, department_id, department } = req.body;
 
     if (!full_name || !email || !password || !invite_code || !code) {
       return res.status(400).json({ error: 'All fields including verification code are required' });
@@ -249,6 +257,22 @@ router.post('/register-teacher', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const sanitizedName = sanitizeInput(full_name.trim());
 
+    // Resolve department name from department_id if provided, or use free-text fallback
+    const orgDepartments = db.prepare('SELECT id, name FROM departments WHERE org_id = ?').all(org.id);
+    let departmentName = null;
+    if (orgDepartments.length > 0) {
+      if (!department_id) {
+        return res.status(400).json({ error: 'Please select a department' });
+      }
+      const dept = orgDepartments.find(d => d.id === parseInt(department_id));
+      if (!dept) {
+        return res.status(400).json({ error: 'Invalid department selection' });
+      }
+      departmentName = dept.name;
+    } else if (department) {
+      departmentName = sanitizeInput(department.trim()) || null;
+    }
+
     const result = db.prepare(`
       INSERT INTO users (full_name, email, password, role, school_id, org_id, verified_status)
       VALUES (?, ?, ?, 'teacher', 1, ?, 1)
@@ -256,8 +280,8 @@ router.post('/register-teacher', async (req, res) => {
 
     const userId = result.lastInsertRowid;
 
-    db.prepare(`INSERT INTO teachers (user_id, full_name, school_id, org_id) VALUES (?, ?, 1, ?)`)
-      .run(userId, sanitizedName, org.id);
+    db.prepare(`INSERT INTO teachers (user_id, full_name, school_id, org_id, department) VALUES (?, ?, 1, ?, ?)`)
+      .run(userId, sanitizedName, org.id, departmentName);
 
     db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)')
       .run(userId, org.id, 'teacher');

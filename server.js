@@ -42,6 +42,7 @@ const applyRoutes = require('./routes/apply');
 const formsRoutes = require('./routes/forms');
 const announcementsRoutes = require('./routes/announcements');
 const notificationsRoutes = require('./routes/notifications');
+const departmentsRoutes = require('./routes/departments');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -116,6 +117,7 @@ app.use('/api/apply', applyRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/departments', departmentsRoutes);
 
 // Specific page routes (BEFORE static middleware)
 app.get('/app', (req, res) => {
