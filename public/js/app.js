@@ -959,9 +959,9 @@ async function renderStudentClassrooms() {
                 <div class="class-meta" style="margin:0">${c.teacher_name} &middot; ${c.grade_level}</div>
               </div>
             </div>
-            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
-              <span class="badge badge-active">${t('common.enrolled')}</span>
-              <button class="btn btn-sm btn-outline" onclick="leaveClassroom(${c.id}, '${c.subject}')">${t('student.leave')}</button>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <button class="btn btn-sm btn-outline" onclick="showClassroomMembers(${c.id}, '${c.subject.replace(/'/g, "\\'")}')">Members</button>
+              <button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)" onclick="leaveClassroom(${c.id}, '${c.subject}')">${t('student.leave')}</button>
             </div>
           </div>
         `).join('')}
@@ -996,6 +996,45 @@ async function joinClassroom() {
     closeModal();
     navigateTo('student-classrooms');
   } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showClassroomMembers(classroomId, subject) {
+  openModal(`
+    <div class="modal-header">
+      <h3>${subject} — Members</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="membersModalBody">
+      <p style="color:var(--gray-500);text-align:center">Loading…</p>
+    </div>
+  `);
+  try {
+    const members = await API.get(`/classrooms/${classroomId}/members`);
+    const body = document.getElementById('membersModalBody');
+    if (!body) return;
+    if (members.length === 0) {
+      body.innerHTML = `<p style="color:var(--gray-500);text-align:center">No members yet.</p>`;
+      return;
+    }
+    body.innerHTML = `
+      <p style="font-size:0.85rem;color:var(--gray-500);margin-bottom:12px">${members.length} student${members.length !== 1 ? 's' : ''} enrolled</p>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto">
+        ${members.map(m => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--gray-50);border-radius:8px">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:600;flex-shrink:0">
+              ${m.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div style="font-size:0.875rem;font-weight:500;color:var(--gray-800)">${escapeHtml(m.full_name)}</div>
+              ${m.grade_or_position ? `<div style="font-size:0.78rem;color:var(--gray-500)">${escapeHtml(m.grade_or_position)}</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+  } catch (err) {
+    const body = document.getElementById('membersModalBody');
+    if (body) body.innerHTML = `<p style="color:var(--danger);text-align:center">${err.message}</p>`;
+  }
 }
 
 async function leaveClassroom(id, name) {
@@ -6042,7 +6081,9 @@ function showAnnClassrooms(btn, labels) {
 }
 
 function announcementCardHTML(a, canDelete, isStudent = false) {
-  const date = new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const d = new Date(a.created_at + (a.created_at.endsWith('Z') ? '' : 'Z'));
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
   let targetMeta;
   if (isStudent) {

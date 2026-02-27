@@ -323,10 +323,18 @@ router.delete('/:id/leave', authenticate, authorize('student'), (req, res) => {
 });
 
 // GET /api/classrooms/:id/members - get members
-router.get('/:id/members', authenticate, authorize('teacher', 'super_admin', 'org_admin', 'school_head'), (req, res) => {
+router.get('/:id/members', authenticate, authorize('teacher', 'super_admin', 'org_admin', 'school_head', 'student'), (req, res) => {
   try {
+    // Students can only view members of classrooms they are enrolled in
+    if (req.user.role === 'student') {
+      const enrolled = db.prepare(
+        'SELECT id FROM classroom_members WHERE classroom_id = ? AND student_id = ?'
+      ).get(req.params.id, req.user.id);
+      if (!enrolled) return res.status(403).json({ error: 'You are not a member of this classroom' });
+    }
+
     const members = db.prepare(`
-      SELECT cm.id, cm.joined_at, u.id as student_id, u.full_name, u.email, u.grade_or_position
+      SELECT cm.id, cm.joined_at, u.id as student_id, u.full_name, u.grade_or_position
       FROM classroom_members cm
       JOIN users u ON cm.student_id = u.id
       WHERE cm.classroom_id = ?

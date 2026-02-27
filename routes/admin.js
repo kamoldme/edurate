@@ -843,18 +843,15 @@ router.put('/reviews/:id/approve', authenticate, authorize('super_admin', 'org_a
         orgId: req.orgId
       });
 
-      // Notify the teacher whose review was approved
-      const teacher = db.prepare('SELECT user_id FROM teachers WHERE id = ?').get(review.teacher_id);
-      if (teacher) {
-        createNotifications({
-          userIds: [teacher.user_id],
-          orgId: review.review_org_id,
-          type: 'review_approved',
-          title: 'A student review has been approved',
-          body: `Rating: ${review.overall_rating}/5`,
-          link: 'teacher-feedback'
-        });
-      }
+      // Notify the student whose review was approved
+      createNotifications({
+        userIds: [review.student_id],
+        orgId: review.review_org_id,
+        type: 'review_approved',
+        title: 'Your review has been approved',
+        body: `Your feedback for ${review.teacher_name} is now visible.`,
+        link: 'student-my-reviews'
+      });
     }
 
     res.json({ message: 'Review approved' });
