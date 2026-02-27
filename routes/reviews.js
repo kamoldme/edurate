@@ -64,6 +64,7 @@ router.get('/eligible-teachers', authenticate, authorize('student'), (req, res) 
       LEFT JOIN reviews r ON r.teacher_id = te.id
         AND r.student_id = cm.student_id
         AND r.feedback_period_id = ?
+        AND r.flagged_status != 'rejected'
       WHERE cm.student_id = ?
         AND c.active_status = 1
       ORDER BY te.full_name
@@ -162,7 +163,7 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
     const insertReview = db.transaction(() => {
       // Re-check for duplicate inside transaction (TOCTOU protection)
       const dup = db.prepare(
-        'SELECT id FROM reviews WHERE teacher_id = ? AND student_id = ? AND feedback_period_id = ?'
+        "SELECT id FROM reviews WHERE teacher_id = ? AND student_id = ? AND feedback_period_id = ? AND flagged_status != 'rejected'"
       ).get(teacher_id, req.user.id, activePeriod.id);
       if (dup) return null;
 
