@@ -1989,6 +1989,12 @@ async function renderTeacherFeedback() {
   });
 
   el.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-outline" onclick="exportMyPDF()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        ${t('admin.export_pdf')}
+      </button>
+    </div>
     <div class="grid grid-2" style="margin-bottom:28px">
       <!-- Summary by Subject -->
       <div class="card">
@@ -4765,12 +4771,36 @@ async function viewTeacherFeedback(teacherId) {
   `);
 }
 
+async function exportMyPDF() {
+  try {
+    const data = await cachedGet('/dashboard/teacher');
+    const s = data.overall_scores || {};
+    const reviews = (data.recent_reviews || []).filter(r => r.approved_status === 1);
+    const orgName = (userOrgs.find(o => o.id === currentUser.org_id) || userOrgs[0])?.name || '';
+    const tchr = {
+      full_name: currentUser.full_name,
+      subject: teacherInfo?.subject || '',
+      department: teacherInfo?.department || '',
+      bio: teacherInfo?.bio || '',
+      experience_years: teacherInfo?.experience_years || null,
+      org_name: orgName
+    };
+    buildAndPrintPDF(tchr, s, reviews);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
 async function exportTeacherPDF(teacherId) {
   try {
     const data = await API.get(`/admin/teacher/${teacherId}/feedback`);
     const tchr = data.teacher;
     const s = data.scores;
     const reviews = data.reviews || [];
+    buildAndPrintPDF(tchr, s, reviews);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function buildAndPrintPDF(tchr, s, reviews) {
+  try {
     const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const oc = (s.avg_overall || 0) >= 4 ? '#15803d' : (s.avg_overall || 0) >= 3 ? '#b45309' : '#b91c1c';
@@ -6471,8 +6501,7 @@ function renderHelpDocs(role) {
       { icon: '📊', title: 'Viewing Student Feedback', body: 'The <strong>Feedback</strong> tab shows all approved reviews for your classes, including criterion scores, written comments, and tags. Only approved reviews are visible to you.' },
       { icon: '📈', title: 'Analytics', body: 'The <strong>Analytics</strong> tab shows your overall performance scores, score distribution, period-by-period trend, and how you compare to your department average.' },
       { icon: '📝', title: 'Custom Forms & Announcements', body: 'Under <strong>Forms</strong>, you can create custom questionnaires for your students. Post class-specific announcements to keep students informed.' },
-      { icon: '📄', title: 'PDF Export', body: 'From the Feedback tab, click <strong>Export PDF</strong> to download a professional performance report you can share or print.' },
-      { icon: '🖼️', title: 'Profile & Avatar', body: 'Go to <strong>Account</strong> to update your name, subject, department, and bio. Upload a profile photo (JPG/PNG, max 5 MB) — your avatar appears on classroom cards and your performance report.' }
+      { icon: '📄', title: 'PDF Export', body: 'From the <strong>Feedback</strong> tab, click <strong>Export PDF</strong> to download your own professional performance report. You can print it or share it with others.' }
     ],
     school_head: [
       { icon: '📊', title: 'Teacher Performance Overview', body: 'The <strong>Dashboard</strong> shows all teachers in your organization with their overall scores, review counts, and trend directions. Click a teacher row to see their detailed breakdown.' },
