@@ -18,17 +18,6 @@ console.log('Loading database...');
 const db = require('./database');
 console.log('Database loaded.');
 
-// Auto-seed if database has no users (fresh deploy)
-try {
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-  if (userCount === 0) {
-    console.log('No users found — seeding database for first deploy...');
-    require('child_process').execSync('node seed.js', { stdio: 'inherit', cwd: __dirname });
-    console.log('Seeding complete.');
-  }
-} catch (e) {
-  console.error('Auto-seed check failed:', e.message);
-}
 
 const authRoutes = require('./routes/auth');
 const classroomRoutes = require('./routes/classrooms');
