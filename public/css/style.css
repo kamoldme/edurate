@@ -1666,8 +1666,107 @@ tbody tr:last-child td { border-bottom: none; }
   justify-content: flex-end;
 }
 
+/* Help landing */
+.help-landing { max-width: 620px; }
+
+.help-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.help-option-card {
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  outline: none;
+}
+
+.help-option-card:hover, .help-option-card:focus {
+  box-shadow: 0 6px 24px rgba(37,99,235,0.12);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.help-option-icon { color: var(--primary); line-height: 1; }
+
+.help-option-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.help-option-desc {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.help-option-arrow {
+  font-size: 1.1rem;
+  color: var(--primary);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Compact previous messages block (below support form) */
+.help-prev-msgs {
+  margin-top: 24px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.help-prev-msgs-header {
+  padding: 7px 14px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.help-prev-msg-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.help-prev-msg-row:last-child { border-bottom: none; }
+
+.help-prev-msg-subject {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.help-prev-msg-date {
+  font-size: 0.78rem;
+  color: var(--gray-400);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (max-width: 600px) {
   .help-section-card { padding: 18px 16px; }
   .help-docs-grid { grid-template-columns: 1fr; }
   .help-doc-card { padding: 14px; }
+  .help-options { grid-template-columns: 1fr; }
+  .help-option-card { padding: 20px 18px; }
 }

@@ -6308,14 +6308,58 @@ async function renderHelp() {
   const role = currentUser.role;
   const isAdmin = role === 'super_admin' || role === 'org_admin';
 
+  if (isAdmin) {
+    // Admins go straight to docs — they don't submit support tickets
+    el.innerHTML = `
+      <div class="help-wrap">
+        <div class="help-section-card">
+          <h2 class="help-section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
+            How to Use EduRate
+          </h2>
+          ${renderHelpDocs(role)}
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Non-admins: landing with two option cards
+  el.innerHTML = `
+    <div class="help-landing">
+      <p style="color:var(--gray-500);margin-bottom:28px">What do you need help with?</p>
+      <div class="help-options">
+        <div class="help-option-card" onclick="showHelpContact()" tabindex="0" onkeydown="if(event.key==='Enter')showHelpContact()">
+          <div class="help-option-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="help-option-title">Contact &amp; Support</div>
+          <div class="help-option-desc">Submit a support message or check the status of a previous request</div>
+          <div class="help-option-arrow">→</div>
+        </div>
+        <div class="help-option-card" onclick="showHelpDocsView()" tabindex="0" onkeydown="if(event.key==='Enter')showHelpDocsView()">
+          <div class="help-option-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
+          </div>
+          <div class="help-option-title">How to Use EduRate</div>
+          <div class="help-option-desc">Step-by-step guides for every feature available to your role</div>
+          <div class="help-option-arrow">→</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function showHelpContact() {
+  const el = document.getElementById('contentArea');
   el.innerHTML = `
     <div class="help-wrap">
+      <button class="btn btn-outline btn-sm" style="margin-bottom:20px" onclick="renderHelp()">← Back</button>
       <div class="help-section-card">
         <h2 class="help-section-title">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Contact Support
+          Contact &amp; Support
         </h2>
-        ${isAdmin ? '<div id="helpInbox">Loading support inbox…</div>' : '<div id="myHelpMessages"></div>'}
         <div class="help-form-card">
           <h3 style="margin-bottom:16px;font-size:1rem;color:var(--gray-700)">Send a New Message</h3>
           <form id="helpSupportForm">
@@ -6343,14 +6387,7 @@ async function renderHelp() {
             <button type="submit" class="btn btn-primary">Send Message</button>
           </form>
         </div>
-      </div>
-
-      <div class="help-section-card" style="margin-top:32px">
-        <h2 class="help-section-title">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
-          How to Use EduRate
-        </h2>
-        ${renderHelpDocs(role)}
+        <div id="myHelpMessages"></div>
       </div>
     </div>
   `;
@@ -6367,75 +6404,53 @@ async function renderHelp() {
       await API.post('/support/message', { category, subject, message });
       toast('Message sent! An administrator will review it shortly.', 'success');
       document.getElementById('helpSupportForm').reset();
+      loadPrevMessages();
     } catch (err) {
       toast(err.message || 'Failed to send message', 'error');
     }
   });
 
-  if (isAdmin) {
-    try {
-      const [{ messages, total }, stats] = await Promise.all([
-        API.get('/admin/support/messages?limit=15'),
-        API.get('/admin/support/stats')
-      ]);
-      const inboxEl = document.getElementById('helpInbox');
-      if (!inboxEl) return;
-      inboxEl.innerHTML = `
-        <div class="stats-grid" style="margin-bottom:16px">
-          <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${stats.total}</div></div>
-          <div class="stat-card" style="background:var(--warning-light);border-left:4px solid var(--warning)"><div class="stat-label">New</div><div class="stat-value">${stats.new}</div></div>
-          <div class="stat-card" style="background:#e3f2fd;border-left:4px solid var(--primary)"><div class="stat-label">In Progress</div><div class="stat-value">${stats.in_progress}</div></div>
-          <div class="stat-card" style="background:var(--success-light);border-left:4px solid var(--success)"><div class="stat-label">Resolved</div><div class="stat-value">${stats.resolved}</div></div>
-        </div>
-        ${messages.length > 0 ? `
-          <div class="card" style="margin-bottom:20px">
-            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-              <h3>Recent Support Messages</h3>
-              ${total > 15 ? `<button class="btn btn-sm btn-outline" onclick="navigateTo('admin-support')">View all ${total} →</button>` : ''}
+  loadPrevMessages();
+}
+
+async function loadPrevMessages() {
+  try {
+    const msgs = await API.get('/support/my-messages');
+    const myEl = document.getElementById('myHelpMessages');
+    if (!myEl) return;
+    if (!msgs.length) { myEl.innerHTML = ''; return; }
+    myEl.innerHTML = `
+      <div class="help-prev-msgs">
+        <div class="help-prev-msgs-header">My Previous Messages</div>
+        ${msgs.map(msg => `
+          <div class="help-prev-msg-row">
+            <div style="flex:1;min-width:0">
+              <div class="help-prev-msg-subject">${escapeHtml(msg.subject)}</div>
+              <div class="help-prev-msg-date">${new Date(msg.created_at).toLocaleDateString()}${msg.admin_notes ? ` · <em style="color:var(--success)">${escapeHtml(msg.admin_notes)}</em>` : ''}</div>
             </div>
-            <div class="card-body" style="overflow-x:auto">
-              <table><thead><tr><th>Date</th><th>User</th><th>Subject</th><th>Status</th><th></th></tr></thead>
-              <tbody>
-                ${messages.map(msg => `
-                  <tr>
-                    <td style="white-space:nowrap;font-size:0.82rem">${new Date(msg.created_at).toLocaleDateString()}</td>
-                    <td><strong>${escapeHtml(msg.user_name)}</strong><div style="font-size:0.78rem;color:var(--gray-400)">${msg.user_role}</div></td>
-                    <td style="max-width:240px">${escapeHtml(msg.subject)}</td>
-                    <td><span class="badge ${msg.status === 'new' ? 'badge-flagged' : msg.status === 'in_progress' ? 'badge-pending' : 'badge-approved'}">${msg.status}</span></td>
-                    <td><button class="btn btn-sm btn-outline" onclick="viewSupportMessage(${msg.id})">View</button></td>
-                  </tr>
-                `).join('')}
-              </tbody></table>
-            </div>
+            <span class="badge ${msg.status === 'new' ? 'badge-flagged' : msg.status === 'in_progress' ? 'badge-pending' : 'badge-approved'}" style="flex-shrink:0">${msg.status}</span>
           </div>
-        ` : '<div class="empty-state" style="padding:24px"><p>No support messages yet.</p></div>'}
-      `;
-    } catch (err) { /* silently fail */ }
-  } else {
-    try {
-      const msgs = await API.get('/support/my-messages');
-      const myEl = document.getElementById('myHelpMessages');
-      if (myEl && msgs.length > 0) {
-        myEl.innerHTML = `
-          <div class="card" style="margin-bottom:20px">
-            <div class="card-header"><h3>My Previous Messages</h3></div>
-            <div class="card-body">
-              ${msgs.map(msg => `
-                <div style="padding:12px 0;border-bottom:1px solid var(--gray-100);last-child:border:none">
-                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-                    <strong style="font-size:0.95rem">${escapeHtml(msg.subject)}</strong>
-                    <span class="badge ${msg.status === 'new' ? 'badge-flagged' : msg.status === 'in_progress' ? 'badge-pending' : 'badge-approved'}" style="flex-shrink:0">${msg.status}</span>
-                  </div>
-                  <div style="font-size:0.82rem;color:var(--gray-500);margin-top:4px">${new Date(msg.created_at).toLocaleDateString()}</div>
-                  ${msg.admin_notes ? `<div style="margin-top:8px;padding:8px 12px;background:var(--success-light);border-radius:6px;font-size:0.85rem;border-left:3px solid var(--success)"><strong>Admin reply:</strong> ${escapeHtml(msg.admin_notes)}</div>` : ''}
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }
-    } catch (err) { /* silently fail */ }
-  }
+        `).join('')}
+      </div>
+    `;
+  } catch (err) { /* silently fail */ }
+}
+
+function showHelpDocsView() {
+  const el = document.getElementById('contentArea');
+  const role = currentUser.role;
+  el.innerHTML = `
+    <div class="help-wrap">
+      <button class="btn btn-outline btn-sm" style="margin-bottom:20px" onclick="renderHelp()">← Back</button>
+      <div class="help-section-card">
+        <h2 class="help-section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
+          How to Use EduRate
+        </h2>
+        ${renderHelpDocs(role)}
+      </div>
+    </div>
+  `;
 }
 
 function renderHelpDocs(role) {
@@ -6721,13 +6736,25 @@ async function renderDeptDetail(deptName) {
     const rankChart = new Chart(document.getElementById('deptRankChart'), {
       type: 'bar',
       data: {
-        labels: ranked.map(t => t.full_name.split(' ')[0]),
+        labels: ranked.map(t => t.full_name),
         datasets: [{ label: 'Avg Score', data: ranked.map(t => t.avg_overall || 0), backgroundColor: colors }]
       },
       options: {
         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
         scales: { x: { min: 0, max: 5, ticks: { stepSize: 1 } } },
-        plugins: { legend: { display: false } }
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => ranked[items[0].dataIndex].full_name,
+              label: (item) => {
+                const t = ranked[item.dataIndex];
+                const subj = t.subject ? ` · ${t.subject}` : '';
+                return `Score: ${(item.raw || 0).toFixed(2)}${subj}`;
+              }
+            }
+          }
+        }
       }
     });
     if (typeof registerChart === 'function') registerChart(rankChart);
