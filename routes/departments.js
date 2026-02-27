@@ -68,13 +68,52 @@ router.post('/', authenticate, authorize('super_admin', 'org_admin', 'school_hea
   }
 });
 
-// DELETE /api/departments/:id — delete department (blocked if teachers assigned)
-router.delete('/:id', authenticate, authorize('super_admin', 'org_admin'), (req, res) => {
+// PATCH /api/departments/:id — rename department
+router.patch('/:id', authenticate, authorize('super_admin', 'org_admin', 'school_head'), (req, res) => {
   try {
     const dept = db.prepare('SELECT * FROM departments WHERE id = ?').get(req.params.id);
     if (!dept) return res.status(404).json({ error: 'Department not found' });
 
-    if (req.user.role === 'org_admin' && dept.org_id !== req.user.org_id) {
+    if (req.user.role !== 'super_admin' && dept.org_id !== req.user.org_id) {
+      return res.status(403).json({ error: 'Department does not belong to your organization' });
+    }
+
+    const { name } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Department name is required' });
+    const trimmed = name.trim();
+    if (trimmed.length < 2 || trimmed.length > 80) {
+      return res.status(400).json({ error: 'Department name must be 2–80 characters' });
+    }
+
+    if (trimmed === dept.name) {
+      const tc = db.prepare("SELECT COUNT(*) as count FROM teachers WHERE org_id = ? AND department = ?").get(dept.org_id, dept.name).count;
+      return res.json({ ...dept, teacher_count: tc });
+    }
+
+    const existing = db.prepare('SELECT id FROM departments WHERE org_id = ? AND name = ? AND id != ?').get(dept.org_id, trimmed, dept.id);
+    if (existing) return res.status(409).json({ error: `Department "${trimmed}" already exists` });
+
+    db.transaction(() => {
+      db.prepare('UPDATE departments SET name = ? WHERE id = ?').run(trimmed, dept.id);
+      db.prepare('UPDATE teachers SET department = ? WHERE org_id = ? AND department = ?').run(trimmed, dept.org_id, dept.name);
+    })();
+
+    const updated = db.prepare('SELECT * FROM departments WHERE id = ?').get(dept.id);
+    const teacherCount = db.prepare("SELECT COUNT(*) as count FROM teachers WHERE org_id = ? AND department = ?").get(dept.org_id, trimmed).count;
+    res.json({ ...updated, teacher_count: teacherCount });
+  } catch (err) {
+    console.error('Rename department error:', err);
+    res.status(500).json({ error: 'Failed to rename department' });
+  }
+});
+
+// DELETE /api/departments/:id — delete department (blocked if teachers assigned)
+router.delete('/:id', authenticate, authorize('super_admin', 'org_admin', 'school_head'), (req, res) => {
+  try {
+    const dept = db.prepare('SELECT * FROM departments WHERE id = ?').get(req.params.id);
+    if (!dept) return res.status(404).json({ error: 'Department not found' });
+
+    if (req.user.role !== 'super_admin' && dept.org_id !== req.user.org_id) {
       return res.status(403).json({ error: 'Department does not belong to your organization' });
     }
 

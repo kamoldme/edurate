@@ -6493,9 +6493,18 @@ function renderHelpDocs(role) {
     ]
   };
 
+  const intros = {
+    student: 'As a student on EduRate, your role is to provide honest, constructive feedback on your learning experience. Your reviews help teachers grow professionally and give your school the data it needs to improve education quality. Everything you do here — joining classrooms, writing reviews, responding to forms — contributes directly to that goal.',
+    teacher: 'As a teacher on EduRate, you have a dedicated space to understand how your students experience your classes. The platform collects anonymous feedback, turns it into clear scores and summaries, and gives you tools to communicate back through forms, announcements, and exportable reports. Your performance data is visible to your school\'s management.',
+    school_head: 'As a School Head on EduRate, you have analytical oversight of all teachers and departments in your organization. You can monitor performance trends, identify teachers who may need support, and track how each department evolves over time. Day-to-day settings and access control are managed by your Organization Admin.',
+    org_admin: 'As an Organization Admin, you manage the full operation of your school\'s EduRate account. You control who has access, when feedback periods open, and how reviews are moderated. You are the primary support contact for your teachers and students, and the person responsible for keeping the platform correctly configured for your organization.'
+  };
+
   const roleSections = sections[role] || sections.school_head;
+  const intro = intros[role] || intros.school_head;
 
   return `
+    <p class="help-role-intro">${intro}</p>
     <div class="help-docs-grid">
       ${roleSections.map(s => `
         <div class="help-doc-card">
@@ -6516,7 +6525,7 @@ async function renderAdminDepartments() {
   const role = currentUser.role;
   const departments = await API.get('/departments');
 
-  const canDelete = role === 'org_admin' || role === 'super_admin';
+  const canManage = role === 'org_admin' || role === 'super_admin' || role === 'school_head';
 
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px">
@@ -6551,16 +6560,17 @@ async function renderAdminDepartments() {
     ` : `
       <div class="grid grid-3" id="deptCardGrid">
         ${departments.map(d => `
-          <div class="dept-card" onclick="renderDeptDetail('${d.name.replace(/'/g, "\\'")}')">
+          <div class="dept-card" id="dept-card-${d.id}" onclick="renderDeptDetail('${d.name.replace(/'/g, "\\'")}')">
             <div class="dept-card-top">
               <div class="dept-card-icon">🏢</div>
               <div style="flex:1">
-                <div class="dept-card-name">${escapeHtml(d.name)}</div>
+                <div class="dept-card-name" id="dept-name-${d.id}">${escapeHtml(d.name)}</div>
                 <div class="dept-card-meta">${d.teacher_count} teacher${d.teacher_count !== 1 ? 's' : ''}</div>
               </div>
             </div>
-            ${canDelete ? `
-              <div class="dept-card-footer" onclick="event.stopPropagation()">
+            ${canManage ? `
+              <div class="dept-card-footer" style="gap:8px" onclick="event.stopPropagation()">
+                <button class="btn btn-sm btn-outline" onclick="startEditDept(${d.id})">Edit</button>
                 <button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)"
                   onclick="deleteDepartment(${d.id},'${d.name.replace(/'/g, "\\'")}',${d.teacher_count})">Delete</button>
               </div>
@@ -6597,6 +6607,42 @@ async function deleteDepartment(id, name, teacherCount) {
     renderAdminDepartments();
   } catch (err) {
     toast(err.message || 'Failed to delete department', 'error');
+  }
+}
+
+function startEditDept(id) {
+  const card = document.getElementById(`dept-card-${id}`);
+  if (!card) return;
+  card.removeAttribute('onclick');
+  card.style.cursor = 'default';
+  const nameEl = document.getElementById(`dept-name-${id}`);
+  if (!nameEl) return;
+  const currentName = nameEl.textContent;
+  nameEl.innerHTML = `
+    <div style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
+      <input type="text" class="form-control" id="edit-dept-input-${id}"
+        style="padding:4px 8px;font-size:0.9rem;height:auto"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();saveEditDept(${id});}if(event.key==='Escape')renderAdminDepartments();">
+      <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();saveEditDept(${id})">Save</button>
+      <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();renderAdminDepartments()">Cancel</button>
+    </div>
+  `;
+  const inp = document.getElementById(`edit-dept-input-${id}`);
+  if (inp) { inp.value = currentName; inp.focus(); inp.select(); }
+}
+
+async function saveEditDept(id) {
+  const inp = document.getElementById(`edit-dept-input-${id}`);
+  if (!inp) return;
+  const newName = inp.value.trim();
+  if (!newName || newName.length < 2) return toast('Name must be at least 2 characters', 'error');
+  try {
+    await API.patch(`/departments/${id}`, { name: newName });
+    toast('Department renamed', 'success');
+    invalidateCache('/departments');
+    renderAdminDepartments();
+  } catch (err) {
+    toast(err.message || 'Failed to rename department', 'error');
   }
 }
 

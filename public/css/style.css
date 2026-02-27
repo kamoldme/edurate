@@ -1575,6 +1575,18 @@ tbody tr:last-child td { border-bottom: none; }
   margin-top: 20px;
 }
 
+/* Help role intro */
+.help-role-intro {
+  font-size: 0.95rem;
+  color: var(--gray-600);
+  line-height: 1.65;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: var(--gray-50);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
 /* Help documentation grid */
 .help-docs-grid {
   display: grid;
