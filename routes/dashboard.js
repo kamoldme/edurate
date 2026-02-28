@@ -20,8 +20,22 @@ router.get('/student', authenticate, authorize('student'), (req, res) => {
       ORDER BY c.created_at DESC
     `).all(req.user.id);
 
-    // Students register with org_id = NULL and join orgs via classrooms.
-    // Derive their org from classroom memberships so the period/term queries work correctly.
+    // Find an active feedback period covering any of the student's classrooms
+    const activePeriod = db.prepare(`
+      SELECT fp.id, fp.name, t.name as term_name, fp.start_date, fp.end_date
+      FROM classroom_members cm
+      JOIN classrooms c ON cm.classroom_id = c.id
+      JOIN feedback_period_classrooms fpc ON fpc.classroom_id = c.id
+      JOIN feedback_periods fp ON fp.id = fpc.feedback_period_id
+      JOIN terms t ON fp.term_id = t.id
+      WHERE cm.student_id = ?
+        AND fp.active_status = 1
+        AND t.active_status = 1
+        AND c.active_status = 1
+      ORDER BY fp.id ASC LIMIT 1
+    `).get(req.user.id);
+
+    // Still derive studentOrgId for activeTerm query below
     const studentOrgRow = db.prepare(`
       SELECT DISTINCT c.org_id FROM classroom_members cm
       JOIN classrooms c ON cm.classroom_id = c.id
@@ -29,13 +43,6 @@ router.get('/student', authenticate, authorize('student'), (req, res) => {
       LIMIT 1
     `).get(req.user.id);
     const studentOrgId = studentOrgRow?.org_id ?? req.user.org_id;
-
-    const activePeriod = studentOrgId ? db.prepare(`
-      SELECT fp.*, t.name as term_name FROM feedback_periods fp
-      JOIN terms t ON fp.term_id = t.id
-      WHERE fp.active_status = 1 AND t.active_status = 1 AND t.org_id = ?
-      ORDER BY fp.id ASC LIMIT 1
-    `).get(studentOrgId) : null;
 
     const myReviews = db.prepare(`
       SELECT r.id, r.teacher_id, r.classroom_id, r.overall_rating, r.flagged_status, r.approved_status,

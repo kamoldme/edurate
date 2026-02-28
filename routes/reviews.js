@@ -22,30 +22,39 @@ router.get('/tags', authenticate, (req, res) => {
 // GET /api/reviews/eligible-teachers - teachers student can review
 router.get('/eligible-teachers', authenticate, authorize('student'), (req, res) => {
   try {
-    // Students register with org_id = NULL — derive org from classroom memberships
-    const studentOrgRow = db.prepare(`
-      SELECT DISTINCT c.org_id FROM classroom_members cm
+    // Find classrooms the student is in that have an active feedback period assigned to them
+    const activeClassrooms = db.prepare(`
+      SELECT DISTINCT
+        c.id as classroom_id,
+        fp.id as period_id,
+        fp.name as period_name,
+        fp.start_date,
+        fp.end_date
+      FROM classroom_members cm
       JOIN classrooms c ON cm.classroom_id = c.id
-      WHERE cm.student_id = ? AND c.org_id IS NOT NULL
-      LIMIT 1
-    `).get(req.user.id);
-    const studentOrgId = studentOrgRow?.org_id ?? req.user.org_id;
-
-    // Get active feedback period scoped to student's org
-    const activePeriod = studentOrgId ? db.prepare(`
-      SELECT fp.* FROM feedback_periods fp
+      JOIN feedback_period_classrooms fpc ON fpc.classroom_id = c.id
+      JOIN feedback_periods fp ON fp.id = fpc.feedback_period_id
       JOIN terms t ON fp.term_id = t.id
-      WHERE fp.active_status = 1 AND t.active_status = 1
-        AND t.org_id = ?
-      ORDER BY fp.id ASC
-      LIMIT 1
-    `).get(studentOrgId) : null;
+      WHERE cm.student_id = ?
+        AND fp.active_status = 1
+        AND t.active_status = 1
+        AND c.active_status = 1
+    `).all(req.user.id);
 
-    if (!activePeriod) {
-      return res.json({ period: null, teachers: [] });
+    // Check if student has any classrooms at all (for "enroll first" UI message)
+    const classroomCount = db.prepare(
+      'SELECT COUNT(*) as cnt FROM classroom_members WHERE student_id = ?'
+    ).get(req.user.id).cnt;
+
+    if (activeClassrooms.length === 0) {
+      return res.json({ period: null, teachers: [], has_classrooms: classroomCount > 0 });
     }
 
-    // Get teachers from classrooms the student is enrolled in
+    const activeClassroomIds = [...new Set(activeClassrooms.map(r => r.classroom_id))];
+    const clP = activeClassroomIds.map(() => '?').join(',');
+    const primaryPeriod = activeClassrooms[0];
+
+    // Get teachers from classrooms that have active periods, with already-reviewed status
     const teachers = db.prepare(`
       SELECT DISTINCT
         te.id as teacher_id,
@@ -56,21 +65,39 @@ router.get('/eligible-teachers', authenticate, authorize('student'), (req, res) 
         c.id as classroom_id,
         c.subject as classroom_subject,
         c.grade_level,
+        fpc_a.period_id,
         CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END as already_reviewed,
-        r.id as review_id
+        r.id as review_id,
+        r.flagged_status
       FROM classroom_members cm
       JOIN classrooms c ON cm.classroom_id = c.id
       JOIN teachers te ON c.teacher_id = te.id
+      JOIN (
+        SELECT fpc2.classroom_id, fpc2.feedback_period_id as period_id
+        FROM feedback_period_classrooms fpc2
+        JOIN feedback_periods fp2 ON fp2.id = fpc2.feedback_period_id
+        WHERE fp2.active_status = 1
+      ) fpc_a ON fpc_a.classroom_id = c.id
       LEFT JOIN reviews r ON r.teacher_id = te.id
         AND r.student_id = cm.student_id
-        AND r.feedback_period_id = ?
+        AND r.feedback_period_id = fpc_a.period_id
         AND r.flagged_status != 'rejected'
       WHERE cm.student_id = ?
+        AND c.id IN (${clP})
         AND c.active_status = 1
       ORDER BY te.full_name
-    `).all(activePeriod.id, req.user.id);
+    `).all(req.user.id, ...activeClassroomIds);
 
-    res.json({ period: activePeriod, teachers });
+    res.json({
+      period: {
+        id: primaryPeriod.period_id,
+        name: primaryPeriod.period_name,
+        start_date: primaryPeriod.start_date,
+        end_date: primaryPeriod.end_date
+      },
+      teachers,
+      has_classrooms: true
+    });
   } catch (err) {
     console.error('Eligible teachers error:', err);
     res.status(500).json({ error: 'Failed to fetch eligible teachers' });
@@ -119,26 +146,19 @@ router.post('/', authenticate, authorize('student'), (req, res) => {
       return res.status(400).json({ error: 'Invalid classroom-teacher combination' });
     }
 
-    // Students register with org_id = NULL — derive org from classroom memberships
-    const studentOrgRow2 = db.prepare(`
-      SELECT DISTINCT c.org_id FROM classroom_members cm
-      JOIN classrooms c ON cm.classroom_id = c.id
-      WHERE cm.student_id = ? AND c.org_id IS NOT NULL
-      LIMIT 1
-    `).get(req.user.id);
-    const submitOrgId = studentOrgRow2?.org_id ?? req.user.org_id;
-
-    // Get active feedback period scoped to student's org
-    const activePeriod = submitOrgId ? db.prepare(`
-      SELECT fp.* FROM feedback_periods fp
+    // Validate: this specific classroom has an active feedback period assigned to it
+    const activePeriod = db.prepare(`
+      SELECT fp.* FROM feedback_period_classrooms fpc
+      JOIN feedback_periods fp ON fp.id = fpc.feedback_period_id
       JOIN terms t ON fp.term_id = t.id
-      WHERE fp.active_status = 1 AND t.active_status = 1
-        AND t.org_id = ?
+      WHERE fpc.classroom_id = ?
+        AND fp.active_status = 1
+        AND t.active_status = 1
       ORDER BY fp.id ASC
       LIMIT 1
-    `).get(submitOrgId) : null;
+    `).get(classroom_id);
     if (!activePeriod) {
-      return res.status(400).json({ error: 'No active feedback period' });
+      return res.status(400).json({ error: 'No active feedback period for this classroom' });
     }
 
     // Validate tags

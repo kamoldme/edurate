@@ -367,7 +367,19 @@ router.get('/terms', authenticate, authorize('super_admin', 'org_admin', 'school
     const terms = db.prepare(query).all(...params);
 
     const termsWithPeriods = terms.map(term => {
-      const periods = db.prepare('SELECT * FROM feedback_periods WHERE term_id = ? ORDER BY id').all(term.id);
+      const periods = db.prepare(`
+        SELECT fp.*,
+          COUNT(fpc.classroom_id) as classroom_count,
+          GROUP_CONCAT(fpc.classroom_id) as classroom_ids_csv
+        FROM feedback_periods fp
+        LEFT JOIN feedback_period_classrooms fpc ON fpc.feedback_period_id = fp.id
+        WHERE fp.term_id = ?
+        GROUP BY fp.id ORDER BY fp.id
+      `).all(term.id).map(r => ({
+        ...r,
+        classroom_ids: r.classroom_ids_csv ? r.classroom_ids_csv.split(',').map(Number) : [],
+        classroom_ids_csv: undefined
+      }));
       return { ...term, periods };
     });
 
@@ -404,9 +416,17 @@ router.post('/terms', authenticate, authorize('super_admin', 'org_admin'), autho
 
     // Auto-create one default feedback period spanning the whole term
     const termId = result.lastInsertRowid;
-    db.prepare(
+    const newPeriodResult = db.prepare(
       'INSERT INTO feedback_periods (term_id, name, start_date, end_date, active_status) VALUES (?, ?, ?, ?, 0)'
     ).run(termId, 'Feedback Period', start_date, end_date);
+    // Assign all current org classrooms as a snapshot (new classrooms added later won't auto-join)
+    if (termOrgId) {
+      const orgCls = db.prepare('SELECT id FROM classrooms WHERE org_id = ?').all(termOrgId);
+      if (orgCls.length > 0) {
+        const insFpc = db.prepare('INSERT OR IGNORE INTO feedback_period_classrooms (feedback_period_id, classroom_id) VALUES (?, ?)');
+        db.transaction(() => orgCls.forEach(c => insFpc.run(newPeriodResult.lastInsertRowid, c.id)))();
+      }
+    }
 
     const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(termId);
     const periods = db.prepare('SELECT * FROM feedback_periods WHERE term_id = ?').all(termId);
@@ -538,9 +558,12 @@ router.get('/feedback-periods', authenticate, authorize('super_admin', 'org_admi
     const { term_id } = req.query;
     const params = [];
     let query = `
-      SELECT fp.*, t.name as term_name
+      SELECT fp.*, t.name as term_name,
+        COUNT(fpc.classroom_id) as classroom_count,
+        GROUP_CONCAT(fpc.classroom_id) as classroom_ids_csv
       FROM feedback_periods fp
       JOIN terms t ON fp.term_id = t.id
+      LEFT JOIN feedback_period_classrooms fpc ON fpc.feedback_period_id = fp.id
       WHERE 1=1
     `;
 
@@ -549,7 +572,6 @@ router.get('/feedback-periods', authenticate, authorize('super_admin', 'org_admi
       params.push(term_id);
     }
 
-    // Org scoping via terms
     if (req.orgId) {
       query += ' AND t.org_id = ?';
       params.push(req.orgId);
@@ -558,9 +580,15 @@ router.get('/feedback-periods', authenticate, authorize('super_admin', 'org_admi
       params.push(req.user.org_id);
     }
 
-    query += ' ORDER BY fp.term_id, fp.id';
+    query += ' GROUP BY fp.id ORDER BY fp.term_id, fp.id';
 
-    res.json(db.prepare(query).all(...params));
+    const rows = db.prepare(query).all(...params);
+    const periods = rows.map(r => ({
+      ...r,
+      classroom_ids: r.classroom_ids_csv ? r.classroom_ids_csv.split(',').map(Number) : [],
+      classroom_ids_csv: undefined
+    }));
+    res.json(periods);
   } catch (err) {
     console.error('List periods error:', err);
     res.status(500).json({ error: 'Failed to fetch feedback periods' });
@@ -570,9 +598,12 @@ router.get('/feedback-periods', authenticate, authorize('super_admin', 'org_admi
 // POST /api/admin/feedback-periods
 router.post('/feedback-periods', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const { term_id, name, start_date, end_date } = req.body;
+    const { term_id, name, start_date, end_date, classroom_ids } = req.body;
     if (!term_id || !start_date || !end_date) {
       return res.status(400).json({ error: 'term_id, start_date, and end_date are required' });
+    }
+    if (!Array.isArray(classroom_ids) || classroom_ids.length === 0) {
+      return res.status(400).json({ error: 'Select at least one classroom' });
     }
 
     const term = db.prepare('SELECT * FROM terms WHERE id = ?').get(term_id);
@@ -586,7 +617,6 @@ router.post('/feedback-periods', authenticate, authorize('super_admin', 'org_adm
       return res.status(400).json({ error: 'Start date must be before end date' });
     }
 
-    // Validate period dates are within term dates
     if (term.start_date && start_date < term.start_date) {
       return res.status(400).json({ error: `Period start date cannot be before term start date (${term.start_date})` });
     }
@@ -594,30 +624,50 @@ router.post('/feedback-periods', authenticate, authorize('super_admin', 'org_adm
       return res.status(400).json({ error: `Period end date cannot be after term end date (${term.end_date})` });
     }
 
-    // Count existing periods to auto-name
+    // Check: no classroom already in another active period for this org
+    const clP = classroom_ids.map(() => '?').join(',');
+    const conflict = db.prepare(`
+      SELECT fpc.classroom_id, fp.name as period_name
+      FROM feedback_period_classrooms fpc
+      JOIN feedback_periods fp ON fp.id = fpc.feedback_period_id
+      JOIN terms t ON fp.term_id = t.id
+      WHERE fp.active_status = 1 AND t.org_id = ?
+        AND fpc.classroom_id IN (${clP})
+      LIMIT 1
+    `).get(term.org_id, ...classroom_ids);
+    if (conflict) {
+      return res.status(400).json({ error: `Classroom is already in active period "${conflict.period_name}". Close that period first.` });
+    }
+
     const existingCount = db.prepare('SELECT COUNT(*) as c FROM feedback_periods WHERE term_id = ?').get(term_id).c;
     const periodName = (name && name.trim()) || `Period ${existingCount + 1}`;
 
-    const result = db.prepare(
-      'INSERT INTO feedback_periods (term_id, name, start_date, end_date, active_status) VALUES (?, ?, ?, ?, 0)'
-    ).run(term_id, periodName, start_date, end_date);
+    const periodId = db.transaction(() => {
+      const r = db.prepare(
+        'INSERT INTO feedback_periods (term_id, name, start_date, end_date, active_status) VALUES (?, ?, ?, ?, 0)'
+      ).run(term_id, periodName, start_date, end_date);
+      const pid = r.lastInsertRowid;
+      const ins = db.prepare('INSERT OR IGNORE INTO feedback_period_classrooms (feedback_period_id, classroom_id) VALUES (?, ?)');
+      classroom_ids.forEach(cid => ins.run(pid, cid));
+      return pid;
+    })();
 
-    const period = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(result.lastInsertRowid);
+    const period = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(periodId);
 
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,
       userName: req.user.full_name,
       actionType: 'period_create',
-      actionDescription: `Created feedback period: ${periodName} for term "${term.name}"`,
+      actionDescription: `Created feedback period: ${periodName} for term "${term.name}" (${classroom_ids.length} classrooms)`,
       targetType: 'feedback_period',
       targetId: period.id,
-      metadata: { term_id, name, start_date, end_date },
+      metadata: { term_id, name, start_date, end_date, classroom_ids },
       ipAddress: req.ip,
       orgId: req.orgId
     });
 
-    res.status(201).json(period);
+    res.status(201).json({ ...period, classroom_ids });
   } catch (err) {
     console.error('Create period error:', err);
     res.status(500).json({ error: 'Failed to create feedback period' });
@@ -627,37 +677,63 @@ router.post('/feedback-periods', authenticate, authorize('super_admin', 'org_adm
 // PUT /api/admin/feedback-periods/:id
 router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_admin'), authorizeOrg, (req, res) => {
   try {
-    const { active_status, name, start_date, end_date } = req.body;
+    const { active_status, name, start_date, end_date, classroom_ids } = req.body;
     const period = db.prepare(`
       SELECT fp.*, t.org_id FROM feedback_periods fp JOIN terms t ON fp.term_id = t.id WHERE fp.id = ?
     `).get(req.params.id);
     if (!period) return res.status(404).json({ error: 'Feedback period not found' });
 
-    // org_admin ownership check via term's org
     if (req.user.role === 'org_admin' && period.org_id !== req.orgId) {
       return res.status(403).json({ error: 'Period does not belong to your organization' });
     }
 
-    // Validate date range if either date is being updated
     const effectiveStart = start_date || period.start_date;
     const effectiveEnd = end_date || period.end_date;
     if (effectiveStart && effectiveEnd && effectiveStart > effectiveEnd) {
       return res.status(400).json({ error: 'Start date must be before end date' });
     }
 
-    // If activating, deactivate all others in same term
-    if (active_status === 1) {
-      db.prepare('UPDATE feedback_periods SET active_status = 0 WHERE term_id = ?').run(period.term_id);
+    // Resolve the classroom list this period will cover after update
+    const targetIds = Array.isArray(classroom_ids)
+      ? classroom_ids
+      : db.prepare('SELECT classroom_id FROM feedback_period_classrooms WHERE feedback_period_id = ?')
+          .all(req.params.id).map(r => r.classroom_id);
+
+    // Per-classroom mutual exclusion: when activating, ensure no covered classroom is in another active period
+    if (active_status === 1 && targetIds.length > 0) {
+      const clP = targetIds.map(() => '?').join(',');
+      const conflict = db.prepare(`
+        SELECT fpc.classroom_id, fp.name as period_name
+        FROM feedback_period_classrooms fpc
+        JOIN feedback_periods fp ON fp.id = fpc.feedback_period_id
+        JOIN terms t ON fp.term_id = t.id
+        WHERE fp.active_status = 1 AND fp.id != ? AND t.org_id = ?
+          AND fpc.classroom_id IN (${clP})
+        LIMIT 1
+      `).get(req.params.id, period.org_id, ...targetIds);
+      if (conflict) {
+        return res.status(400).json({
+          error: `A classroom in this period is already in active period "${conflict.period_name}". Close that period first.`
+        });
+      }
     }
 
-    db.prepare(`
-      UPDATE feedback_periods SET
-        name = COALESCE(?, name),
-        active_status = COALESCE(?, active_status),
-        start_date = COALESCE(?, start_date),
-        end_date = COALESCE(?, end_date)
-      WHERE id = ?
-    `).run(name || null, active_status, start_date, end_date, req.params.id);
+    db.transaction(() => {
+      // Update classroom assignments if provided
+      if (Array.isArray(classroom_ids)) {
+        db.prepare('DELETE FROM feedback_period_classrooms WHERE feedback_period_id = ?').run(req.params.id);
+        const ins = db.prepare('INSERT OR IGNORE INTO feedback_period_classrooms (feedback_period_id, classroom_id) VALUES (?, ?)');
+        classroom_ids.forEach(cid => ins.run(req.params.id, cid));
+      }
+      db.prepare(`
+        UPDATE feedback_periods SET
+          name = COALESCE(?, name),
+          active_status = COALESCE(?, active_status),
+          start_date = COALESCE(?, start_date),
+          end_date = COALESCE(?, end_date)
+        WHERE id = ?
+      `).run(name || null, active_status ?? null, start_date || null, end_date || null, req.params.id);
+    })();
 
     const updated = db.prepare('SELECT * FROM feedback_periods WHERE id = ?').get(req.params.id);
 
@@ -669,24 +745,31 @@ router.put('/feedback-periods/:id', authenticate, authorize('super_admin', 'org_
       actionDescription: `${active_status === 1 ? 'Opened' : 'Updated'} feedback period: ${period.name}`,
       targetType: 'feedback_period',
       targetId: period.id,
-      metadata: { active_status, name, start_date, end_date },
+      metadata: { active_status, name, start_date, end_date, classroom_ids },
       ipAddress: req.ip,
       orgId: req.orgId
     });
 
-    // Notify all org members when a feedback period is opened
-    if (active_status === 1 && period.org_id) {
-      const members = db.prepare('SELECT user_id FROM user_organizations WHERE org_id = ?').all(period.org_id);
+    // Notify only students enrolled in the covered classrooms
+    if (active_status === 1 && targetIds.length > 0) {
+      const clP = targetIds.map(() => '?').join(',');
+      const members = db.prepare(`
+        SELECT DISTINCT cm.student_id AS user_id
+        FROM classroom_members cm
+        WHERE cm.classroom_id IN (${clP})
+      `).all(...targetIds);
       const userIds = members.map(m => m.user_id).filter(id => id !== req.user.id);
       const periodName = name || period.name;
-      createNotifications({
-        userIds,
-        orgId: period.org_id,
-        type: 'period_open',
-        title: `Feedback period "${periodName}" is now open`,
-        body: 'You can now submit teacher reviews.',
-        link: 'student-review'
-      });
+      if (userIds.length > 0) {
+        createNotifications({
+          userIds,
+          orgId: period.org_id,
+          type: 'period_open',
+          title: `Feedback period "${periodName}" is now open`,
+          body: 'You can now submit teacher reviews for your enrolled classrooms.',
+          link: 'student-review'
+        });
+      }
     }
 
     res.json(updated);

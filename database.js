@@ -830,4 +830,43 @@ try {
   console.error('Migration error (departments):', err.message);
 }
 
+// Migration: feedback_period_classrooms — classroom-scoped feedback periods
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS feedback_period_classrooms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feedback_period_id INTEGER NOT NULL
+        REFERENCES feedback_periods(id) ON DELETE CASCADE,
+      classroom_id INTEGER NOT NULL
+        REFERENCES classrooms(id) ON DELETE CASCADE,
+      UNIQUE(feedback_period_id, classroom_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_fpc_period ON feedback_period_classrooms(feedback_period_id);
+    CREATE INDEX IF NOT EXISTS idx_fpc_classroom ON feedback_period_classrooms(classroom_id);
+  `);
+} catch (err) { console.error('Migration error (feedback_period_classrooms):', err.message); }
+
+// Backfill: assign all org classrooms to existing feedback_periods that have no assignments yet
+try {
+  const unassigned = db.prepare(`
+    SELECT fp.id as period_id, t.org_id
+    FROM feedback_periods fp
+    JOIN terms t ON fp.term_id = t.id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM feedback_period_classrooms WHERE feedback_period_id = fp.id
+    )
+  `).all();
+  if (unassigned.length > 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO feedback_period_classrooms (feedback_period_id, classroom_id) VALUES (?, ?)');
+    db.transaction(() => {
+      for (const row of unassigned) {
+        if (!row.org_id) continue;
+        const cls = db.prepare('SELECT id FROM classrooms WHERE org_id = ?').all(row.org_id);
+        for (const c of cls) ins.run(row.period_id, c.id);
+      }
+    })();
+    console.log(`✅ Migration: backfilled feedback_period_classrooms for ${unassigned.length} period(s)`);
+  }
+} catch (err) { console.error('Migration error (backfill feedback_period_classrooms):', err.message); }
+
 module.exports = db;

@@ -18,6 +18,26 @@ console.log('Loading database...');
 const db = require('./database');
 console.log('Database loaded.');
 
+// Auto-close feedback periods at end of their end_date (closes at midnight after end_date — i.e. 23:59 is last active minute)
+const autoClosePeriods = () => {
+  try {
+    const expired = db.prepare(`
+      SELECT fp.id, fp.name FROM feedback_periods fp
+      WHERE fp.active_status = 1 AND fp.end_date IS NOT NULL
+        AND date('now', 'localtime') > fp.end_date
+    `).all();
+    if (expired.length) {
+      const close = db.prepare('UPDATE feedback_periods SET active_status = 0 WHERE id = ?');
+      db.transaction(() => expired.forEach(p => {
+        close.run(p.id);
+        console.log(`[auto-close] Feedback period "${p.name}" (id=${p.id}) expired and closed`);
+      }))();
+    }
+  } catch (err) { console.error('[auto-close] Error:', err.message); }
+};
+autoClosePeriods(); // run once at startup to catch any periods that expired while server was down
+setInterval(autoClosePeriods, 60 * 1000); // check every minute
+
 
 const authRoutes = require('./routes/auth');
 const classroomRoutes = require('./routes/classrooms');

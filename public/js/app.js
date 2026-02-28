@@ -872,11 +872,16 @@ async function renderStudentHome() {
          <div class="stat-value" style="font-size:1.4rem">${data.active_period.name}</div>
          <div class="stat-change" style="color:var(--success)">${data.active_term?.name || ''}</div>
        </div>`
-    : `<div class="stat-card" style="border-left:4px solid var(--gray-400)">
-         <div class="stat-label">${t('student.feedback_period')}</div>
-         <div class="stat-value" style="font-size:1.4rem">${t('student.feedback_closed')}</div>
-         <div class="stat-change stable">${t('student.no_active_period')}</div>
-       </div>`;
+    : data.classrooms.length === 0
+      ? `<div class="stat-card" style="border-left:4px solid var(--gray-300)">
+           <div class="stat-label">${t('student.feedback_period')}</div>
+           <div class="stat-value" style="font-size:1rem;color:var(--gray-500)">Join a classroom to know your feedback period</div>
+         </div>`
+      : `<div class="stat-card" style="border-left:4px solid var(--gray-400)">
+           <div class="stat-label">${t('student.feedback_period')}</div>
+           <div class="stat-value" style="font-size:1.4rem">${t('student.feedback_closed')}</div>
+           <div class="stat-change stable">${t('student.no_active_period')}</div>
+         </div>`;
 
   el.innerHTML = `
     <div class="grid grid-4" style="margin-bottom:28px">
@@ -1068,7 +1073,10 @@ async function renderStudentReview() {
     const tags = await cachedGet('/reviews/tags', CACHE_TTL.long);
 
     if (!data.period) {
-      el.innerHTML = `<div class="empty-state"><h3>${t('student.no_active_period_title')}</h3><p>${t('student.no_active_period_desc')}</p></div>`;
+      const msg = data.has_classrooms
+        ? t('student.no_active_period_desc')
+        : 'You are not enrolled in any classrooms yet. Join a classroom first to see your feedback period.';
+      el.innerHTML = `<div class="empty-state"><h3>${t('student.no_active_period_title')}</h3><p>${msg}</p></div>`;
       return;
     }
 
@@ -3931,19 +3939,20 @@ async function renderAdminTerms() {
           ${term.periods.length === 0
             ? `<p style="font-size:0.85rem;color:var(--gray-400);padding:4px 0">${t('admin.no_feedback_periods_hint')}</p>`
             : term.periods.map(p => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1.5px solid ${p.active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:10px;margin-bottom:8px;gap:8px">
-                <div style="min-width:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1.5px solid ${p.active_status ? 'var(--success)' : 'var(--gray-200)'};border-radius:8px;margin-bottom:6px;gap:8px">
+                <div style="min-width:0;flex:1">
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                    <span style="font-weight:600;font-size:0.9rem">${p.name}</span>
-                    <span class="badge ${p.active_status ? 'badge-active' : 'badge-inactive'}">${p.active_status ? t('status.open') : t('status.closed')}</span>
+                    <span style="font-weight:600;font-size:0.88rem">${p.name}</span>
+                    <span class="badge ${p.active_status ? 'badge-active' : 'badge-inactive'}" style="font-size:0.72rem">${p.active_status ? t('status.open') : t('status.closed')}</span>
+                    <span style="font-size:0.75rem;color:var(--gray-400)">${p.classroom_count || 0} classroom${(p.classroom_count || 0) !== 1 ? 's' : ''}</span>
                   </div>
-                  <div style="font-size:0.78rem;color:var(--gray-500);margin-top:3px">${p.start_date || '—'} → ${p.end_date || '—'}</div>
+                  <div style="font-size:0.75rem;color:var(--gray-500);margin-top:2px">${p.start_date || '—'} → ${p.end_date || '—'}</div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
                   ${p.active_status
                     ? `<button class="btn btn-sm btn-danger" onclick="togglePeriod(${p.id}, 0)">${t('common.closed')}</button>`
                     : `<button class="btn btn-sm btn-success" onclick="togglePeriod(${p.id}, 1)">${t('status.open')}</button>`}
-                  <button class="btn btn-sm btn-outline" onclick="editPeriod(${p.id}, '${escAttr(p.name)}', '${p.start_date || ''}', '${p.end_date || ''}')">${t('common.edit')}</button>
+                  <button class="btn btn-sm btn-outline" onclick="editPeriod(${p.id}, '${escAttr(p.name)}', '${p.start_date || ''}', '${p.end_date || ''}', ${JSON.stringify(p.classroom_ids || [])})">${t('common.edit')}</button>
                   <button class="btn btn-sm btn-danger" onclick="deletePeriod(${p.id}, '${escAttr(p.name)}')">✕</button>
                 </div>
               </div>
@@ -3954,14 +3963,43 @@ async function renderAdminTerms() {
   `;
 }
 
-function showAddPeriodModal(termId, termName, termStart, termEnd) {
+async function showAddPeriodModal(termId, termName, termStart, termEnd) {
+  let classrooms = [];
+  try { classrooms = await API.get('/admin/classrooms'); } catch (e) { /* handled below */ }
+
+  const clPickerInner = classrooms.length === 0
+    ? `<div style="color:var(--gray-400);font-size:0.88rem;padding:8px 0">No classrooms found in your organization.</div>`
+    : `<div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <input type="text" id="periodClSearch" class="form-control" style="flex:1;padding:7px 10px;font-size:0.85rem" placeholder="Search classrooms..." oninput="filterPeriodClassroomPicker(this.value)">
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllPeriodClassrooms(true)">All</button>
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllPeriodClassrooms(false)">None</button>
+        </div>
+        <div id="periodClList" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+          ${classrooms.map(c => `
+            <label class="period-cl-item" data-search="${escAttr((c.subject + ' ' + c.grade_level + ' ' + (c.teacher_name || '')).toLowerCase())}" style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;user-select:none">
+              <input type="checkbox" class="period-cl-cb" value="${c.id}" onchange="updatePeriodClCount()" style="width:15px;height:15px;cursor:pointer">
+              <div style="min-width:0">
+                <div style="font-weight:500;font-size:0.85rem">${escapeHtml(c.subject)} <span style="color:var(--gray-500)">${escapeHtml(c.grade_level)}</span></div>
+                ${c.teacher_name ? `<div style="font-size:0.75rem;color:var(--gray-400)">${escapeHtml(c.teacher_name)}</div>` : ''}
+              </div>
+            </label>
+          `).join('')}
+        </div>
+        <div id="periodClCount" style="font-size:0.78rem;color:var(--gray-500);margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100)">0 selected</div>
+      </div>`;
+
   openModal(`
     <div class="modal-header"><h3>${t('admin.add_period_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      <p style="font-size:0.85rem;color:var(--gray-500);margin-bottom:16px">${t('admin.term_label')} <strong>${termName}</strong> (${termStart} → ${termEnd})</p>
+      <p style="font-size:0.85rem;color:var(--gray-500);margin-bottom:16px">${t('admin.term_label')} <strong>${escapeHtml(termName)}</strong> (${termStart} → ${termEnd})</p>
       <div class="form-group"><label>${t('admin.period_name')} <span style="color:var(--gray-400);font-weight:400">${t('forms.optional')}</span></label><input type="text" class="form-control" id="newPeriodName" placeholder="${t('admin.period_name_placeholder')}"></div>
       <div class="form-group"><label>${t('admin.start_date')}</label><input type="date" class="form-control" id="newPeriodStart" min="${termStart}" max="${termEnd}"></div>
       <div class="form-group"><label>${t('admin.end_date')}</label><input type="date" class="form-control" id="newPeriodEnd" min="${termStart}" max="${termEnd}"></div>
+      <div class="form-group">
+        <label>Classrooms <span style="font-size:0.78rem;color:var(--gray-400);font-weight:400">(snapshot — new classrooms added later won't be included automatically)</span></label>
+        ${clPickerInner}
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
@@ -3970,27 +4008,77 @@ function showAddPeriodModal(termId, termName, termStart, termEnd) {
   `);
 }
 
+function filterPeriodClassroomPicker(q) {
+  const term = q.toLowerCase().trim();
+  document.querySelectorAll('.period-cl-item').forEach(item => {
+    item.style.display = !term || item.dataset.search.includes(term) ? '' : 'none';
+  });
+}
+
+function selectAllPeriodClassrooms(checked) {
+  document.querySelectorAll('.period-cl-cb').forEach(cb => {
+    const item = cb.closest('.period-cl-item');
+    if (!item || item.style.display !== 'none') cb.checked = checked;
+  });
+  updatePeriodClCount();
+}
+
+function updatePeriodClCount() {
+  const total = document.querySelectorAll('.period-cl-cb:checked').length;
+  const el = document.getElementById('periodClCount');
+  if (el) el.textContent = `${total} classroom${total !== 1 ? 's' : ''} selected`;
+}
+
 async function createFeedbackPeriod(termId) {
   const name = document.getElementById('newPeriodName').value;
   const start_date = document.getElementById('newPeriodStart').value;
   const end_date = document.getElementById('newPeriodEnd').value;
   if (!start_date || !end_date) return toast(t('admin.dates_required'), 'error');
+  const classroom_ids = [...document.querySelectorAll('.period-cl-cb:checked')].map(cb => parseInt(cb.value));
+  if (!classroom_ids.length) return toast('Select at least one classroom', 'error');
   try {
-    await API.post('/admin/feedback-periods', { term_id: termId, name, start_date, end_date });
+    await API.post('/admin/feedback-periods', { term_id: termId, name, start_date, end_date, classroom_ids });
     toast(t('admin.period_added'));
-    invalidateCache('/admin/terms', '/dashboard');
+    invalidateCache('/admin/terms', '/dashboard', '/reviews');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
 }
 
-function editPeriod(periodId, name, startDate, endDate) {
+async function editPeriod(periodId, name, startDate, endDate, currentClassroomIds) {
+  const existingIds = Array.isArray(currentClassroomIds) ? currentClassroomIds : [];
+  let classrooms = [];
+  try { classrooms = await API.get('/admin/classrooms'); } catch (e) { /* handled below */ }
+
+  const clPickerInner = classrooms.length === 0
+    ? `<div style="color:var(--gray-400);font-size:0.88rem;padding:8px 0">No classrooms found.</div>`
+    : `<div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <input type="text" id="editPeriodClSearch" class="form-control" style="flex:1;padding:7px 10px;font-size:0.85rem" placeholder="Search..." oninput="filterEditPeriodPicker(this.value)">
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllEditPeriodClassrooms(true)">All</button>
+          <button type="button" class="btn btn-sm btn-outline" onclick="selectAllEditPeriodClassrooms(false)">None</button>
+        </div>
+        <div id="editPeriodClList" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">
+          ${classrooms.map(c => `
+            <label class="edit-period-cl-item" data-search="${escAttr((c.subject + ' ' + c.grade_level + ' ' + (c.teacher_name || '')).toLowerCase())}" style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;user-select:none">
+              <input type="checkbox" class="edit-period-cl-cb" value="${c.id}" ${existingIds.includes(c.id) ? 'checked' : ''} onchange="updateEditPeriodClCount()" style="width:15px;height:15px;cursor:pointer">
+              <div style="min-width:0">
+                <div style="font-weight:500;font-size:0.85rem">${escapeHtml(c.subject)} <span style="color:var(--gray-500)">${escapeHtml(c.grade_level)}</span></div>
+                ${c.teacher_name ? `<div style="font-size:0.75rem;color:var(--gray-400)">${escapeHtml(c.teacher_name)}</div>` : ''}
+              </div>
+            </label>
+          `).join('')}
+        </div>
+        <div id="editPeriodClCount" style="font-size:0.78rem;color:var(--gray-500);margin-top:6px;padding-top:6px;border-top:1px solid var(--gray-100)">${existingIds.length} classroom${existingIds.length !== 1 ? 's' : ''} selected</div>
+      </div>`;
+
   openModal(`
     <div class="modal-header"><h3>${t('admin.edit_period_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
-      <div class="form-group"><label>${t('admin.period_name')}</label><input type="text" class="form-control" id="editPeriodName" value="${name}"></div>
+      <div class="form-group"><label>${t('admin.period_name')}</label><input type="text" class="form-control" id="editPeriodName" value="${escAttr(name)}"></div>
       <div class="form-group"><label>${t('admin.start_date')}</label><input type="date" class="form-control" id="editPeriodStart" value="${startDate}"></div>
       <div class="form-group"><label>${t('admin.end_date')}</label><input type="date" class="form-control" id="editPeriodEnd" value="${endDate}"></div>
+      <div class="form-group"><label>Classrooms</label>${clPickerInner}</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">${t('common.cancel')}</button>
@@ -3999,15 +4087,37 @@ function editPeriod(periodId, name, startDate, endDate) {
   `);
 }
 
+function filterEditPeriodPicker(q) {
+  const term = q.toLowerCase().trim();
+  document.querySelectorAll('.edit-period-cl-item').forEach(item => {
+    item.style.display = !term || item.dataset.search.includes(term) ? '' : 'none';
+  });
+}
+
+function selectAllEditPeriodClassrooms(checked) {
+  document.querySelectorAll('.edit-period-cl-cb').forEach(cb => {
+    const item = cb.closest('.edit-period-cl-item');
+    if (!item || item.style.display !== 'none') cb.checked = checked;
+  });
+  updateEditPeriodClCount();
+}
+
+function updateEditPeriodClCount() {
+  const total = document.querySelectorAll('.edit-period-cl-cb:checked').length;
+  const el = document.getElementById('editPeriodClCount');
+  if (el) el.textContent = `${total} classroom${total !== 1 ? 's' : ''} selected`;
+}
+
 async function updatePeriod(periodId) {
   const name = document.getElementById('editPeriodName').value;
   const start_date = document.getElementById('editPeriodStart').value;
   const end_date = document.getElementById('editPeriodEnd').value;
   if (!name || !start_date || !end_date) return toast(t('admin.fill_all_fields'), 'error');
+  const classroom_ids = [...document.querySelectorAll('.edit-period-cl-cb:checked')].map(cb => parseInt(cb.value));
   try {
-    await API.put(`/admin/feedback-periods/${periodId}`, { name, start_date, end_date });
+    await API.put(`/admin/feedback-periods/${periodId}`, { name, start_date, end_date, classroom_ids });
     toast(t('admin.period_updated'));
-    invalidateCache('/admin/terms', '/dashboard');
+    invalidateCache('/admin/terms', '/dashboard', '/reviews');
     closeModal();
     renderAdminTerms();
   } catch (err) { toast(err.message, 'error'); }
