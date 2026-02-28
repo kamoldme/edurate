@@ -334,7 +334,7 @@ router.get('/:id/members', authenticate, authorize('teacher', 'super_admin', 'or
     }
 
     const members = db.prepare(`
-      SELECT cm.id, cm.joined_at, u.id as student_id, u.full_name, u.grade_or_position
+      SELECT cm.id, cm.joined_at, u.id as student_id, u.full_name, u.email, u.grade_or_position
       FROM classroom_members cm
       JOIN users u ON cm.student_id = u.id
       WHERE cm.classroom_id = ?
