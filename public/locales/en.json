@@ -21,7 +21,6 @@
   "nav.account_details": "Account Details",
   "nav.support": "Support",
   "nav.sign_out": "Sign Out",
-
   "title.student_dashboard": "Student Dashboard",
   "title.my_classrooms": "My Classrooms",
   "title.write_review": "Write a Review",
@@ -44,7 +43,6 @@
   "title.audit_logs": "Audit Logs",
   "title.organizations": "Organizations",
   "title.account_details": "Account Details",
-
   "common.dashboard": "Dashboard",
   "common.loading": "Loading...",
   "common.error": "Error",
@@ -106,7 +104,6 @@
   "common.new": "New",
   "common.in_progress": "In Progress",
   "common.resolved": "Resolved",
-
   "criteria.clarity": "Clarity",
   "criteria.engagement": "Engagement",
   "criteria.fairness": "Fairness",
@@ -120,7 +117,6 @@
   "criteria.supportiveness_desc": "How approachable and helpful is the teacher when you need assistance? Think about whether the teacher is willing to re-explain things, offers extra help, and creates a safe environment where it's okay to make mistakes.",
   "criteria.preparation_desc": "How well-prepared is the teacher for each class? Consider whether lessons are organized, materials are ready, and the teacher has a clear plan — or whether class time often feels improvised or wasted.",
   "criteria.workload_desc": "How reasonable is the amount of work assigned? Think about whether homework, projects, and readings are manageable alongside your other classes, and whether the effort required matches what you're expected to learn.",
-
   "student.active_feedback_period": "Active Feedback Period",
   "student.feedback_period": "Feedback Period",
   "student.feedback_closed": "Closed",
@@ -164,7 +160,6 @@
   "student.review_submitted": "Review submitted! It will be visible after admin approval.",
   "student.my_reviews_count": "My Reviews ({count})",
   "student.submit_during_active": "Submit feedback during an active feedback period",
-
   "teacher.overall_rating": "Overall Rating",
   "teacher.classrooms": "Classrooms",
   "teacher.active_period": "Active Period",
@@ -210,7 +205,6 @@
   "teacher.score_trend": "Score Trend",
   "teacher.category_breakdown": "Category Breakdown",
   "teacher.your_scores": "Your Scores",
-
   "head.teachers": "Teachers",
   "head.students": "Students",
   "head.classrooms": "Classrooms",
@@ -224,7 +218,6 @@
   "head.reviews": "Reviews",
   "head.performance_heatmap": "Performance Heatmap",
   "head.final": "Final",
-
   "admin.total_users": "Total Users",
   "admin.students": "Students",
   "admin.teachers": "Teachers",
@@ -430,7 +423,6 @@
   "admin.no_terms": "No terms yet. Create one to get started.",
   "admin.create_term_modal": "Create Term",
   "admin.term_autogenerate": "Auto-generated if left blank",
-
   "account.profile_info": "Profile Information",
   "account.full_name": "Full Name",
   "account.email": "Email",
@@ -464,7 +456,6 @@
   "account.verification": "Verification",
   "account.account_status_label": "Account Status",
   "account.school_id": "School ID",
-
   "support.title": "Contact Support",
   "support.description": "Have a question, found a bug, or need help? Fill out the form below and our support team will get back to you.",
   "support.category_label": "Category *",
@@ -487,7 +478,6 @@
   "support.subject_min_3": "Subject must be at least 3 characters",
   "support.message_min_10": "Message must be at least 10 characters",
   "support.submitted": "Support request submitted! An administrator will review it shortly.",
-
   "profile.about": "About",
   "profile.experience": "Experience:",
   "profile.experience_years": "{years} years",
@@ -500,7 +490,6 @@
   "profile.no_reviews_title": "No Reviews Yet",
   "profile.no_reviews_desc": "This teacher hasn't received any feedback yet.",
   "profile.load_failed": "Failed to load teacher profile: ",
-
   "chart.1_star": "1 Star",
   "chart.2_stars": "2 Stars",
   "chart.3_stars": "3 Stars",
@@ -512,17 +501,14 @@
   "chart.teachers_label": "Teachers",
   "chart.school_heads_label": "School Heads",
   "chart.admins_label": "Admins",
-
   "lang.english": "English",
   "lang.russian": "Русский",
   "lang.uzbek": "O'zbek",
   "lang.language": "Language",
-
   "nav.forms": "Forms",
   "nav.announcements": "Announcements",
   "title.announcements": "Announcements",
   "title.forms": "Forms",
-
   "common.back": "← Back",
   "common.select_all": "Select all",
   "common.copy": "Copy",
@@ -532,21 +518,15 @@
   "common.yes": "Yes",
   "common.no": "No",
   "common.save_short": "Save",
-  "common.super_admin": "Super Admin",
-  "common.org_admin": "Organization Admin",
-
   "status.draft": "Draft",
   "status.active": "Active",
   "status.closed": "Closed",
   "status.expired": "Expired",
   "status.open": "Open",
-
   "inactivity.title": "Still there?",
   "inactivity.message": "You'll be signed out in {seconds} seconds due to inactivity.",
   "inactivity.stay": "Stay Signed In",
-
   "dialog.dangerous_action": "⚠️ Confirm Dangerous Action",
-
   "review.reviewed_badge": "✓ Reviewed",
   "review.approved_badge": "✓ Approved",
   "review.cannot_edit": "Cannot edit (approved)",
@@ -558,13 +538,11 @@
   "review.written_feedback_label": "Written Feedback",
   "review.tags_label": "Tags",
   "review.already_reviewed_section": "Already Reviewed ({count})",
-
   "rating.very_poor": "Very Poor",
   "rating.poor": "Poor",
   "rating.average": "Average",
   "rating.good": "Good",
   "rating.excellent": "Excellent",
-
   "forms.title": "Forms",
   "forms.no_active": "No active forms",
   "forms.no_active_msg": "Your teachers haven't shared any questionnaires yet. Check back later.",
@@ -630,7 +608,6 @@
   "forms.results_title": "Results ({count} responses)",
   "forms.no_questions_results": "No questions",
   "forms.results_responses": "({count} response{s})",
-
   "admin_forms.no_forms": "No forms yet",
   "admin_forms.no_forms_msg": "Create your first form to send questionnaires to classrooms",
   "admin_forms.select_org": "-- Select organization --",
@@ -640,7 +617,6 @@
   "admin_forms.search_placeholder": "Search by class, grade or teacher…",
   "admin_forms.none_btn": "None",
   "admin_forms.classrooms_selected": "{count} classrooms selected",
-
   "ann.new_btn": "+ New Announcement",
   "ann.no_announcements": "No announcements yet",
   "ann.post_updates_hint": "Post updates, notices, or news to your organization.",
@@ -665,7 +641,6 @@
   "ann.posted": "Announcement posted!",
   "ann.delete_confirm": "Delete this announcement?",
   "ann.deleted": "Announcement deleted",
-
   "teacher.archived": "Archived",
   "teacher.archive": "Archive",
   "teacher.unarchive": "Unarchive",
@@ -681,7 +656,6 @@
   "teacher.completion_rates_title": "Feedback Completion Rates",
   "teacher.scores_pending": "Scores will appear once students submit and reviews are approved",
   "teacher.export_pdf": "Export PDF",
-
   "analytics.score_trend": "Score Trend by Period",
   "analytics.no_periods": "No feedback periods in this term yet",
   "analytics.category_breakdown": "Category Breakdown",
@@ -689,26 +663,22 @@
   "analytics.feedback_period": "Feedback Period",
   "analytics.avg_score": "Avg Score",
   "analytics.change_vs_prev": "Change vs Previous",
-
   "moderate.select_all": "Select all",
   "moderate.approve_selected": "✓ Approve Selected",
   "moderate.approve_selected_count": "✓ Approve Selected ({count})",
   "moderate.approve_selected_confirm": "Approve {count} selected review(s)?",
   "moderate.approved_selected_toast": "Approved {count} review(s)!",
   "moderate.flagged_desc": "These reviews were flagged as potentially inappropriate",
-
   "admin.invite_code_title": "Teacher Invite Code",
   "admin.invite_code_hint": "Share with teachers so they can self-register at /join",
   "admin.export_pdf": "Export PDF",
   "admin.name_col": "Name",
   "admin.dept_col": "Department",
-
   "pdf.report_label": "EduRate Report",
   "pdf.performance_summary": "Performance Summary",
   "pdf.rating_breakdown": "Rating Breakdown",
   "pdf.feedback_sample": "Student Feedback (Sample)",
   "pdf.footer": "Generated by EduRate · {date} · Confidential — For educational administration use only",
-
   "org.subscription_active": "Active",
   "org.subscription_trial": "Trial",
   "org.subscription_suspended": "Suspended",
@@ -726,17 +696,14 @@
   "org.remove_member_confirm": "Remove <strong>{user}</strong> from <strong>{org}</strong>?<br><br>This will remove their association with this organization.",
   "org.member_removed": "Member removed successfully",
   "org.not_found": "Organization not found",
-
   "review.no_written_feedback": "No written feedback",
   "admin.approve_btn": "Approve",
   "admin.reject_btn": "Reject",
-
   "teacher.no_classrooms_title": "No classrooms yet",
   "teacher.create_first_classroom": "Create your first classroom to get started",
   "teacher.completion_rates_btn": "Completion Rates",
   "teacher.archive_confirm": "Archive \"{name}\"? Students can no longer join, but history is preserved.",
   "teacher.delete_classroom_confirm": "Delete \"{name}\"? This will also remove all students and reviews.",
-
   "forms.desc_placeholder": "What is this form about?",
   "forms.activate": "Activate",
   "forms.close_btn": "Close",
@@ -748,7 +715,6 @@
   "forms.options_label": "Options",
   "forms.add_option": "+ Add option",
   "forms.loading_builder": "Loading form builder...",
-
   "admin.no_users": "No users found",
   "admin.reset_password": "Reset Password",
   "admin.delete_account": "Delete Account",
@@ -778,13 +744,10 @@
   "admin.delete_org_confirm": "Are you sure you want to permanently delete \"{name}\"?",
   "admin.org_avg_label": "Org Average",
   "admin.term_filter_label": "Term:",
-
   "ann.target_classrooms_label": "Target Classrooms",
-
   "pdf.overall_rating_label": "Overall Rating / 5.00",
   "pdf.total_reviews_label": "Total Reviews",
   "pdf.years_experience": "years experience",
-
   "review.share_thoughts": "Share your thoughts...",
   "ann.write_placeholder": "Write your announcement...",
   "teacher.no_data_available": "No data available",
@@ -823,5 +786,10 @@
   "tag.more_feedback_needed": "More feedback needed",
   "tag.challenging_but_good": "Challenging but good",
   "ann.no_announcements_student": "No announcements from your teachers yet.",
-  "common.classroom": "Classroom"
+  "common.classroom": "Classroom",
+  "org.code_copied": "Invite code copied!",
+  "org.created": "Organization created",
+  "forms.desc_label": "Description",
+  "forms.deadline_label": "Deadline",
+  "common.remove": "Remove"
 }
