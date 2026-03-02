@@ -86,12 +86,51 @@ function getRatingDistribution(teacherId, options = {}) {
   return result;
 }
 
-// Option A: per-classroom trend — each classroom tracked across the periods it appeared in.
-// Option C: overall trend direction only set when the same classrooms overlap between
-//           the first and last period; otherwise trend is null.
-// Periods ordered by start_date for correct chronology.
+// Timeline groups by calendar month (e.g. "2026-03" → March 2026).
+// Periods that overlap within the same month are merged into one data point.
+// Option A: per-classroom monthly breakdown.
+// Option C: trend direction only set when the same classrooms appear in
+//           both the first and last month; otherwise trend is null.
 function getTeacherTrend(teacherId, termId) {
-  // Option A: per-classroom breakdown
+  // Overall monthly timeline — classroom-weighted across all periods in each month
+  const monthRows = db.prepare(`
+    SELECT strftime('%Y-%m', fp.start_date) as month,
+      MIN(fp.start_date) as month_start,
+      COUNT(DISTINCT r.classroom_id) as classroom_count,
+      COUNT(r.id) as review_count
+    FROM feedback_periods fp
+    JOIN reviews r ON r.feedback_period_id = fp.id
+      AND r.teacher_id = ? AND r.approved_status = 1
+    WHERE fp.term_id = ?
+    GROUP BY month
+    ORDER BY month ASC
+  `).all(teacherId, termId);
+
+  const months = monthRows.map(m => {
+    const cwScore = db.prepare(`
+      SELECT ROUND(AVG(classroom_score), 2) as score
+      FROM (
+        SELECT r.classroom_id,
+          ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) +
+                 AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as classroom_score
+        FROM feedback_periods fp
+        JOIN reviews r ON r.feedback_period_id = fp.id
+          AND r.teacher_id = ? AND r.approved_status = 1
+        WHERE fp.term_id = ? AND strftime('%Y-%m', fp.start_date) = ?
+        GROUP BY r.classroom_id
+      )
+    `).get(teacherId, termId, m.month);
+
+    return {
+      month: m.month,
+      month_start: m.month_start,
+      score: cwScore?.score ?? null,
+      review_count: m.review_count,
+      classroom_count: m.classroom_count
+    };
+  });
+
+  // Option A: per-classroom monthly breakdown
   const classrooms = db.prepare(`
     SELECT DISTINCT r.classroom_id, c.subject, c.grade_level
     FROM reviews r
@@ -100,8 +139,9 @@ function getTeacherTrend(teacherId, termId) {
   `).all(teacherId, termId);
 
   const classroomTrends = classrooms.map(cls => {
-    const periods = db.prepare(`
-      SELECT fp.id as period_id, fp.name as period_name, fp.start_date,
+    const classroomMonths = db.prepare(`
+      SELECT strftime('%Y-%m', fp.start_date) as month,
+        MIN(fp.start_date) as month_start,
         ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) +
                AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as score,
         COUNT(r.id) as review_count
@@ -109,70 +149,41 @@ function getTeacherTrend(teacherId, termId) {
       JOIN reviews r ON r.feedback_period_id = fp.id
         AND r.teacher_id = ? AND r.classroom_id = ? AND r.approved_status = 1
       WHERE fp.term_id = ?
-      GROUP BY fp.id
-      ORDER BY fp.start_date ASC
+      GROUP BY month
+      ORDER BY month ASC
     `).all(teacherId, cls.classroom_id, termId);
 
     return {
       classroom_id: cls.classroom_id,
       subject: cls.subject,
       grade_level: cls.grade_level,
-      periods
+      months: classroomMonths
     };
   });
 
-  // Classroom-weighted period averages for the overall chart, ordered by start_date
-  const periodRows = db.prepare(`
-    SELECT fp.id as period_id, fp.name as period_name, fp.start_date,
-      COUNT(DISTINCT r.classroom_id) as classroom_count,
-      COUNT(r.id) as review_count
-    FROM feedback_periods fp
-    JOIN reviews r ON r.feedback_period_id = fp.id
-      AND r.teacher_id = ? AND r.approved_status = 1
-    WHERE fp.term_id = ?
-    GROUP BY fp.id
-    ORDER BY fp.start_date ASC
-  `).all(teacherId, termId);
-
-  const periods = periodRows.map(p => {
-    const cwScore = db.prepare(`
-      SELECT ROUND(AVG(classroom_score), 2) as score
-      FROM (
-        SELECT ROUND((AVG(r.clarity_rating) + AVG(r.engagement_rating) + AVG(r.fairness_rating) +
-                      AVG(r.supportiveness_rating) + AVG(r.preparation_rating) + AVG(r.workload_rating)) / 6, 2) as classroom_score
-        FROM reviews r
-        WHERE r.teacher_id = ? AND r.feedback_period_id = ? AND r.approved_status = 1
-        GROUP BY r.classroom_id
-      )
-    `).get(teacherId, p.period_id);
-
-    return {
-      id: p.period_id,
-      name: p.period_name,
-      start_date: p.start_date,
-      score: cwScore?.score ?? null,
-      review_count: p.review_count,
-      classroom_count: p.classroom_count
-    };
-  });
-
-  // Option C: only set trend direction if same classrooms appear in both first and last period
+  // Option C: only set trend direction if same classrooms appear in both first and last month
   let trend = null;
-  const validPeriods = periods.filter(p => p.score !== null);
-  if (validPeriods.length >= 2) {
-    const firstPeriodId = validPeriods[0].id;
-    const lastPeriodId = validPeriods[validPeriods.length - 1].id;
+  const validMonths = months.filter(m => m.score !== null);
+  if (validMonths.length >= 2) {
+    const firstMonth = validMonths[0].month;
+    const lastMonth = validMonths[validMonths.length - 1].month;
 
     const firstClassrooms = new Set(
-      db.prepare('SELECT DISTINCT classroom_id FROM reviews WHERE teacher_id = ? AND feedback_period_id = ? AND approved_status = 1')
-        .all(teacherId, firstPeriodId).map(r => r.classroom_id)
+      db.prepare(`
+        SELECT DISTINCT r.classroom_id FROM reviews r
+        JOIN feedback_periods fp ON r.feedback_period_id = fp.id
+        WHERE r.teacher_id = ? AND fp.term_id = ? AND strftime('%Y-%m', fp.start_date) = ? AND r.approved_status = 1
+      `).all(teacherId, termId, firstMonth).map(r => r.classroom_id)
     );
-    const lastClassroomIds = db.prepare('SELECT DISTINCT classroom_id FROM reviews WHERE teacher_id = ? AND feedback_period_id = ? AND approved_status = 1')
-      .all(teacherId, lastPeriodId).map(r => r.classroom_id);
+    const lastClassroomIds = db.prepare(`
+      SELECT DISTINCT r.classroom_id FROM reviews r
+      JOIN feedback_periods fp ON r.feedback_period_id = fp.id
+      WHERE r.teacher_id = ? AND fp.term_id = ? AND strftime('%Y-%m', fp.start_date) = ? AND r.approved_status = 1
+    `).all(teacherId, termId, lastMonth).map(r => r.classroom_id);
 
     const hasOverlap = lastClassroomIds.some(id => firstClassrooms.has(id));
     if (hasOverlap) {
-      const diff = validPeriods[validPeriods.length - 1].score - validPeriods[0].score;
+      const diff = validMonths[validMonths.length - 1].score - validMonths[0].score;
       if (diff > 0.3) trend = 'improving';
       else if (diff < -0.3) trend = 'declining';
       else trend = 'stable';
@@ -180,7 +191,7 @@ function getTeacherTrend(teacherId, termId) {
     // No overlap → trend stays null (Option C)
   }
 
-  return { classroom_trends: classroomTrends, periods, trend };
+  return { classroom_trends: classroomTrends, months, trend };
 }
 
 function getDepartmentAverage(department, termId, orgId) {
