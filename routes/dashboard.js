@@ -222,23 +222,34 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
     const orgFilter2 = orgId ? 'AND r.org_id = ?' : '';
     const bulkParams = [...(activeTerm ? [activeTerm.id] : []), ...(orgId ? [orgId] : [])];
 
-    // 1 query: all teacher aggregate scores
+    // 1 query: all teacher aggregate scores (classroom-weighted)
     const scoresData = db.prepare(`
-      SELECT r.teacher_id,
-        COUNT(*) as review_count,
-        ROUND(AVG(r.clarity_rating), 2) as avg_clarity,
-        ROUND(AVG(r.engagement_rating), 2) as avg_engagement,
-        ROUND(AVG(r.fairness_rating), 2) as avg_fairness,
-        ROUND(AVG(r.supportiveness_rating), 2) as avg_supportiveness,
-        ROUND(AVG(r.preparation_rating), 2) as avg_preparation,
-        ROUND(AVG(r.workload_rating), 2) as avg_workload,
-        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
-               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as avg_overall,
-        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
-               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as final_score
-      FROM reviews r
-      WHERE r.approved_status = 1 ${termFilter} ${orgFilter2}
-      GROUP BY r.teacher_id
+      SELECT teacher_id,
+        SUM(review_count) as review_count,
+        ROUND(AVG(avg_clarity), 2) as avg_clarity,
+        ROUND(AVG(avg_engagement), 2) as avg_engagement,
+        ROUND(AVG(avg_fairness), 2) as avg_fairness,
+        ROUND(AVG(avg_supportiveness), 2) as avg_supportiveness,
+        ROUND(AVG(avg_preparation), 2) as avg_preparation,
+        ROUND(AVG(avg_workload), 2) as avg_workload,
+        ROUND((AVG(avg_clarity)+AVG(avg_engagement)+AVG(avg_fairness)+
+               AVG(avg_supportiveness)+AVG(avg_preparation)+AVG(avg_workload))/6,2) as avg_overall,
+        ROUND((AVG(avg_clarity)+AVG(avg_engagement)+AVG(avg_fairness)+
+               AVG(avg_supportiveness)+AVG(avg_preparation)+AVG(avg_workload))/6,2) as final_score
+      FROM (
+        SELECT r.teacher_id, r.classroom_id,
+          COUNT(*) as review_count,
+          AVG(r.clarity_rating) as avg_clarity,
+          AVG(r.engagement_rating) as avg_engagement,
+          AVG(r.fairness_rating) as avg_fairness,
+          AVG(r.supportiveness_rating) as avg_supportiveness,
+          AVG(r.preparation_rating) as avg_preparation,
+          AVG(r.workload_rating) as avg_workload
+        FROM reviews r
+        WHERE r.approved_status = 1 ${termFilter} ${orgFilter2}
+        GROUP BY r.teacher_id, r.classroom_id
+      )
+      GROUP BY teacher_id
     `).all(...bulkParams);
 
     // 1 query: rating distributions
@@ -248,18 +259,27 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
       GROUP BY r.teacher_id, r.overall_rating
     `).all(...bulkParams);
 
-    // 1 query: period scores for trend (only if active term exists)
+    // 1 query: period scores for trend — classroom-weighted, ordered by start_date
     let periodData = [];
     if (activeTerm) {
       periodData = db.prepare(`
-        SELECT fp.id as period_id, fp.name as period_name, r.teacher_id,
-          COUNT(r.id) as review_count,
-          ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
-                 AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as score
-        FROM feedback_periods fp
-        LEFT JOIN reviews r ON r.feedback_period_id = fp.id AND r.approved_status = 1 ${orgFilter2}
-        WHERE fp.term_id = ?
-        GROUP BY fp.id, r.teacher_id ORDER BY fp.id
+        SELECT period_id, period_name, start_date, teacher_id,
+          SUM(review_count) as review_count,
+          COUNT(DISTINCT classroom_id) as classroom_count,
+          ROUND(AVG(classroom_score), 2) as score
+        FROM (
+          SELECT fp.id as period_id, fp.name as period_name, fp.start_date,
+            r.teacher_id, r.classroom_id,
+            COUNT(r.id) as review_count,
+            ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
+                   AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as classroom_score
+          FROM feedback_periods fp
+          JOIN reviews r ON r.feedback_period_id = fp.id AND r.approved_status = 1 ${orgFilter2}
+          WHERE fp.term_id = ?
+          GROUP BY fp.id, r.teacher_id, r.classroom_id
+        )
+        GROUP BY period_id, teacher_id
+        ORDER BY start_date ASC, period_id ASC
       `).all(...(orgId ? [orgId] : []), activeTerm.id);
     }
 
@@ -273,14 +293,21 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
       distMap[d.teacher_id][d.rating] = d.count;
     });
 
-    const allPeriodIds = [...new Set(periodData.map(p => p.period_id))];
-    const periodNameMap = {};
-    periodData.forEach(p => { periodNameMap[p.period_id] = p.period_name; });
+    // Build ordered period list (by start_date, deduped)
+    const seenPeriods = new Set();
+    const orderedPeriods = [];
+    periodData.forEach(p => {
+      if (!seenPeriods.has(p.period_id)) {
+        seenPeriods.add(p.period_id);
+        orderedPeriods.push({ id: p.period_id, name: p.period_name, start_date: p.start_date });
+      }
+    });
+
     const teacherPeriodMap = {};
     periodData.forEach(p => {
       if (!p.teacher_id) return;
       if (!teacherPeriodMap[p.teacher_id]) teacherPeriodMap[p.teacher_id] = {};
-      teacherPeriodMap[p.teacher_id][p.period_id] = { score: p.score, review_count: p.review_count };
+      teacherPeriodMap[p.teacher_id][p.period_id] = { score: p.score, review_count: p.review_count, classroom_count: p.classroom_count };
     });
 
     const teacherPerformance = teachers.map(t => {
@@ -289,17 +316,30 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
 
       let trend = null;
       if (activeTerm) {
-        const periods = allPeriodIds.map(pid => ({
-          id: pid, name: periodNameMap[pid],
-          score: teacherPeriodMap[t.id]?.[pid]?.score ?? null,
-          review_count: teacherPeriodMap[t.id]?.[pid]?.review_count ?? 0
+        const periods = orderedPeriods.map(p => ({
+          id: p.id, name: p.name, start_date: p.start_date,
+          score: teacherPeriodMap[t.id]?.[p.id]?.score ?? null,
+          review_count: teacherPeriodMap[t.id]?.[p.id]?.review_count ?? 0,
+          classroom_count: teacherPeriodMap[t.id]?.[p.id]?.classroom_count ?? 0
         }));
-        const validScores = periods.filter(p => p.score !== null).map(p => p.score);
-        let trendDir = 'stable';
-        if (validScores.length >= 2) {
-          const diff = validScores[validScores.length - 1] - validScores[0];
-          if (diff > 0.3) trendDir = 'improving';
-          else if (diff < -0.3) trendDir = 'declining';
+
+        // Option C: only label trend if same classrooms overlap between first and last period
+        const validPeriods = periods.filter(p => p.score !== null);
+        let trendDir = null;
+        if (validPeriods.length >= 2) {
+          const firstClassrooms = new Set(
+            db.prepare('SELECT DISTINCT classroom_id FROM reviews WHERE teacher_id = ? AND feedback_period_id = ? AND approved_status = 1')
+              .all(t.id, validPeriods[0].id).map(r => r.classroom_id)
+          );
+          const lastClassroomIds = db.prepare('SELECT DISTINCT classroom_id FROM reviews WHERE teacher_id = ? AND feedback_period_id = ? AND approved_status = 1')
+            .all(t.id, validPeriods[validPeriods.length - 1].id).map(r => r.classroom_id);
+          const hasOverlap = lastClassroomIds.some(id => firstClassrooms.has(id));
+          if (hasOverlap) {
+            const diff = validPeriods[validPeriods.length - 1].score - validPeriods[0].score;
+            if (diff > 0.3) trendDir = 'improving';
+            else if (diff < -0.3) trendDir = 'declining';
+            else trendDir = 'stable';
+          }
         }
         trend = { periods, trend: trendDir };
       }
@@ -423,21 +463,32 @@ router.get('/departments/:name', authenticate, authorize('school_head', 'super_a
     const teacherIds = teachers.map(t => t.id);
     const placeholders = teacherIds.map(() => '?').join(',');
 
-    // Per-teacher criterion scores (all-time approved)
+    // Per-teacher criterion scores — classroom-weighted
     const scoresData = db.prepare(`
-      SELECT r.teacher_id,
-        COUNT(*) as review_count,
-        ROUND(AVG(r.clarity_rating), 2) as avg_clarity,
-        ROUND(AVG(r.engagement_rating), 2) as avg_engagement,
-        ROUND(AVG(r.fairness_rating), 2) as avg_fairness,
-        ROUND(AVG(r.supportiveness_rating), 2) as avg_supportiveness,
-        ROUND(AVG(r.preparation_rating), 2) as avg_preparation,
-        ROUND(AVG(r.workload_rating), 2) as avg_workload,
-        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
-               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6,2) as avg_overall
-      FROM reviews r
-      WHERE r.approved_status = 1 AND r.teacher_id IN (${placeholders}) ${orgId ? 'AND r.org_id = ?' : ''}
-      GROUP BY r.teacher_id
+      SELECT teacher_id,
+        SUM(review_count) as review_count,
+        ROUND(AVG(avg_clarity), 2) as avg_clarity,
+        ROUND(AVG(avg_engagement), 2) as avg_engagement,
+        ROUND(AVG(avg_fairness), 2) as avg_fairness,
+        ROUND(AVG(avg_supportiveness), 2) as avg_supportiveness,
+        ROUND(AVG(avg_preparation), 2) as avg_preparation,
+        ROUND(AVG(avg_workload), 2) as avg_workload,
+        ROUND((AVG(avg_clarity)+AVG(avg_engagement)+AVG(avg_fairness)+
+               AVG(avg_supportiveness)+AVG(avg_preparation)+AVG(avg_workload))/6,2) as avg_overall
+      FROM (
+        SELECT r.teacher_id, r.classroom_id,
+          COUNT(*) as review_count,
+          AVG(r.clarity_rating) as avg_clarity,
+          AVG(r.engagement_rating) as avg_engagement,
+          AVG(r.fairness_rating) as avg_fairness,
+          AVG(r.supportiveness_rating) as avg_supportiveness,
+          AVG(r.preparation_rating) as avg_preparation,
+          AVG(r.workload_rating) as avg_workload
+        FROM reviews r
+        WHERE r.approved_status = 1 AND r.teacher_id IN (${placeholders}) ${orgId ? 'AND r.org_id = ?' : ''}
+        GROUP BY r.teacher_id, r.classroom_id
+      )
+      GROUP BY teacher_id
     `).all(...teacherIds, ...(orgId ? [orgId] : []));
 
     const scoreMap = {};
@@ -455,18 +506,25 @@ router.get('/departments/:name', authenticate, authorize('school_head', 'super_a
       })
     }));
 
-    // Trend: dept avg score per feedback period (all terms, scoped to org)
+    // Trend: dept avg score per feedback period — classroom-weighted, ordered by start_date
     const trend = db.prepare(`
-      SELECT fp.id as period_id, fp.name as period_name, t.name as term_name, t.id as term_id,
-        COUNT(r.id) as review_count,
-        ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
-               AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6, 2) as avg_score
-      FROM feedback_periods fp
-      JOIN terms t ON fp.term_id = t.id
-      LEFT JOIN reviews r ON r.feedback_period_id = fp.id AND r.approved_status = 1
-        AND r.teacher_id IN (${placeholders})
-      WHERE ${orgId ? 't.org_id = ? AND' : ''} 1=1
-      GROUP BY fp.id ORDER BY t.start_date, fp.id
+      SELECT period_id, period_name, term_name, term_id,
+        SUM(review_count) as review_count,
+        ROUND(AVG(classroom_score), 2) as avg_score
+      FROM (
+        SELECT fp.id as period_id, fp.name as period_name, t.name as term_name, t.id as term_id,
+          r.classroom_id,
+          COUNT(r.id) as review_count,
+          ROUND((AVG(r.clarity_rating)+AVG(r.engagement_rating)+AVG(r.fairness_rating)+
+                 AVG(r.supportiveness_rating)+AVG(r.preparation_rating)+AVG(r.workload_rating))/6, 2) as classroom_score
+        FROM feedback_periods fp
+        JOIN terms t ON fp.term_id = t.id
+        JOIN reviews r ON r.feedback_period_id = fp.id AND r.approved_status = 1
+          AND r.teacher_id IN (${placeholders})
+        WHERE ${orgId ? 't.org_id = ? AND' : ''} 1=1
+        GROUP BY fp.id, r.classroom_id
+      )
+      GROUP BY period_id ORDER BY term_id, period_id
     `).all(...teacherIds, ...(orgId ? [orgId] : []));
 
     // Org-wide averages for radar chart comparison
