@@ -59,7 +59,7 @@ router.get('/', authenticate, (req, res) => {
 });
 
 // POST /api/classrooms - create classroom (teacher/admin)
-router.post('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.post('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const { subject, grade_level, term_id } = req.body;
 
@@ -177,12 +177,6 @@ router.post('/join', authenticate, authorize('student'), (req, res) => {
       'INSERT INTO classroom_members (classroom_id, student_id) VALUES (?, ?)'
     ).run(classroom.id, req.user.id);
 
-    // Auto-associate student with the classroom's org
-    if (classroom.org_id) {
-      db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org) VALUES (?, ?, ?)')
-        .run(req.user.id, classroom.org_id, 'student');
-    }
-
     logAuditEvent({
       userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
       actionType: 'classroom_join',
@@ -200,7 +194,7 @@ router.post('/join', authenticate, authorize('student'), (req, res) => {
 });
 
 // PATCH /api/classrooms/:id - edit classroom (teacher owns it, or admin)
-router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.patch('/:id', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
@@ -235,7 +229,7 @@ router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admi
 });
 
 // DELETE /api/classrooms/:id - delete classroom (teacher owns it, or admin)
-router.delete('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.delete('/:id', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
@@ -265,7 +259,7 @@ router.delete('/:id', authenticate, authorize('teacher', 'super_admin', 'org_adm
 });
 
 // POST /api/classrooms/:id/regenerate-code - teacher regenerates join code
-router.post('/:id/regenerate-code', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.post('/:id/regenerate-code', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
@@ -323,7 +317,7 @@ router.delete('/:id/leave', authenticate, authorize('student'), (req, res) => {
 });
 
 // GET /api/classrooms/:id/members - get members
-router.get('/:id/members', authenticate, authorize('teacher', 'super_admin', 'org_admin', 'school_head', 'student'), (req, res) => {
+router.get('/:id/members', authenticate, authorize('teacher', 'admin', 'head', 'student'), (req, res) => {
   try {
     // Students can only view members of classrooms they are enrolled in
     if (req.user.role === 'student') {
@@ -349,7 +343,7 @@ router.get('/:id/members', authenticate, authorize('teacher', 'super_admin', 'or
 });
 
 // DELETE /api/classrooms/:id/members/:studentId - remove student from classroom (teacher/admin)
-router.delete('/:id/members/:studentId', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.delete('/:id/members/:studentId', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const classroom = db.prepare('SELECT * FROM classrooms WHERE id = ?').get(req.params.id);
     if (!classroom) return res.status(404).json({ error: 'Classroom not found' });

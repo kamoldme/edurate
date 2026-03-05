@@ -490,49 +490,6 @@
       margin-right: auto;
     }
 
-    /* Application form inside CTA */
-    .apply-form {
-      max-width: 520px;
-      margin: 0 auto;
-      text-align: left;
-    }
-    .apply-form .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .apply-form .form-group { margin-bottom: 14px; }
-    .apply-form label {
-      display: block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: rgba(255,255,255,0.7);
-      margin-bottom: 6px;
-      letter-spacing: 0.03em;
-    }
-    .apply-form input,
-    .apply-form textarea,
-    .apply-form select {
-      width: 100%;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #fff;
-      font-size: 0.9rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .apply-form input::placeholder,
-    .apply-form textarea::placeholder { color: rgba(255,255,255,0.35); }
-    .apply-form input:focus,
-    .apply-form textarea:focus {
-      border-color: rgba(251,191,36,0.6);
-      background: rgba(255,255,255,0.15);
-    }
-    .apply-form textarea { resize: vertical; min-height: 90px; }
-
     .btn-amber {
       background: linear-gradient(135deg, #d97706, #f59e0b);
       color: #fff;
@@ -546,19 +503,7 @@
       box-shadow: 0 8px 28px rgba(245,158,11,0.45);
     }
 
-    .apply-success {
-      display: none;
-      padding: 20px;
-      background: rgba(34,197,94,0.15);
-      border: 1px solid rgba(34,197,94,0.3);
-      border-radius: 12px;
-      text-align: center;
-    }
-    .apply-success h4 { font-size: 1.1rem; margin-bottom: 8px; }
-    .apply-success p { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
-
     @media (max-width: 560px) {
-      .apply-form .form-row { grid-template-columns: 1fr; }
       .cta-card { padding: 36px 20px; }
     }
 
@@ -897,7 +842,7 @@
         <div class="hero">
           <div class="badge">
             <span class="badge-dot"></span>
-            Available for educational institutions
+            United World College Feedback Platform
           </div>
           <div class="hero-logo">
             <img src="/e_logo.png" alt="EduRate">
@@ -928,8 +873,8 @@
           </div>
           <div class="stat-item">
             <div class="stat-icon">🏫</div>
-            <div class="stat-number">Multi-org</div>
-            <div class="stat-label">Support</div>
+            <div class="stat-number">UWC</div>
+            <div class="stat-label">Dedicated Platform</div>
           </div>
           <div class="stat-item">
             <div class="stat-icon">📊</div>
@@ -1003,12 +948,12 @@
           <div class="feature">
             <div class="feature-icon">👥</div>
             <h3>Role-Based Access</h3>
-            <p>Purpose-built roles for students, teachers, school heads, org admins, and super admins.</p>
+            <p>Purpose-built roles for students, teachers, heads, and admins — each with the right level of access.</p>
           </div>
           <div class="feature">
             <div class="feature-icon">🏫</div>
-            <h3>Multi-Organization</h3>
-            <p>Manage multiple schools under one platform with isolated data per organization.</p>
+            <h3>Department Support</h3>
+            <p>Organize teachers by department for structured feedback and targeted analytics.</p>
           </div>
           <div class="feature">
             <div class="feature-icon">📝</div>
@@ -1024,42 +969,15 @@
       </div>
     </section>
 
-    <!-- APPLY -->
+    <!-- CTA -->
     <section class="cta-section">
       <div class="container">
         <div class="cta-card reveal">
-          <h2>Apply to Join EduRate</h2>
-          <p>Interested in bringing EduRate to your school or institution? Submit a short request and our team will reach out.</p>
-          <div class="apply-form" id="applyForm">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Organization Name *</label>
-                <input type="text" id="applyOrg" placeholder="e.g. Lincoln High School">
-              </div>
-              <div class="form-group">
-                <label>Your Name *</label>
-                <input type="text" id="applyName" placeholder="Full name">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Email Address *</label>
-                <input type="email" id="applyEmail" placeholder="your@school.edu">
-              </div>
-              <div class="form-group">
-                <label>Phone Number <span style="opacity:0.5;font-weight:400">(optional)</span></label>
-                <input type="tel" id="applyPhone" placeholder="+1 234 567 8900">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Tell us about your school <span style="opacity:0.5;font-weight:400">(optional)</span></label>
-              <textarea id="applyMessage" placeholder="Number of teachers, grade levels, any specific needs..."></textarea>
-            </div>
-            <button class="btn btn-amber" style="width:100%;padding:13px;font-size:1rem" onclick="submitApplication()">Send Application</button>
-          </div>
-          <div class="apply-success" id="applySuccess">
-            <h4>✅ Application received!</h4>
-            <p>Thank you! We'll review your request and get back to you shortly.</p>
+          <h2>Ready to get started?</h2>
+          <p>Join UWC's feedback platform and help teachers grow through honest, anonymous student insights.</p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="showRoleModal()" class="btn btn-amber" style="padding:14px 36px;font-size:1rem;">Create Account</button>
+            <a href="/login" class="btn btn-outline" style="padding:14px 36px;font-size:1rem;">Sign In</a>
           </div>
         </div>
       </div>
@@ -1140,44 +1058,6 @@
       if (e.key === 'Escape') hideRoleModal();
     });
 
-    // Organization application form
-    async function submitApplication() {
-      const org_name = document.getElementById('applyOrg').value.trim();
-      const contact_name = document.getElementById('applyName').value.trim();
-      const email = document.getElementById('applyEmail').value.trim();
-      const phone = document.getElementById('applyPhone').value.trim();
-      const message = document.getElementById('applyMessage').value.trim();
-      const btn = document.querySelector('#applyForm .btn-amber');
-
-      if (!org_name || !contact_name || !email) {
-        alert('Please fill in the required fields.');
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        alert('Please enter a valid email address.');
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = 'Sending...';
-      try {
-        const res = await fetch('/api/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ org_name, contact_name, email, phone, message })
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Failed to submit');
-        }
-        document.getElementById('applyForm').style.display = 'none';
-        document.getElementById('applySuccess').style.display = 'block';
-      } catch (err) {
-        alert(err.message);
-        btn.disabled = false;
-        btn.textContent = 'Send Application';
-      }
-    }
   </script>
 </body>
 </html>

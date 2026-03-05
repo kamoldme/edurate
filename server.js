@@ -46,8 +46,6 @@ const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
 const supportRoutes = require('./routes/support');
 const teacherRoutes = require('./routes/teachers');
-const organizationRoutes = require('./routes/organizations');
-const applyRoutes = require('./routes/apply');
 const formsRoutes = require('./routes/forms');
 const announcementsRoutes = require('./routes/announcements');
 const notificationsRoutes = require('./routes/notifications');
@@ -101,7 +99,6 @@ app.use('/api/', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/register-teacher', authLimiter);
-app.use('/api/auth/send-teacher-code', authLimiter);
 
 // Maintenance mode — set MAINTENANCE_MODE=true in env to activate
 if (process.env.MAINTENANCE_MODE === 'true') {
@@ -121,8 +118,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/teachers', teacherRoutes);
-app.use('/api/organizations', organizationRoutes);
-app.use('/api/apply', applyRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/notifications', notificationsRoutes);

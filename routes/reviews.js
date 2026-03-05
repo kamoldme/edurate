@@ -356,7 +356,7 @@ router.put('/:id', authenticate, authorize('student'), (req, res) => {
 });
 
 // POST /api/reviews/:id/flag - flag a review
-router.post('/:id/flag', authenticate, authorize('teacher', 'school_head', 'org_admin', 'super_admin'), (req, res) => {
+router.post('/:id/flag', authenticate, authorize('teacher', 'head', 'admin'), (req, res) => {
   try {
     const review = db.prepare('SELECT * FROM reviews WHERE id = ?').get(req.params.id);
     if (!review) return res.status(404).json({ error: 'Review not found' });

@@ -3,30 +3,23 @@ const bcrypt = require('bcryptjs');
 const db = require('../database');
 const { generateToken, authenticate } = require('../middleware/auth');
 const { sanitizeInput } = require('../utils/moderation');
-const { sendVerificationCode } = require('../utils/email');
 const { logAuditEvent } = require('../utils/audit');
 
 const router = express.Router();
 
-function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-// POST /api/auth/send-code - send verification code to email
-router.post('/send-code', async (req, res) => {
+// POST /api/auth/register - student self-registration (no email verification)
+router.post('/register', async (req, res) => {
   try {
-    const { email, full_name, password, grade_or_position } = req.body;
+    const { full_name, email, password, grade_or_position } = req.body;
 
-    if (!email || !full_name || !password) {
+    if (!full_name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
-    // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // Validate password strength
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
@@ -34,83 +27,17 @@ router.post('/send-code', async (req, res) => {
       return res.status(400).json({ error: 'Password must contain uppercase, lowercase, and a number' });
     }
 
-    // Check existing user
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
-
-    // Rate limit: max 3 codes per email per 15 minutes
-    const recentCodes = db.prepare(
-      "SELECT COUNT(*) as count FROM verification_codes WHERE email = ? AND created_at > datetime('now', '-15 minutes')"
-    ).get(email.toLowerCase());
-    if (recentCodes.count >= 3) {
-      return res.status(429).json({ error: 'Too many attempts. Please wait before requesting a new code.' });
-    }
-
-    const code = generateCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    // Invalidate previous codes for this email
-    db.prepare("UPDATE verification_codes SET used = 1 WHERE email = ? AND used = 0").run(email.toLowerCase());
-
-    // Store new code
-    db.prepare(
-      'INSERT INTO verification_codes (email, code, expires_at) VALUES (?, ?, ?)'
-    ).run(email.toLowerCase(), code, expiresAt);
-
-    // Send email
-    await sendVerificationCode(email, code);
-
-    res.json({ message: 'Verification code sent to your email' });
-  } catch (err) {
-    console.error('Send code error:', err.message, err.stack);
-    res.status(500).json({ error: 'Failed to send verification code. Please try again.' });
-  }
-});
-
-// POST /api/auth/register
-router.post('/register', async (req, res) => {
-  try {
-    const { full_name, email, password, grade_or_position, code } = req.body;
-
-    if (!full_name || !email || !password || !code) {
-      return res.status(400).json({ error: 'Name, email, password, and verification code are required' });
-    }
-
-    // Validate password strength
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-      return res.status(400).json({ error: 'Password must contain uppercase, lowercase, and a number' });
-    }
-
-    // Check existing user
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
-    if (existing) {
-      return res.status(409).json({ error: 'Email already registered' });
-    }
-
-    // Verify code
-    const storedCode = db.prepare(
-      "SELECT * FROM verification_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime('now') ORDER BY created_at DESC LIMIT 1"
-    ).get(email.toLowerCase(), code);
-
-    if (!storedCode) {
-      return res.status(400).json({ error: 'Invalid or expired verification code' });
-    }
-
-    // Mark code as used
-    db.prepare('UPDATE verification_codes SET used = 1 WHERE id = ?').run(storedCode.id);
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const sanitizedName = sanitizeInput(full_name);
 
-    // Students register globally with org_id = NULL (they join orgs via classrooms)
     const result = db.prepare(`
       INSERT INTO users (full_name, email, password, role, grade_or_position, school_id, org_id, verified_status)
-      VALUES (?, ?, ?, 'student', ?, 1, NULL, 1)
+      VALUES (?, ?, ?, 'student', ?, 1, 1, 1)
     `).run(sanitizedName, email.toLowerCase(), hashedPassword, grade_or_position || null);
 
     const user = db.prepare('SELECT id, full_name, email, role, grade_or_position, school_id, org_id, verified_status, avatar_url, language FROM users WHERE id = ?')
@@ -143,10 +70,10 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// POST /api/auth/send-teacher-code - validate invite code then send email verification
-router.post('/send-teacher-code', async (req, res) => {
+// POST /api/auth/register-teacher - teacher self-registration via org invite code (no email verification)
+router.post('/register-teacher', async (req, res) => {
   try {
-    const { full_name, email, password, invite_code } = req.body;
+    const { full_name, email, password, invite_code, department_id, department } = req.body;
 
     if (!full_name || !email || !password || !invite_code) {
       return res.status(400).json({ error: 'Name, email, password, and invite code are required' });
@@ -172,87 +99,6 @@ router.post('/send-teacher-code', async (req, res) => {
     if (!org) {
       return res.status(400).json({ error: 'Invalid invite code' });
     }
-    if (org.subscription_status === 'suspended') {
-      return res.status(403).json({ error: 'This organization is currently suspended' });
-    }
-
-    // Rate limit: max 3 codes per email per 15 minutes
-    const recentCodes = db.prepare(
-      "SELECT COUNT(*) as count FROM verification_codes WHERE email = ? AND created_at > datetime('now', '-15 minutes')"
-    ).get(email.toLowerCase());
-    if (recentCodes.count >= 3) {
-      return res.status(429).json({ error: 'Too many attempts. Please wait before requesting a new code.' });
-    }
-
-    const code = generateCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    db.prepare("UPDATE verification_codes SET used = 1 WHERE email = ? AND used = 0").run(email.toLowerCase());
-    db.prepare('INSERT INTO verification_codes (email, code, expires_at) VALUES (?, ?, ?)').run(email.toLowerCase(), code, expiresAt);
-
-    await sendVerificationCode(email, code);
-
-    // Return departments so the registration form can show a picker
-    const departments = db.prepare('SELECT id, name FROM departments WHERE org_id = ? ORDER BY name').all(org.id);
-
-    res.json({
-      message: 'Verification code sent to your email',
-      org_id: org.id,
-      org_name: org.name,
-      departments
-    });
-  } catch (err) {
-    console.error('Send teacher code error:', err.message);
-    res.status(500).json({ error: 'Failed to send verification code. Please try again.' });
-  }
-});
-
-// POST /api/auth/register-teacher - complete teacher self-registration via org invite code + email verification
-router.post('/register-teacher', async (req, res) => {
-  try {
-    const { full_name, email, password, invite_code, code, department_id, department } = req.body;
-
-    if (!full_name || !email || !password || !invite_code || !code) {
-      return res.status(400).json({ error: 'All fields including verification code are required' });
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-      return res.status(400).json({ error: 'Password must contain uppercase, lowercase, and a number' });
-    }
-
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
-    if (existing) {
-      return res.status(409).json({ error: 'Email already registered' });
-    }
-
-    const org = db.prepare('SELECT * FROM organizations WHERE invite_code = ?').get(invite_code.trim().toUpperCase());
-    if (!org) {
-      return res.status(400).json({ error: 'Invalid invite code' });
-    }
-    if (org.subscription_status === 'suspended') {
-      return res.status(403).json({ error: 'This organization is currently suspended' });
-    }
-
-    const teacherCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE org_id = ? AND role = 'teacher'").get(org.id);
-    if (teacherCount.count >= org.max_teachers) {
-      return res.status(400).json({ error: 'This organization has reached its teacher limit' });
-    }
-
-    // Verify email code
-    const storedCode = db.prepare(
-      "SELECT * FROM verification_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime('now') ORDER BY created_at DESC LIMIT 1"
-    ).get(email.toLowerCase(), code);
-    if (!storedCode) {
-      return res.status(400).json({ error: 'Invalid or expired verification code' });
-    }
-    db.prepare('UPDATE verification_codes SET used = 1 WHERE id = ?').run(storedCode.id);
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const sanitizedName = sanitizeInput(full_name.trim());
@@ -283,9 +129,6 @@ router.post('/register-teacher', async (req, res) => {
     db.prepare(`INSERT INTO teachers (user_id, full_name, school_id, org_id, department) VALUES (?, ?, 1, ?, ?)`)
       .run(userId, sanitizedName, org.id, departmentName);
 
-    db.prepare('INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)')
-      .run(userId, org.id, 'teacher');
-
     const user = db.prepare('SELECT id, full_name, email, role, org_id, verified_status, avatar_url, language FROM users WHERE id = ?').get(userId);
     const token = generateToken(user);
 
@@ -303,6 +146,25 @@ router.post('/register-teacher', async (req, res) => {
   } catch (err) {
     console.error('Teacher registration error:', err);
     res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// GET /api/auth/invite-info - get org info from invite code (for join page UI)
+router.get('/invite-info', (req, res) => {
+  try {
+    const { invite_code } = req.query;
+    if (!invite_code) {
+      return res.status(400).json({ error: 'Invite code required' });
+    }
+    const org = db.prepare('SELECT id, name FROM organizations WHERE invite_code = ?').get(invite_code.trim().toUpperCase());
+    if (!org) {
+      return res.status(400).json({ error: 'Invalid invite code' });
+    }
+    const departments = db.prepare('SELECT id, name FROM departments WHERE org_id = ? ORDER BY name').all(org.id);
+    res.json({ org_id: org.id, org_name: org.name, departments });
+  } catch (err) {
+    console.error('Invite info error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch invite info' });
   }
 });
 
@@ -349,10 +211,6 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Account suspended. Contact administrator.' });
     }
 
-    if (!user.verified_status) {
-      return res.status(403).json({ error: 'Email not verified. Check your inbox.' });
-    }
-
     const token = generateToken(user);
 
     res.cookie('token', token, {
@@ -385,29 +243,15 @@ router.get('/me', authenticate, (req, res) => {
     teacherInfo = db.prepare('SELECT * FROM teachers WHERE user_id = ?').get(req.user.id);
   }
 
-  // For students, include their organization memberships
-  let organizations = [];
-  if (req.user.role === 'student') {
-    organizations = db.prepare(`
-      SELECT o.id, o.name, o.slug, uo.role_in_org, uo.joined_at
-      FROM user_organizations uo
-      JOIN organizations o ON uo.org_id = o.id
-      WHERE uo.user_id = ?
-      ORDER BY uo.joined_at DESC
-    `).all(req.user.id);
-  }
-
-  // Include org name for non-students
-  let orgName = null;
-  if (req.user.org_id) {
+  let orgName = req.user.org_name || null;
+  if (!orgName && req.user.org_id) {
     const org = db.prepare('SELECT name FROM organizations WHERE id = ?').get(req.user.org_id);
     orgName = org?.name;
   }
 
   res.json({
     user: { ...req.user, org_name: orgName },
-    teacher: teacherInfo,
-    organizations: organizations.length > 0 ? organizations : undefined
+    teacher: teacherInfo
   });
 });
 
@@ -459,7 +303,6 @@ router.put('/update-profile', authenticate, (req, res) => {
       const sanitized = sanitizeInput(full_name);
       db.prepare('UPDATE users SET full_name = ? WHERE id = ?').run(sanitized, req.user.id);
 
-      // Also update teacher profile if teacher
       if (req.user.role === 'teacher') {
         db.prepare('UPDATE teachers SET full_name = ? WHERE user_id = ?').run(sanitized, req.user.id);
       }
@@ -469,7 +312,6 @@ router.put('/update-profile', authenticate, (req, res) => {
       db.prepare('UPDATE users SET grade_or_position = ? WHERE id = ?').run(grade_or_position, req.user.id);
     }
 
-    // Log profile update for non-teacher users (teacher updates are logged below)
     if (req.user.role !== 'teacher' && (full_name || grade_or_position !== undefined)) {
       logAuditEvent({
         userId: req.user.id, userRole: req.user.role, userName: req.user.full_name,
@@ -481,7 +323,6 @@ router.put('/update-profile', authenticate, (req, res) => {
       });
     }
 
-    // Teacher-specific fields
     if (req.user.role === 'teacher') {
       const updates = [];
       const params = [];
@@ -503,7 +344,6 @@ router.put('/update-profile', authenticate, (req, res) => {
         params.push(req.user.id);
         db.prepare(`UPDATE teachers SET ${updates.join(', ')} WHERE user_id = ?`).run(...params);
 
-        // Log audit event for teacher profile update
         logAuditEvent({
           userId: req.user.id,
           userRole: req.user.role,
@@ -538,8 +378,7 @@ router.post('/avatar', authenticate, (req, res) => {
     const fs = require('fs');
     const path = require('path');
 
-    // Validate user role
-    if (req.user.role !== 'teacher' && req.user.role !== 'school_head') {
+    if (req.user.role !== 'teacher' && req.user.role !== 'head') {
       return res.status(403).json({ error: 'Only teachers and school heads can upload avatars' });
     }
 
@@ -547,7 +386,6 @@ router.post('/avatar', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Invalid image data' });
     }
 
-    // Extract base64 data and file extension
     const matches = avatar.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!matches) {
       return res.status(400).json({ error: 'Invalid image format' });
@@ -557,23 +395,19 @@ router.post('/avatar', authenticate, (req, res) => {
     const base64Data = matches[2];
     const buffer = Buffer.from(base64Data, 'base64');
 
-    // Validate file size (5MB max)
     if (buffer.length > 5 * 1024 * 1024) {
       return res.status(400).json({ error: 'Image must be smaller than 5MB' });
     }
 
-    // Create avatars directory if it doesn't exist
     const avatarsDir = path.join(__dirname, '..', 'public', 'avatars');
     if (!fs.existsSync(avatarsDir)) {
       fs.mkdirSync(avatarsDir, { recursive: true });
     }
 
-    // Generate unique filename
     const avatarFilename = `avatar_${req.user.id}_${Date.now()}.${ext}`;
     const avatarPath = path.join(avatarsDir, avatarFilename);
     const avatarUrl = `/avatars/${avatarFilename}`;
 
-    // Delete old avatar if exists
     if (req.user.avatar_url) {
       const oldPath = path.join(__dirname, '..', 'public', req.user.avatar_url);
       if (fs.existsSync(oldPath)) {
@@ -581,17 +415,13 @@ router.post('/avatar', authenticate, (req, res) => {
       }
     }
 
-    // Save new avatar
     fs.writeFileSync(avatarPath, buffer);
-
-    // Update database
     db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatarUrl, req.user.id);
 
     if (req.user.role === 'teacher') {
       db.prepare('UPDATE teachers SET avatar_url = ? WHERE user_id = ?').run(avatarUrl, req.user.id);
     }
 
-    // Log audit event
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,
@@ -620,20 +450,17 @@ router.delete('/avatar', authenticate, (req, res) => {
       return res.status(400).json({ error: 'No avatar to remove' });
     }
 
-    // Delete avatar file
     const avatarPath = path.join(__dirname, '..', 'public', req.user.avatar_url);
     if (fs.existsSync(avatarPath)) {
       fs.unlinkSync(avatarPath);
     }
 
-    // Update database
     db.prepare('UPDATE users SET avatar_url = NULL WHERE id = ?').run(req.user.id);
 
     if (req.user.role === 'teacher') {
       db.prepare('UPDATE teachers SET avatar_url = NULL WHERE user_id = ?').run(req.user.id);
     }
 
-    // Log audit event
     logAuditEvent({
       userId: req.user.id,
       userRole: req.user.role,

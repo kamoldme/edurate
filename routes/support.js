@@ -61,12 +61,11 @@ router.post('/message', authenticate, (req, res) => {
       ipAddress: req.ip
     });
 
-    // Notify super_admins and the org's org_admin
-    const superAdmins = db.prepare("SELECT id FROM users WHERE role = 'super_admin'").all().map(u => u.id);
+    // Notify org admins
     const orgAdmins = req.user.org_id
-      ? db.prepare("SELECT id FROM users WHERE org_id = ? AND role = 'org_admin'").all(req.user.org_id).map(u => u.id)
+      ? db.prepare("SELECT id FROM users WHERE org_id = ? AND role = 'admin'").all(req.user.org_id).map(u => u.id)
       : [];
-    const adminUserIds = [...new Set([...superAdmins, ...orgAdmins])].filter(id => id !== req.user.id);
+    const adminUserIds = orgAdmins.filter(id => id !== req.user.id);
     createNotifications({
       userIds: adminUserIds,
       orgId: req.user.org_id || null,

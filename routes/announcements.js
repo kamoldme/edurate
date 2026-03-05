@@ -20,9 +20,7 @@ function getVisibleAnnouncements(userId, userRole, orgId, classroomIds = []) {
     WHERE (
   `;
 
-  if (userRole === 'super_admin') {
-    query += '1=1';
-  } else if (userRole === 'org_admin' || userRole === 'school_head') {
+  if (userRole === 'admin' || userRole === 'head') {
     query += 'a.org_id = ?';
     params.push(orgId);
   } else if (userRole === 'teacher') {
@@ -94,7 +92,7 @@ router.get('/', authenticate, (req, res) => {
 });
 
 // POST /api/announcements - create announcement
-router.post('/', authenticate, authorize('super_admin', 'org_admin', 'school_head', 'teacher'), (req, res) => {
+router.post('/', authenticate, authorize('admin', 'head', 'teacher'), (req, res) => {
   try {
     const { title, content, target_type, org_ids, classroom_ids } = req.body;
     const { role, id: userId, org_id: userOrgId } = req.user;
@@ -119,11 +117,8 @@ router.post('/', authenticate, authorize('super_admin', 'org_admin', 'school_hea
       if (owned.length !== classroom_ids.length) {
         return res.status(403).json({ error: 'You can only post to your own classrooms' });
       }
-    } else if (role === 'school_head' || role === 'org_admin') {
+    } else if (role === 'head' || role === 'admin') {
       announcementOrgId = userOrgId;
-    } else if (role === 'super_admin') {
-      // Can target a specific org or all orgs
-      announcementOrgId = req.body.org_id ? parseInt(req.body.org_id) : null;
     }
 
     const effectiveTargetType = role === 'teacher' ? 'classrooms' : (target_type || 'org');
@@ -182,7 +177,7 @@ router.post('/', authenticate, authorize('super_admin', 'org_admin', 'school_hea
 });
 
 // DELETE /api/announcements/:id
-router.delete('/:id', authenticate, authorize('super_admin', 'org_admin', 'school_head', 'teacher'), (req, res) => {
+router.delete('/:id', authenticate, authorize('admin', 'head', 'teacher'), (req, res) => {
   try {
     const ann = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
     if (!ann) return res.status(404).json({ error: 'Announcement not found' });
@@ -191,7 +186,7 @@ router.delete('/:id', authenticate, authorize('super_admin', 'org_admin', 'schoo
     if (role === 'teacher' && ann.creator_id !== userId) {
       return res.status(403).json({ error: 'You can only delete your own announcements' });
     }
-    if ((role === 'school_head' || role === 'org_admin') && ann.org_id !== orgId && ann.creator_id !== userId) {
+    if ((role === 'head' || role === 'admin') && ann.org_id !== orgId && ann.creator_id !== userId) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
@@ -213,7 +208,7 @@ router.delete('/:id', authenticate, authorize('super_admin', 'org_admin', 'schoo
 });
 
 // GET /api/announcements/classrooms - get classrooms available for teacher/admin to target
-router.get('/classrooms', authenticate, authorize('super_admin', 'org_admin', 'school_head', 'teacher'), (req, res) => {
+router.get('/classrooms', authenticate, authorize('admin', 'head', 'teacher'), (req, res) => {
   try {
     const { role, id: userId, org_id: orgId } = req.user;
     let classrooms;
@@ -224,7 +219,7 @@ router.get('/classrooms', authenticate, authorize('super_admin', 'org_admin', 's
         ? db.prepare('SELECT id, subject, grade_level FROM classrooms WHERE teacher_id = ? AND active_status = 1 ORDER BY subject').all(teacher.id)
         : [];
     } else {
-      const orgParam = role === 'super_admin' ? (req.query.org_id ? parseInt(req.query.org_id) : null) : orgId;
+      const orgParam = orgId;
       classrooms = orgParam
         ? db.prepare('SELECT c.id, c.subject, c.grade_level, te.full_name as teacher_name FROM classrooms c JOIN teachers te ON c.teacher_id = te.id WHERE c.org_id = ? AND c.active_status = 1 ORDER BY c.subject').all(orgParam)
         : db.prepare('SELECT c.id, c.subject, c.grade_level, te.full_name as teacher_name FROM classrooms c JOIN teachers te ON c.teacher_id = te.id WHERE c.active_status = 1 ORDER BY c.subject').all();

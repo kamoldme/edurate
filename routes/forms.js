@@ -15,8 +15,7 @@ function getTeacher(userId) {
 // Returns true if the current user can manage (edit/delete/view results) a form
 function canManageForm(form, req) {
   const { role, id: userId, org_id } = req.user;
-  if (role === 'super_admin') return true;
-  if (role === 'org_admin') return form.org_id === org_id;
+  if (role === 'admin') return form.org_id === org_id;
   if (role === 'teacher') {
     const teacher = getTeacher(userId);
     return !!(teacher && form.teacher_id === teacher.id);
@@ -112,9 +111,9 @@ router.post('/:id/submit', authenticate, authorize('student'), (req, res) => {
 // ─── ADMIN: CLASSROOMS LIST FOR FORM CREATION ─────────────────────────────────
 
 // GET /api/forms/admin/classrooms — classrooms available for admin to pick
-router.get('/admin/classrooms', authenticate, authorize('super_admin', 'org_admin'), (req, res) => {
+router.get('/admin/classrooms', authenticate, authorize('admin'), (req, res) => {
   try {
-    if (req.user.role === 'org_admin') {
+    if (req.user.role === 'admin') {
       const classrooms = db.prepare(`
         SELECT c.id, c.subject, c.grade_level, te.full_name as teacher_name
         FROM classrooms c
@@ -125,28 +124,7 @@ router.get('/admin/classrooms', authenticate, authorize('super_admin', 'org_admi
       return res.json(classrooms);
     }
 
-    // super_admin — optionally filter by org
-    const orgId = req.query.org_id ? parseInt(req.query.org_id) : null;
-    if (orgId) {
-      const classrooms = db.prepare(`
-        SELECT c.id, c.subject, c.grade_level, te.full_name as teacher_name
-        FROM classrooms c
-        LEFT JOIN teachers te ON c.teacher_id = te.id
-        WHERE c.org_id = ?
-        ORDER BY c.grade_level, c.subject
-      `).all(orgId);
-      return res.json(classrooms);
-    }
-
-    // All orgs — group with org info
-    const classrooms = db.prepare(`
-      SELECT c.id, c.subject, c.grade_level, te.full_name as teacher_name, o.name as org_name, o.id as org_id
-      FROM classrooms c
-      LEFT JOIN teachers te ON c.teacher_id = te.id
-      JOIN organizations o ON c.org_id = o.id
-      ORDER BY o.name, c.grade_level, c.subject
-    `).all();
-    res.json(classrooms);
+    res.status(403).json({ error: 'Access denied' });
   } catch (err) {
     console.error('Admin classrooms error:', err);
     res.status(500).json({ error: 'Failed to fetch classrooms' });
@@ -156,7 +134,7 @@ router.get('/admin/classrooms', authenticate, authorize('super_admin', 'org_admi
 // ─── TEACHER / ADMIN ROUTES ───────────────────────────────────────────────────
 
 // GET /api/forms — list forms
-router.get('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.get('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const classroomLabel = `(
       SELECT GROUP_CONCAT(c2.subject || ' ' || c2.grade_level, ', ')
@@ -176,7 +154,7 @@ router.get('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'), 
         WHERE f.teacher_id = ?
         ORDER BY f.created_at DESC
       `).all(teacher.id);
-    } else if (req.user.role === 'org_admin') {
+    } else if (req.user.role === 'admin') {
       forms = db.prepare(`
         SELECT f.*, ${classroomLabel},
           CASE WHEN f.teacher_id IS NOT NULL THEN te.full_name ELSE 'Admin' END as creator_name,
@@ -188,22 +166,7 @@ router.get('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'), 
         ORDER BY f.created_at DESC
       `).all(req.user.org_id);
     } else {
-      // super_admin — optional org filter
-      const orgId = req.query.org_id ? parseInt(req.query.org_id) : null;
-      const where = orgId ? 'WHERE f.org_id = ?' : '';
-      const params = orgId ? [orgId] : [];
-      forms = db.prepare(`
-        SELECT f.*, ${classroomLabel},
-          CASE WHEN f.teacher_id IS NOT NULL THEN te.full_name ELSE 'Admin' END as creator_name,
-          o.name as org_name,
-          (SELECT COUNT(*) FROM form_questions WHERE form_id = f.id) as question_count,
-          (SELECT COUNT(*) FROM form_responses WHERE form_id = f.id) as response_count
-        FROM forms f
-        LEFT JOIN teachers te ON f.teacher_id = te.id
-        LEFT JOIN organizations o ON f.org_id = o.id
-        ${where}
-        ORDER BY f.created_at DESC
-      `).all(...params);
+      forms = [];
     }
     res.json(forms);
   } catch (err) {
@@ -213,7 +176,7 @@ router.get('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'), 
 });
 
 // POST /api/forms — create a form
-router.post('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.post('/', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const { title, description, classroom_id, classroom_ids, org_id } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
@@ -242,7 +205,7 @@ router.post('/', authenticate, authorize('teacher', 'super_admin', 'org_admin'),
     }
 
     // Admin (org_admin or super_admin) — multi-classroom
-    const targetOrgId = req.user.role === 'super_admin' ? (org_id ? parseInt(org_id) : null) : req.user.org_id;
+    const targetOrgId = req.user.org_id;
     if (!targetOrgId) return res.status(400).json({ error: 'Organization is required' });
 
     // Resolve classroom IDs
@@ -303,7 +266,7 @@ router.get('/:id', authenticate, (req, res) => {
     } else if (req.user.role === 'teacher') {
       const teacher = getTeacher(req.user.id);
       if (!teacher || form.teacher_id !== teacher.id) return res.status(403).json({ error: 'Access denied' });
-    } else if (req.user.role === 'org_admin') {
+    } else if (req.user.role === 'admin') {
       if (form.org_id !== req.user.org_id) return res.status(403).json({ error: 'Access denied' });
     }
     // super_admin: always allowed
@@ -330,7 +293,7 @@ router.get('/:id', authenticate, (req, res) => {
 });
 
 // PATCH /api/forms/:id — update title/description/status
-router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.patch('/:id', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const form = db.prepare('SELECT * FROM forms WHERE id = ?').get(req.params.id);
     if (!form) return res.status(404).json({ error: 'Form not found' });
@@ -372,7 +335,7 @@ router.patch('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admi
 });
 
 // DELETE /api/forms/:id
-router.delete('/:id', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.delete('/:id', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const form = db.prepare('SELECT * FROM forms WHERE id = ?').get(req.params.id);
     if (!form) return res.status(404).json({ error: 'Form not found' });
@@ -392,7 +355,7 @@ router.delete('/:id', authenticate, authorize('teacher', 'super_admin', 'org_adm
 });
 
 // POST /api/forms/:id/questions
-router.post('/:id/questions', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.post('/:id/questions', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const form = db.prepare('SELECT * FROM forms WHERE id = ?').get(req.params.id);
     if (!form) return res.status(404).json({ error: 'Form not found' });
@@ -427,7 +390,7 @@ router.post('/:id/questions', authenticate, authorize('teacher', 'super_admin', 
 });
 
 // PUT /api/forms/:id/questions/:qId
-router.put('/:id/questions/:qId', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.put('/:id/questions/:qId', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const form = db.prepare('SELECT * FROM forms WHERE id = ?').get(req.params.id);
     if (!form) return res.status(404).json({ error: 'Form not found' });
@@ -463,7 +426,7 @@ router.put('/:id/questions/:qId', authenticate, authorize('teacher', 'super_admi
 });
 
 // DELETE /api/forms/:id/questions/:qId
-router.delete('/:id/questions/:qId', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.delete('/:id/questions/:qId', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const form = db.prepare('SELECT * FROM forms WHERE id = ?').get(req.params.id);
     if (!form) return res.status(404).json({ error: 'Form not found' });
@@ -480,7 +443,7 @@ router.delete('/:id/questions/:qId', authenticate, authorize('teacher', 'super_a
 });
 
 // GET /api/forms/:id/results
-router.get('/:id/results', authenticate, authorize('teacher', 'super_admin', 'org_admin'), (req, res) => {
+router.get('/:id/results', authenticate, authorize('teacher', 'admin'), (req, res) => {
   try {
     const form = db.prepare('SELECT * FROM forms WHERE id = ?').get(req.params.id);
     if (!form) return res.status(404).json({ error: 'Form not found' });

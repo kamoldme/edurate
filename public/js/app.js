@@ -2,14 +2,7 @@
 const API = {
   token: localStorage.getItem('edurate_token'),
   async request(path, options = {}) {
-    // Auto-append org_id for super_admin if an org is selected
-    let finalPath = path;
-    if (currentUser && currentUser.role === 'super_admin' && currentOrg) {
-      const separator = path.includes('?') ? '&' : '?';
-      finalPath = `${path}${separator}org_id=${currentOrg}`;
-    }
-
-    const res = await fetch('/api' + finalPath, {
+    const res = await fetch('/api' + path, {
       ...options,
       credentials: 'include',
       headers: {
@@ -38,8 +31,7 @@ let currentUser = null;
 let teacherInfo = null;
 let currentView = '';
 let chartInstances = {};
-let currentOrg = null; // Selected org_id for super_admin (null = all orgs)
-let userOrgs = []; // List of organizations user belongs to (for students in multiple orgs)
+let userOrgs = []; // List of organizations user belongs to
 
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', async () => {
@@ -56,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupUI();
     startNotifPolling();
     const hashView = window.location.hash.slice(1);
-    const validViews = ['student-home','student-classrooms','student-review','student-my-reviews','student-forms','teacher-home','teacher-classrooms','teacher-feedback','teacher-analytics','teacher-forms','head-home','head-teachers','head-classrooms','head-analytics','head-forms','admin-home','admin-orgs','admin-applications','admin-users','admin-terms','admin-classrooms','admin-teachers','admin-submissions','admin-moderate','admin-flagged','admin-support','admin-audit','admin-forms','admin-departments','account','help'];
+    const validViews = ['student-home','student-classrooms','student-review','student-my-reviews','student-forms','teacher-home','teacher-classrooms','teacher-feedback','teacher-analytics','teacher-forms','head-home','head-teachers','head-classrooms','head-analytics','head-forms','admin-home','admin-users','admin-terms','admin-classrooms','admin-teachers','admin-submissions','admin-moderate','admin-flagged','admin-support','admin-audit','admin-forms','admin-departments','account','help'];
     navigateTo(hashView && validViews.includes(hashView) ? hashView : getDefaultView());
   } catch {
     logout();
@@ -67,8 +59,8 @@ function getDefaultView() {
   const r = currentUser.role;
   if (r === 'student') return 'student-home';
   if (r === 'teacher') return 'teacher-home';
-  if (r === 'school_head') return 'head-home';
-  if (r === 'super_admin' || r === 'org_admin') return 'admin-home';
+  if (r === 'head') return 'head-home';
+  if (r === 'admin') return 'admin-home';
   return 'student-home';
 }
 
@@ -102,57 +94,25 @@ function setupUI() {
       </div>
     </div>`;
 
-  // Add org switcher for super_admin
   const topBarActions = document.getElementById('topBarActions');
-  if (u.role === 'super_admin') {
-    topBarActions.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        ${bellHTML}
-        <button id="appNotifBtn" onclick="navigateTo('admin-applications')" title="${t('admin.org_applications')}"
-          style="position:relative;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;cursor:pointer;display:flex;align-items:center;color:#64748b">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          <span id="appNotifBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.65rem;font-weight:700;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></span>
-        </button>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <label style="font-size:0.875rem;color:#64748b;font-weight:500;">${t('admin.org_label')}</label>
-          <select id="orgSwitcher" onchange="switchOrg(this.value)" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.875rem;cursor:pointer;">
-            <option value="">${t('ann.all_orgs')}</option>
-          </select>
-        </div>
-      </div>
-    `;
-    loadOrganizations();
-    loadApplicationBadge();
-  } else if (u.org_name) {
-    topBarActions.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${bellHTML}
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--gray-100);border-radius:8px;border:1px solid var(--gray-200)">
+  if (u.org_name) {
+    const isAdmin = u.role === 'admin';
+    const orgBadge = isAdmin
+      ? `<button onclick="renameOrg()" title="Click to rename organization" style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--gray-100);border-radius:8px;border:1px solid var(--gray-200);cursor:pointer;font-family:inherit;transition:background 0.15s" onmouseover="this.style.background='var(--gray-200)'" onmouseout="this.style.background='var(--gray-100)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span id="topBarOrgName" style="font-size:0.82rem;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${u.org_name}</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--gray-400);flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>`
+      : `<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--gray-100);border-radius:8px;border:1px solid var(--gray-200)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary);flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <span style="font-size:0.82rem;font-weight:500;color:var(--gray-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${u.org_name}</span>
-        </div>
-      </div>
-    `;
+        </div>`;
+    topBarActions.innerHTML = `<div style="display:flex;align-items:center;gap:8px;">${bellHTML}${orgBadge}</div>`;
   } else {
     topBarActions.innerHTML = `<div style="display:flex;align-items:center;gap:8px;">${bellHTML}</div>`;
   }
 
   buildNavigation();
-}
-
-async function loadApplicationBadge() {
-  try {
-    const { count } = await API.get('/admin/applications/count');
-    const badge = document.getElementById('appNotifBadge');
-    if (badge) {
-      if (count > 0) {
-        badge.textContent = count;
-        badge.style.display = 'block';
-      } else {
-        badge.style.display = 'none';
-      }
-    }
-  } catch (err) { /* silently ignore */ }
 }
 
 // ============ NOTIFICATIONS ============
@@ -254,31 +214,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-async function loadOrganizations() {
-  try {
-    const orgs = await cachedGet('/organizations', CACHE_TTL.long);
-    const selector = document.getElementById('orgSwitcher');
-    if (selector) {
-      orgs.forEach(org => {
-        const opt = document.createElement('option');
-        opt.value = org.id;
-        opt.textContent = org.name;
-        if (currentOrg == org.id) opt.selected = true;
-        selector.appendChild(opt);
-      });
-    }
-  } catch (err) {
-    console.error('Failed to load organizations:', err);
-  }
-
-  startInactivityTimer();
-}
-
-function switchOrg(orgId) {
-  currentOrg = orgId ? parseInt(orgId) : null;
-  navigateTo(currentView || getDefaultView());
-}
-
 const ICONS = {
   home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
   classroom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
@@ -319,7 +254,7 @@ function buildNavigation() {
       { id: 'teacher-forms', label: t('nav.forms'), icon: 'review' },
       { id: 'help', label: 'Help', icon: 'help' }
     ];
-  } else if (role === 'school_head') {
+  } else if (role === 'head') {
     items = [
       { id: 'head-home', label: t('nav.dashboard'), icon: 'home' },
       { id: 'head-teachers', label: t('nav.teachers'), icon: 'users' },
@@ -329,23 +264,7 @@ function buildNavigation() {
       { id: 'head-forms', label: t('nav.forms'), icon: 'review' },
       { id: 'help', label: 'Help', icon: 'help' }
     ];
-  } else if (role === 'super_admin') {
-    items = [
-      { id: 'admin-home', label: t('nav.dashboard'), icon: 'home' },
-      { id: 'admin-orgs', label: t('nav.organizations'), icon: 'users' },
-      { id: 'admin-users', label: t('nav.users'), icon: 'users' },
-      { id: 'admin-terms', label: t('nav.terms_periods'), icon: 'calendar' },
-      { id: 'admin-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
-      { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
-      { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
-      { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
-      { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
-      { id: 'admin-departments', label: 'Departments', icon: 'department' },
-      { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
-      { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' },
-      { id: 'help', label: 'Help', icon: 'help' }
-    ];
-  } else if (role === 'org_admin') {
+  } else if (role === 'admin') {
     items = [
       { id: 'admin-home', label: t('nav.dashboard'), icon: 'home' },
       { id: 'admin-users', label: t('nav.users'), icon: 'users' },
@@ -453,8 +372,6 @@ function navigateTo(view) {
     'head-classrooms': t('title.all_classrooms'),
     'head-analytics': t('title.analytics'),
     'admin-home': t('title.admin_dashboard'),
-    'admin-orgs': t('title.organizations'),
-    'admin-applications': t('title.organizations'),
     'student-forms': t('nav.announcements'),
     'teacher-forms': t('nav.forms'),
     'admin-forms': t('nav.forms'),
@@ -490,8 +407,6 @@ function navigateTo(view) {
     'head-classrooms': renderHeadClassrooms,
     'head-analytics': renderHeadAnalytics,
     'admin-home': renderAdminHome,
-    'admin-orgs': renderAdminOrgs,
-    'admin-applications': renderAdminApplications,
     'admin-users': renderAdminUsers,
     'admin-terms': renderAdminTerms,
     'admin-classrooms': renderAdminClassrooms,
@@ -765,7 +680,7 @@ function avatarHTML(user, size = 'normal', clickable = false) {
 
   const initials = user.full_name ? user.full_name.split(' ').map(n => n[0]).join('') : '?';
   // Only admins and school heads can view teacher profiles
-  const canViewProfile = currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'org_admin' || currentUser.role === 'school_head');
+  const canViewProfile = currentUser && (currentUser.role === 'admin' || currentUser.role === 'head');
   const clickHandler = clickable && user.teacher_id && canViewProfile ? `onclick="viewTeacherProfile(${user.teacher_id})" style="cursor:pointer"` : '';
 
   return `<div ${clickHandler} style="width:${dimension};height:${dimension};background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:${fontSz};font-weight:700;flex-shrink:0">${initials}</div>`;
@@ -911,7 +826,7 @@ async function renderStudentHome() {
                 ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'small', true)}
                 <div style="flex:1">
                   <div class="class-subject" style="margin:0">${c.subject}</div>
-                  <div class="class-meta" style="margin:0${currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'org_admin' || currentUser.role === 'school_head') ? ';cursor:pointer' : ''}" ${currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'org_admin' || currentUser.role === 'school_head') ? `onclick="viewTeacherProfile(${c.teacher_id})"` : ''}>${c.teacher_name}</div>
+                  <div class="class-meta" style="margin:0${currentUser && (currentUser.role === 'admin' || currentUser.role === 'head') ? ';cursor:pointer' : ''}" ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'head') ? `onclick="viewTeacherProfile(${c.teacher_id})"` : ''}>${c.teacher_name}</div>
                   <div class="class-meta" style="margin:0">${c.grade_level}</div>
                 </div>
                 <span id="reviewed-${c.id}" style="display:none;font-size:0.78rem;color:var(--success);font-weight:600;white-space:nowrap">${t('review.reviewed_badge')}</span>
@@ -3032,20 +2947,13 @@ async function renderAdminForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   try {
-    const [forms, orgs, announcements] = await Promise.all([
+    const [forms, announcements] = await Promise.all([
       cachedGet('/forms', CACHE_TTL.medium),
-      currentUser.role === 'super_admin' ? cachedGet('/organizations', CACHE_TTL.long) : Promise.resolve([]),
       cachedGet('/announcements', CACHE_TTL.medium).catch(() => [])
     ]);
 
-    const orgFilterHTML = currentUser.role === 'super_admin' ? `
-      <select id="adminFormOrgFilter" class="form-control" style="width:220px" onchange="filterAdminFormsByOrg(this.value)">
-        <option value="">${t('ann.all_orgs')}</option>
-        ${orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('')}
-      </select>
-    ` : '';
-
-    const annHint = currentUser.role === 'super_admin' ? t('ann.post_updates_hint') : t('ann.post_classrooms_hint');
+    const orgFilterHTML = '';
+    const annHint = t('ann.post_classrooms_hint');
 
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
@@ -3137,20 +3045,7 @@ async function adminDeleteForm(formId, title) {
 // ─── Admin Create Form Modal ──────────────────────────────────────────────────
 
 async function showAdminCreateFormModal() {
-  let orgs = [];
-  if (currentUser.role === 'super_admin') {
-    try { orgs = await cachedGet('/organizations', CACHE_TTL.long); } catch (e) { orgs = []; }
-  }
-
-  const orgPickerHTML = currentUser.role === 'super_admin' ? `
-    <div class="form-group">
-      <label>Organization *</label>
-      <select class="form-control" id="adminFormOrg" onchange="loadClassroomsForAdminForm(this.value)">
-        <option value="">${t('admin_forms.select_org')}</option>
-        ${orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('')}
-      </select>
-    </div>
-  ` : '';
+  const orgPickerHTML = '';
 
   openModal(`
     <div class="modal-header"><h3>${t('forms.new_form_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
@@ -3167,7 +3062,7 @@ async function showAdminCreateFormModal() {
       <div class="form-group">
         <label>${t('forms.classroom_label')}</label>
         <div id="adminClassroomPickerWrap">
-          ${currentUser.role === 'org_admin' ? '<div class="loading" style="padding:12px"><div class="spinner"></div></div>' : `<div style="color:var(--gray-400);font-size:0.88rem;padding:4px 0">${t('admin_forms.select_org_first')}</div>`}
+          ${currentUser.role === 'admin' ? '<div class="loading" style="padding:12px"><div class="spinner"></div></div>' : `<div style="color:var(--gray-400);font-size:0.88rem;padding:4px 0">${t('admin_forms.select_org_first')}</div>`}
         </div>
       </div>
     </div>
@@ -3178,7 +3073,7 @@ async function showAdminCreateFormModal() {
   `);
 
   setTimeout(() => document.getElementById('adminFormTitle')?.focus(), 50);
-  if (currentUser.role === 'org_admin') {
+  if (currentUser.role === 'admin') {
     loadClassroomsForAdminForm(null);
   }
 }
@@ -3186,7 +3081,7 @@ async function showAdminCreateFormModal() {
 async function loadClassroomsForAdminForm(orgId) {
   const wrap = document.getElementById('adminClassroomPickerWrap');
   if (!wrap) return;
-  const targetOrgId = orgId || (currentUser.role === 'org_admin' ? '' : '');
+  const targetOrgId = orgId || (currentUser.role === 'admin' ? '' : '');
   const url = targetOrgId ? `/forms/admin/classrooms?org_id=${targetOrgId}` : '/forms/admin/classrooms';
   wrap.innerHTML = `<div class="loading" style="padding:12px"><div class="spinner"></div></div>`;
   try {
@@ -3253,11 +3148,6 @@ async function createAdminForm() {
   const classroom_ids = checkedBoxes.map(cb => parseInt(cb.value));
 
   const body = { title, description: desc, classroom_ids };
-  if (currentUser.role === 'super_admin') {
-    const orgEl = document.getElementById('adminFormOrg');
-    if (!orgEl?.value) return toast('Select an organization', 'error');
-    body.org_id = parseInt(orgEl.value);
-  }
 
   try {
     const created = await API.post('/forms', body);
@@ -3273,11 +3163,11 @@ async function createAdminForm() {
 
 // ============ ADMIN VIEWS ============
 async function renderAdminHome() {
-  const isOrgAdmin = currentUser.role === 'org_admin';
   const [stats, periodTrend] = await Promise.all([
     cachedGet('/admin/stats'),
-    isOrgAdmin ? API.get('/admin/org-period-trend').catch(() => []) : Promise.resolve([])
+    API.get('/admin/org-period-trend').catch(() => [])
   ]);
+  const isOrgAdmin = true;
   const el = document.getElementById('contentArea');
 
   const hasTrend = isOrgAdmin && periodTrend && periodTrend.length > 0;
@@ -3463,6 +3353,40 @@ async function renderAdminHome() {
   }
 }
 
+// Rename the single organization (admin only)
+async function renameOrg() {
+  const current = document.getElementById('topBarOrgName')?.textContent || currentUser.org_name || '';
+  openModal(`
+    <div class="modal-header"><h3>Rename Organization</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Organization Name</label>
+        <input type="text" class="form-control" id="renameOrgInput" value="${current}" placeholder="Enter organization name">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrgName()">Save</button>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('renameOrgInput')?.select(), 50);
+}
+
+async function saveOrgName() {
+  const name = document.getElementById('renameOrgInput')?.value.trim();
+  if (!name) return toast('Organization name cannot be empty', 'error');
+  try {
+    await API.put('/admin/org', { name });
+    // Update in-memory and UI
+    currentUser.org_name = name;
+    const el = document.getElementById('topBarOrgName');
+    if (el) el.textContent = name;
+    invalidateCache('/organizations', '/admin/stats');
+    closeModal();
+    toast('Organization renamed successfully');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
 // Store orgs globally for editing
 let cachedOrgs = [];
 
@@ -3615,15 +3539,14 @@ function _buildUserRows(users) {
   return users.map(u => {
     const isSelf = u.id === currentUser.id;
     const canDelete = !isSelf && (
-      currentUser.role === 'super_admin' ||
-      (currentUser.role === 'org_admin' && !['super_admin', 'org_admin'].includes(u.role))
+      (currentUser.role === 'admin' && u.role !== 'admin')
     );
     const safeName = u.full_name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     return `
     <tr>
       <td><strong>${u.full_name}</strong></td>
       <td style="font-size:0.8rem;color:var(--gray-500)">${u.email}</td>
-      <td><span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), org_admin: t('common.org_admin'), super_admin: t('common.super_admin')}[u.role] || u.role}</span></td>
+      <td><span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'head' ? 'badge-approved' : 'badge-pending'}">${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), admin: t('common.admin'), super_admin: t('common.super_admin')}[u.role] || u.role}</span></td>
       <td>${u.grade_or_position || '-'}</td>
       <td>${u.suspended ? `<span class="badge badge-rejected">${t('common.suspended')}</span>` : `<span class="badge badge-approved">${t('common.active')}</span>`}</td>
       <td>
@@ -3667,7 +3590,7 @@ document.addEventListener('click', (e) => {
 function _filterUserTable() {
   const search = (window._userSearch || '').toLowerCase();
   const filtered = (window._allUsers || []).filter(u => {
-    const roleMatch = !window._userFilter || (window._userFilter === 'admin' ? ['org_admin', 'super_admin'].includes(u.role) : u.role === window._userFilter);
+    const roleMatch = !window._userFilter || (window._userFilter === 'admin' ? u.role === 'admin' : u.role === window._userFilter);
     const searchMatch = !search || u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
     return roleMatch && searchMatch;
   });
@@ -3682,7 +3605,7 @@ async function renderAdminUsers(refetch = true) {
   const el = document.getElementById('contentArea');
   const search = (window._userSearch || '').toLowerCase();
   const users = (window._allUsers || []).filter(u => {
-    const roleMatch = !window._userFilter || (window._userFilter === 'admin' ? ['org_admin', 'super_admin'].includes(u.role) : u.role === window._userFilter);
+    const roleMatch = !window._userFilter || (window._userFilter === 'admin' ? u.role === 'admin' : u.role === window._userFilter);
     const searchMatch = !search || u.full_name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
     return roleMatch && searchMatch;
   });
@@ -3691,7 +3614,7 @@ async function renderAdminUsers(refetch = true) {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="display:flex;gap:8px">
         <button class="btn btn-sm ${!window._userFilter ? 'btn-primary' : 'btn-outline'}" onclick="window._userFilter=null;renderAdminUsers()">${t('common.all')}</button>
-        ${[{key: 'student', label: t('common.student')}, {key: 'teacher', label: t('common.teacher')}, {key: 'school_head', label: t('common.school_head')}, {key: 'admin', label: t('common.admin')}].map(r =>
+        ${[{key: 'student', label: t('common.student')}, {key: 'teacher', label: t('common.teacher')}, {key: 'head', label: t('common.school_head')}, {key: 'admin', label: t('common.admin')}].map(r =>
           `<button class="btn btn-sm ${window._userFilter === r.key ? 'btn-primary' : 'btn-outline'}" onclick="window._userFilter='${r.key}';renderAdminUsers()">${r.label}</button>`
         ).join('')}
       </div>
@@ -3717,14 +3640,7 @@ async function renderAdminUsers(refetch = true) {
 }
 
 async function showCreateUser() {
-  // Fetch org list for super_admin so they can assign org to school_head / org_admin
-  let orgOptions = '';
-  if (currentUser && currentUser.role === 'super_admin') {
-    try {
-      const orgs = await cachedGet('/organizations', CACHE_TTL.long);
-      orgOptions = orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
-    } catch (_) {}
-  }
+  const orgOptions = '';
 
   openModal(`
     <div class="modal-header"><h3>${t('admin.create_user_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
@@ -3780,7 +3696,7 @@ function onNewUserRoleChange(role) {
   document.getElementById('teacherFields').style.display = role === 'teacher' ? 'block' : 'none';
   const orgFields = document.getElementById('orgFields');
   if (orgFields) {
-    orgFields.style.display = (role === 'school_head' || role === 'org_admin') ? 'block' : 'none';
+    orgFields.style.display = (role === 'head' || role === 'admin') ? 'block' : 'none';
   }
 }
 
@@ -3801,7 +3717,7 @@ async function createUser() {
   if (orgSelect && orgSelect.value) {
     body.org_id = parseInt(orgSelect.value);
   }
-  if ((body.role === 'school_head' || body.role === 'org_admin') && !body.org_id) {
+  if ((body.role === 'head' || body.role === 'admin') && !body.org_id) {
     return toast(t('admin.org_required_for_role'), 'error');
   }
   if (!body.full_name || !body.email || !body.password) return toast(t('admin.fill_required'), 'error');
@@ -3840,9 +3756,7 @@ function editUser(user) {
         <select class="form-control" id="editUserRole">
           <option value="student" ${user.role === 'student' ? 'selected' : ''}>${t('common.student')}</option>
           <option value="teacher" ${user.role === 'teacher' ? 'selected' : ''}>${t('common.teacher')}</option>
-          <option value="school_head" ${user.role === 'school_head' ? 'selected' : ''}>${t('common.school_head')}</option>
-          <option value="org_admin" ${user.role === 'org_admin' ? 'selected' : ''}>${t('common.org_admin')}</option>
-          <option value="super_admin" ${user.role === 'super_admin' ? 'selected' : ''}>${t('common.super_admin')}</option>
+          <option value="head" ${user.role === 'head' ? 'selected' : ''}>${t('common.school_head')}</option>
         </select>
       </div>
     </div>
@@ -4138,20 +4052,7 @@ async function deletePeriod(periodId, periodName) {
 }
 
 async function showCreateTerm() {
-  let orgPickerHTML = '';
-  if (currentUser.role === 'super_admin') {
-    try {
-      const orgs = await cachedGet('/organizations', CACHE_TTL.long);
-      orgPickerHTML = `
-        <div class="form-group">
-          <label>${t('admin.org_label')} *</label>
-          <select class="form-control" id="termOrgId">
-            <option value="">${t('admin.select_org')}</option>
-            ${orgs.map(o => `<option value="${o.id}"${currentOrg === o.id ? ' selected' : ''}>${o.name}</option>`).join('')}
-          </select>
-        </div>`;
-    } catch (e) { /* silently skip org picker if fetch fails */ }
-  }
+  const orgPickerHTML = '';
   openModal(`
     <div class="modal-header"><h3>${t('admin.create_term_modal')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body">
@@ -4173,14 +4074,6 @@ async function createTerm() {
   const end_date = document.getElementById('termEnd').value;
   if (!start_date || !end_date) return toast(t('admin.dates_required'), 'error');
   const body = { name, start_date, end_date };
-  if (currentUser.role === 'super_admin') {
-    const orgSelect = document.getElementById('termOrgId');
-    if (orgSelect && orgSelect.value) {
-      body.org_id = parseInt(orgSelect.value);
-    } else if (currentOrg) {
-      body.org_id = currentOrg;
-    }
-  }
   try {
     await API.post('/admin/terms', body);
     toast(t('admin.term_created'));
@@ -4288,7 +4181,7 @@ async function renderAdminClassrooms() {
   const classrooms = await API.get('/admin/classrooms');
   const el = document.getElementById('contentArea');
 
-  const isSuperAdmin = currentUser.role === 'super_admin';
+  const isSuperAdmin = false;
   const orgColumnHeader = isSuperAdmin ? `<th>${t('admin.organization')}</th>` : '';
 
   el.innerHTML = `
@@ -4752,8 +4645,8 @@ async function saveTeacherEdit(teacherId) {
 async function renderAdminTeachers() {
   const [teachers, inviteData, orgDepts] = await Promise.all([
     cachedGet('/admin/teachers', CACHE_TTL.medium),
-    currentUser.role === 'org_admin' ? API.get('/admin/invite-code').catch(e => ({ error: e.message })) : Promise.resolve(null),
-    currentUser.role === 'org_admin' ? API.get('/departments').catch(() => []) : Promise.resolve([])
+    currentUser.role === 'admin' ? API.get('/admin/invite-code').catch(e => ({ error: e.message })) : Promise.resolve(null),
+    currentUser.role === 'admin' ? API.get('/departments').catch(() => []) : Promise.resolve([])
   ]);
   const el = document.getElementById('contentArea');
 
@@ -5621,7 +5514,7 @@ async function renderAdminAudit(page = 1) {
                 <tr>
                   <td style="white-space:nowrap;font-size:0.85rem">${new Date(log.created_at).toLocaleString()}</td>
                   <td><strong>${log.user_name}</strong></td>
-                  <td><span class="badge ${log.user_role === 'super_admin' || log.user_role === 'org_admin' ? 'badge-flagged' : 'badge-pending'}">${log.user_role}</span></td>
+                  <td><span class="badge ${log.user_role === 'super_admin' || log.user_role === 'admin' ? 'badge-flagged' : 'badge-pending'}">${log.user_role}</span></td>
                   <td><code style="font-size:0.85rem">${log.action_type}</code></td>
                   <td style="max-width:300px">${log.action_description}</td>
                   <td>${log.target_type ? `<span class="badge badge-approved">${log.target_type} #${log.target_id}</span>` : '-'}</td>
@@ -5661,7 +5554,7 @@ async function renderAccount() {
               <div style="font-size:1.25rem;font-weight:600">${u.full_name}</div>
               <div style="color:var(--gray-500);font-size:0.9rem">${u.email}</div>
               <div style="margin-top:6px">
-                <span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'org_admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'school_head' ? 'badge-approved' : 'badge-pending'}">${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), org_admin: t('common.org_admin'), super_admin: t('common.super_admin')}[u.role] || u.role}</span>
+                <span class="badge ${u.role === 'super_admin' ? 'badge-flagged' : u.role === 'admin' ? 'badge-flagged' : u.role === 'teacher' ? 'badge-active' : u.role === 'head' ? 'badge-approved' : 'badge-pending'}">${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), admin: t('common.admin'), super_admin: t('common.super_admin')}[u.role] || u.role}</span>
               </div>
             </div>
           </div>
@@ -5696,7 +5589,7 @@ async function renderAccount() {
             ` : ''}
             <div class="form-group">
               <label>${t('account.role')}</label>
-              <input type="text" class="form-control" value="${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), org_admin: t('common.org_admin'), super_admin: t('common.super_admin')}[u.role] || u.role}" disabled style="background:var(--gray-50);color:var(--gray-500);text-transform:capitalize">
+              <input type="text" class="form-control" value="${{student: t('common.student'), teacher: t('common.teacher'), school_head: t('common.school_head'), admin: t('common.admin'), super_admin: t('common.super_admin')}[u.role] || u.role}" disabled style="background:var(--gray-50);color:var(--gray-500);text-transform:capitalize">
             </div>
             <div class="form-group">
               <label>${t('account.member_since')}</label>
@@ -6126,7 +6019,7 @@ async function viewOrgMembers(orgId, orgName) {
                 <tr>
                   <td>${m.full_name}</td>
                   <td style="font-size:0.85rem;color:var(--gray-500)">${m.email}</td>
-                  <td><span class="badge ${m.role_in_org === 'org_admin' ? 'badge-flagged' : m.role_in_org === 'teacher' ? 'badge-active' : 'badge-pending'}">${m.role_in_org}</span></td>
+                  <td><span class="badge ${m.role_in_org === 'admin' ? 'badge-flagged' : m.role_in_org === 'teacher' ? 'badge-active' : 'badge-pending'}">${m.role_in_org}</span></td>
                   <td style="font-size:0.85rem">${new Date(m.joined_at).toLocaleDateString()}</td>
                   <td>
                     <button class="btn btn-sm btn-outline" style="color:#ef4444" onclick="removeOrgMember(${orgId}, ${m.user_id}, '${m.full_name.replace(/'/g, "\\'")}', '${orgName.replace(/'/g, "\\'")}')">${t('admin.remove')}</button>
@@ -6365,11 +6258,9 @@ async function showCreateAnnouncementModal() {
       </div>
     </div>` : '';
 
-  const targetOptions = role === 'super_admin'
-    ? `<option value="org">${t('ann.specific_org')}</option><option value="classrooms">${t('ann.specific_classrooms')}</option><option value="all">${t('ann.all_orgs')}</option>`
-    : role === 'teacher'
-      ? `<option value="classrooms">${t('ann.my_classrooms')}</option>`
-      : `<option value="org">${t('ann.entire_org')}</option><option value="classrooms">${t('ann.specific_classrooms')}</option>`;
+  const targetOptions = role === 'teacher'
+    ? `<option value="classrooms">${t('ann.my_classrooms')}</option>`
+    : `<option value="org">${t('ann.entire_org')}</option><option value="classrooms">${t('ann.specific_classrooms')}</option>`;
 
   openModal(`
     <div class="modal-header"><h3>${t('ann.new_title')}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
@@ -6449,7 +6340,7 @@ async function deleteAnnouncement(id) {
 async function renderHelp() {
   const el = document.getElementById('contentArea');
   const role = currentUser.role;
-  const isAdmin = role === 'super_admin' || role === 'org_admin';
+  const isAdmin = role === 'admin';
 
   if (isAdmin) {
     // Admins go straight to docs — they don't submit support tickets
@@ -6613,14 +6504,14 @@ function renderHelpDocs(role) {
       { icon: '📝', title: 'Custom Forms & Announcements', body: 'Under <strong>Forms</strong>, you can create custom questionnaires for your students. Post class-specific announcements to keep students informed.' },
       { icon: '📄', title: 'PDF Export', body: 'From the <strong>Feedback</strong> tab, click <strong>Export PDF</strong> to download your own professional performance report. You can print it or share it with others.' }
     ],
-    school_head: [
+    head: [
       { icon: '📊', title: 'Teacher Performance Overview', body: 'The <strong>Dashboard</strong> shows all teachers in your organization with their overall scores, review counts, and trend directions. Click a teacher row to see their detailed breakdown.' },
       { icon: '🏢', title: 'Department Analytics', body: 'The <strong>Departments</strong> tab lists all departments. Click a department card to view: a Criterion Radar comparing your department to the org average, a Teacher Ranking bar chart, and a Trend line showing improvement over time.' },
       { icon: '🏫', title: 'Classroom Management', body: 'View all classrooms across your organization under <strong>Classrooms</strong>. See enrollment counts and which term each classroom belongs to.' },
       { icon: '📢', title: 'Announcements', body: 'Post announcements to your entire organization or specific classrooms via the <strong>Forms</strong> tab.' },
       { icon: '📄', title: 'Exporting Reports', body: 'From the Teacher Performance view, click <strong>Export PDF</strong> on any teacher to generate a printable report.' }
     ],
-    org_admin: [
+    admin: [
       { icon: '👥', title: 'Managing Users', body: 'The <strong>Users</strong> tab shows all staff in your organization. You can create new users, edit their roles, reset passwords, and suspend accounts if needed.' },
       { icon: '📅', title: 'Terms & Feedback Periods', body: 'Under <strong>Terms & Periods</strong>, create academic terms and the feedback periods within them. Only one term and one period can be active at a time. Activating a period notifies all teachers.' },
       { icon: '🛡️', title: 'Review Moderation', body: 'Approve or flag student reviews under <strong>Moderate Reviews</strong>. Approved reviews become visible to teachers. Flagged reviews are quarantined. Students are notified when their review is approved.' },
@@ -6636,11 +6527,11 @@ function renderHelpDocs(role) {
     student: 'As a student on EduRate, your role is to provide honest, constructive feedback on your learning experience. Your reviews help teachers grow professionally and give your school the data it needs to improve education quality. Everything you do here — joining classrooms, writing reviews, responding to forms — contributes directly to that goal.',
     teacher: 'As a teacher on EduRate, you have a dedicated space to understand how your students experience your classes. The platform collects anonymous feedback, turns it into clear scores and summaries, and gives you tools to communicate back through forms, announcements, and exportable reports. Your performance data is visible to your school\'s management.',
     school_head: 'As a School Head on EduRate, you have analytical oversight of all teachers and departments in your organization. You can monitor performance trends, identify teachers who may need support, and track how each department evolves over time. Day-to-day settings and access control are managed by your Organization Admin.',
-    org_admin: 'As an Organization Admin, you manage the full operation of your school\'s EduRate account. You control who has access, when feedback periods open, and how reviews are moderated. You are the primary support contact for your teachers and students, and the person responsible for keeping the platform correctly configured for your organization.'
+    admin: 'As an Admin, you manage the full operation of your school\'s EduRate account. You control who has access, when feedback periods open, and how reviews are moderated. You are the primary support contact for your teachers and students, and the person responsible for keeping the platform correctly configured for your organization.'
   };
 
-  const roleSections = sections[role] || sections.school_head;
-  const intro = intros[role] || intros.school_head;
+  const roleSections = sections[role] || sections.head;
+  const intro = intros[role] || intros.head;
 
   return `
     <p class="help-role-intro">${intro}</p>
@@ -6664,7 +6555,7 @@ async function renderAdminDepartments() {
   const role = currentUser.role;
   const departments = await API.get('/departments');
 
-  const canManage = role === 'org_admin' || role === 'super_admin' || role === 'school_head';
+  const canManage = role === 'admin' || role === 'head';
 
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px">

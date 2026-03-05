@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const Database = require('better-sqlite3');
 const path = require('path');
 
@@ -14,10 +15,10 @@ db.exec(`
     full_name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'school_head', 'org_admin', 'super_admin')),
+    role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'head', 'admin')),
     grade_or_position TEXT,
     school_id INTEGER DEFAULT 1,
-    verified_status INTEGER DEFAULT 0,
+    verified_status INTEGER DEFAULT 1,
     suspended INTEGER DEFAULT 0,
     avatar_url TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -175,17 +176,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_support_messages_status ON support_messages(status);
   CREATE INDEX IF NOT EXISTS idx_support_messages_created ON support_messages(created_at);
 
-  CREATE TABLE IF NOT EXISTS verification_codes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
-    code TEXT NOT NULL,
-    expires_at DATETIME NOT NULL,
-    used INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_verification_codes_email ON verification_codes(email);
-
   CREATE TABLE IF NOT EXISTS organizations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -202,23 +192,6 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug);
-  CREATE INDEX IF NOT EXISTS idx_organizations_status ON organizations(subscription_status);
-
-  CREATE TABLE IF NOT EXISTS user_organizations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    org_id INTEGER NOT NULL,
-    role_in_org TEXT NOT NULL CHECK(role_in_org IN ('org_admin', 'school_head', 'teacher', 'student')),
-    is_primary INTEGER DEFAULT 1,
-    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
-    UNIQUE(user_id, org_id)
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_user_orgs_user ON user_organizations(user_id);
-  CREATE INDEX IF NOT EXISTS idx_user_orgs_org ON user_organizations(org_id);
-  CREATE INDEX IF NOT EXISTS idx_user_orgs_role ON user_organizations(role_in_org);
 `);
 
 // Migration: Add feedback_visible column to terms table if it doesn't exist
@@ -320,11 +293,11 @@ try {
         full_name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'school_head', 'org_admin', 'super_admin')),
+        role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'head', 'admin')),
         grade_or_position TEXT,
         school_id INTEGER DEFAULT 1,
         org_id INTEGER REFERENCES organizations(id),
-        verified_status INTEGER DEFAULT 0,
+        verified_status INTEGER DEFAULT 1,
         suspended INTEGER DEFAULT 0,
         avatar_url TEXT,
         language TEXT DEFAULT 'en',
@@ -333,9 +306,9 @@ try {
 
       INSERT INTO users_new (id, full_name, email, password, role, grade_or_position, school_id, org_id, verified_status, suspended, avatar_url, language, created_at)
         SELECT id, full_name, email, password,
-          CASE WHEN role = 'admin' THEN 'super_admin' ELSE role END,
+          CASE WHEN role IN ('admin', 'super_admin') THEN 'admin' ELSE role END,
           grade_or_position, school_id,
-          CASE WHEN role = 'admin' THEN NULL ELSE school_id END,
+          school_id,
           verified_status, suspended, avatar_url, language, created_at
         FROM users;
 
@@ -385,16 +358,6 @@ try {
     db.exec('CREATE INDEX IF NOT EXISTS idx_support_messages_org ON support_messages(org_id)');
     console.log('✅ Migration: Added org_id to support_messages table');
 
-    // Step 9: Populate user_organizations for existing users
-    const existingUsers = db.prepare("SELECT id, role, org_id FROM users WHERE org_id IS NOT NULL").all();
-    const insertUserOrg = db.prepare("INSERT OR IGNORE INTO user_organizations (user_id, org_id, role_in_org, is_primary) VALUES (?, ?, ?, 1)");
-    for (const u of existingUsers) {
-      const roleInOrg = u.role === 'super_admin' ? 'org_admin' : u.role;
-      if (['org_admin', 'school_head', 'teacher', 'student'].includes(roleInOrg)) {
-        insertUserOrg.run(u.id, u.org_id, roleInOrg);
-      }
-    }
-    console.log('✅ Migration: Populated user_organizations junction table');
   }
 } catch (err) {
   console.error('Migration error (multi-tenancy):', err.message);
@@ -488,34 +451,6 @@ try {
 } catch (err) {
   console.error('Migration error (feedback_periods name constraint):', err.message);
 }
-
-// Migration: Add org_applications table
-try {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS org_applications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      org_name TEXT NOT NULL,
-      contact_name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      phone TEXT,
-      message TEXT,
-      status TEXT DEFAULT 'new' CHECK(status IN ('new', 'reviewed', 'approved', 'rejected')),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE INDEX IF NOT EXISTS idx_org_applications_status ON org_applications(status);
-    CREATE INDEX IF NOT EXISTS idx_org_applications_created ON org_applications(created_at);
-  `);
-} catch (err) {
-  // Table already exists
-}
-
-// Migration: Add phone column to org_applications if missing
-try {
-  const appCols = db.prepare("PRAGMA table_info(org_applications)").all();
-  if (!appCols.some(c => c.name === 'phone')) {
-    db.exec('ALTER TABLE org_applications ADD COLUMN phone TEXT');
-  }
-} catch (err) { /* ignore */ }
 
 // Migration: Rename legacy "1st Half" / "2nd Half" feedback period names
 try {
@@ -868,5 +803,118 @@ try {
     console.log(`✅ Migration: backfilled feedback_period_classrooms for ${unassigned.length} period(s)`);
   }
 } catch (err) { console.error('Migration error (backfill feedback_period_classrooms):', err.message); }
+
+// Migration: Rename old roles to new simplified names
+// org_admin -> admin, super_admin -> admin, school_head -> head
+try {
+  const oldRoleUser = db.prepare(
+    "SELECT id FROM users WHERE role IN ('org_admin', 'super_admin', 'school_head') LIMIT 1"
+  ).get();
+
+  if (oldRoleUser) {
+    console.log('🔄 Migration: Renaming old roles (org_admin/super_admin→admin, school_head→head)...');
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      BEGIN TRANSACTION;
+
+      CREATE TABLE users_roles_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'head', 'admin')),
+        grade_or_position TEXT,
+        school_id INTEGER DEFAULT 1,
+        org_id INTEGER REFERENCES organizations(id),
+        verified_status INTEGER DEFAULT 1,
+        suspended INTEGER DEFAULT 0,
+        avatar_url TEXT,
+        language TEXT DEFAULT 'en',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      INSERT INTO users_roles_new
+        (id, full_name, email, password, role, grade_or_position, school_id, org_id, verified_status, suspended, avatar_url, language, created_at)
+      SELECT
+        id, full_name, email, password,
+        CASE
+          WHEN role IN ('org_admin', 'super_admin', 'admin') THEN 'admin'
+          WHEN role = 'school_head' THEN 'head'
+          ELSE role
+        END,
+        grade_or_position, school_id, org_id, verified_status, suspended, avatar_url, language, created_at
+      FROM users;
+
+      DROP TABLE users;
+      ALTER TABLE users_roles_new RENAME TO users;
+
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_role  ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_users_org   ON users(org_id);
+
+      COMMIT;
+    `);
+    db.pragma('foreign_keys = ON');
+    console.log('✅ Migration: Roles renamed successfully');
+  }
+} catch (err) {
+  db.pragma('foreign_keys = ON');
+  console.error('Migration error (role rename):', err.message);
+}
+
+// Seed the single organization if it doesn't exist
+try {
+  const orgCount = db.prepare('SELECT COUNT(*) as count FROM organizations').get();
+  if (orgCount.count === 0) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let inviteCode = '';
+    for (let i = 0; i < 8; i++) inviteCode += chars[Math.floor(Math.random() * chars.length)];
+    db.prepare("INSERT INTO organizations (id, name, slug, invite_code) VALUES (1, 'UWC', 'uwc', ?)").run(inviteCode);
+    console.log('✅ Seeded organization: UWC');
+  }
+} catch (err) {
+  console.error('Org seeding error:', err.message);
+}
+
+// Seed default accounts if they don't exist
+const seedAccounts = [
+  { email: 'admin@uwc.edu',   password: 'Admin1234',   role: 'admin',   name: 'UWC Admin' },
+  { email: 'head@uwc.edu',    password: 'Head1234',    role: 'head',    name: 'UWC Head' },
+  { email: 'teacher@uwc.edu', password: 'Teacher1234', role: 'teacher', name: 'UWC Teacher' },
+  { email: 'student@uwc.edu', password: 'Student1234', role: 'student', name: 'UWC Student' },
+];
+
+for (const acc of seedAccounts) {
+  try {
+    const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(acc.email);
+    if (!exists) {
+      const hashed = bcrypt.hashSync(acc.password, 12);
+      db.prepare(`
+        INSERT INTO users (full_name, email, password, role, school_id, org_id, verified_status)
+        VALUES (?, ?, ?, ?, 1, 1, 1)
+      `).run(acc.name, acc.email, hashed, acc.role);
+      console.log(`✅ Seeded ${acc.role}: ${acc.email} / ${acc.password}`);
+    }
+  } catch (err) {
+    console.error(`Seed error (${acc.email}):`, err.message);
+  }
+}
+
+// Also seed teacher profile row for teacher@uwc.edu
+try {
+  const teacherUser = db.prepare("SELECT id FROM users WHERE email = 'teacher@uwc.edu'").get();
+  if (teacherUser) {
+    const hasProfile = db.prepare('SELECT id FROM teachers WHERE user_id = ?').get(teacherUser.id);
+    if (!hasProfile) {
+      db.prepare(`
+        INSERT INTO teachers (user_id, full_name, subject, department, school_id, org_id)
+        VALUES (?, 'UWC Teacher', 'General', 'General', 1, 1)
+      `).run(teacherUser.id);
+      console.log('✅ Seeded teacher profile for teacher@uwc.edu');
+    }
+  }
+} catch (err) {
+  console.error('Teacher profile seed error:', err.message);
+}
 
 module.exports = db;

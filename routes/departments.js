@@ -8,11 +8,7 @@ const router = express.Router();
 router.get('/', authenticate, (req, res) => {
   try {
     let orgId;
-    if (req.user.role === 'super_admin') {
-      orgId = req.query.org_id ? parseInt(req.query.org_id) : null;
-    } else {
-      orgId = req.user.org_id;
-    }
+    orgId = req.user.org_id;
 
     if (!orgId) return res.json([]);
 
@@ -32,18 +28,13 @@ router.get('/', authenticate, (req, res) => {
 });
 
 // POST /api/departments — create department
-router.post('/', authenticate, authorize('super_admin', 'org_admin', 'school_head'), (req, res) => {
+router.post('/', authenticate, authorize('admin', 'head'), (req, res) => {
   try {
     const { name, org_id } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Department name is required' });
 
     let orgId;
-    if (req.user.role === 'super_admin') {
-      orgId = org_id ? parseInt(org_id) : null;
-      if (!orgId) return res.status(400).json({ error: 'org_id is required for super_admin' });
-    } else {
-      orgId = req.user.org_id;
-    }
+    orgId = req.user.org_id;
 
     if (!orgId) return res.status(400).json({ error: 'No organization found' });
 
@@ -69,12 +60,12 @@ router.post('/', authenticate, authorize('super_admin', 'org_admin', 'school_hea
 });
 
 // PATCH /api/departments/:id — rename department
-router.patch('/:id', authenticate, authorize('super_admin', 'org_admin', 'school_head'), (req, res) => {
+router.patch('/:id', authenticate, authorize('admin', 'head'), (req, res) => {
   try {
     const dept = db.prepare('SELECT * FROM departments WHERE id = ?').get(req.params.id);
     if (!dept) return res.status(404).json({ error: 'Department not found' });
 
-    if (req.user.role !== 'super_admin' && dept.org_id !== req.user.org_id) {
+    if (dept.org_id !== req.user.org_id) {
       return res.status(403).json({ error: 'Department does not belong to your organization' });
     }
 
@@ -108,12 +99,12 @@ router.patch('/:id', authenticate, authorize('super_admin', 'org_admin', 'school
 });
 
 // DELETE /api/departments/:id — delete department (blocked if teachers assigned)
-router.delete('/:id', authenticate, authorize('super_admin', 'org_admin', 'school_head'), (req, res) => {
+router.delete('/:id', authenticate, authorize('admin', 'head'), (req, res) => {
   try {
     const dept = db.prepare('SELECT * FROM departments WHERE id = ?').get(req.params.id);
     if (!dept) return res.status(404).json({ error: 'Department not found' });
 
-    if (req.user.role !== 'super_admin' && dept.org_id !== req.user.org_id) {
+    if (dept.org_id !== req.user.org_id) {
       return res.status(403).json({ error: 'Department does not belong to your organization' });
     }
 

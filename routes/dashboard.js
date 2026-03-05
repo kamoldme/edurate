@@ -206,10 +206,10 @@ router.get('/teacher/reviews', authenticate, authorize('teacher'), (req, res) =>
 });
 
 // GET /api/dashboard/school-head
-router.get('/school-head', authenticate, authorize('school_head', 'super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+router.get('/school-head', authenticate, authorize('head', 'admin'), authorizeOrg, (req, res) => {
   try {
     const orgId = req.orgId;
-    if (!orgId && req.user.role !== 'super_admin') {
+    if (!orgId) {
       return res.status(400).json({ error: 'Organization context required' });
     }
 
@@ -393,13 +393,13 @@ router.get('/school-head', authenticate, authorize('school_head', 'super_admin',
 });
 
 // GET /api/dashboard/school-head/teacher/:id - detailed teacher view
-router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 'super_admin', 'org_admin'), (req, res) => {
+router.get('/school-head/teacher/:id', authenticate, authorize('head', 'admin'), (req, res) => {
   try {
     const teacher = db.prepare('SELECT * FROM teachers WHERE id = ?').get(req.params.id);
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
 
     // Org check
-    if (req.user.role !== 'super_admin' && req.user.org_id !== teacher.org_id) {
+    if (req.user.org_id !== teacher.org_id) {
       return res.status(403).json({ error: 'Teacher does not belong to your organization' });
     }
 
@@ -444,10 +444,10 @@ router.get('/school-head/teacher/:id', authenticate, authorize('school_head', 's
 });
 
 // GET /api/dashboard/departments/:name - detail analytics for one department
-router.get('/departments/:name', authenticate, authorize('school_head', 'super_admin', 'org_admin'), authorizeOrg, (req, res) => {
+router.get('/departments/:name', authenticate, authorize('head', 'admin'), authorizeOrg, (req, res) => {
   try {
     const orgId = req.orgId;
-    if (!orgId && req.user.role !== 'super_admin') {
+    if (!orgId) {
       return res.status(400).json({ error: 'Organization context required' });
     }
 
