@@ -3567,19 +3567,36 @@ function _buildUserRows(users) {
 function toggleActionMenu(userId, event) {
   event.stopPropagation();
   const menu = document.getElementById(`dropdown-menu-${userId}`);
+  const btn = event.currentTarget;
   const isOpen = menu.classList.contains('open');
   closeActionMenus();
   if (!isOpen) {
+    const btnRect = btn.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.right = 'auto';
+    menu.style.top = 'auto';
+    menu.style.bottom = 'auto';
+    menu.style.left = (btnRect.right - 160) + 'px';
     menu.classList.add('open');
-    const rect = menu.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight) {
-      menu.classList.add('flip-up');
+    const menuRect = menu.getBoundingClientRect();
+    if (btnRect.bottom + menuRect.height > window.innerHeight) {
+      menu.style.top = (btnRect.top - menuRect.height - 4) + 'px';
+    } else {
+      menu.style.top = (btnRect.bottom + 4) + 'px';
     }
+    if (parseFloat(menu.style.left) < 0) menu.style.left = '4px';
   }
 }
 
 function closeActionMenus() {
-  document.querySelectorAll('.action-dropdown-menu.open').forEach(m => m.classList.remove('open', 'flip-up'));
+  document.querySelectorAll('.action-dropdown-menu.open').forEach(m => {
+    m.classList.remove('open', 'flip-up');
+    m.style.position = '';
+    m.style.top = '';
+    m.style.bottom = '';
+    m.style.left = '';
+    m.style.right = '';
+  });
 }
 
 // Close dropdowns when clicking anywhere outside
