@@ -885,6 +885,7 @@ async function renderStudentClassrooms() {
         ? `<div class="empty-state" style="grid-column:1/-1"><h3>${t('student.no_classrooms')}</h3><p>${t('student.no_classrooms_hint')}</p></div>`
         : classrooms.map(c => `
           <div class="classroom-card">
+            ${c.org_name ? `<div style="font-size:0.7rem;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;gap:4px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${c.org_name}</div>` : ''}
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
               ${avatarHTML({ full_name: c.teacher_name, avatar_url: c.teacher_avatar_url, teacher_id: c.teacher_id }, 'normal', true)}
               <div style="flex:1">
@@ -1223,6 +1224,7 @@ async function renderStudentMyReviews() {
             <div class="review-card">
               <div class="review-header">
                 <div>
+                  ${r.org_name ? `<div style="font-size:0.7rem;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;display:flex;align-items:center;gap:4px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${r.org_name}</div>` : ''}
                   <strong>${r.teacher_name}</strong>
                   <span style="color:var(--gray-500);font-size:0.85rem"> &middot; ${r.classroom_subject} &middot; ${r.term_name} &middot; ${r.period_name}</span>
                   <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
@@ -6168,7 +6170,7 @@ function announcementCardHTML(a, canDelete, isStudent = false) {
     const from = a.creator_name ? `${a.creator_name}` : '';
     const cls = a.classroom_labels?.length > 0 ? a.classroom_labels[0] : '';
     const parts = [from, cls, date].filter(Boolean);
-    targetMeta = parts.join(' &middot; ');
+    targetMeta = (a.org_name ? `<span style="font-size:0.7rem;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.06em;display:inline-flex;align-items:center;gap:3px;margin-right:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${a.org_name}</span>` : '') + parts.join(' &middot; ');
   } else if (a.target_type === 'classrooms' && a.classroom_labels?.length > 0) {
     // Teachers/admins: clickable badge using fixed popup (won't be clipped)
     const labelsJson = escAttr(JSON.stringify(a.classroom_labels));

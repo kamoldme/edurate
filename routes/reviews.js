@@ -247,12 +247,13 @@ router.get('/my-reviews', authenticate, authorize('student'), (req, res) => {
   try {
     const reviews = db.prepare(`
       SELECT r.*, te.full_name as teacher_name, c.subject as classroom_subject,
-        fp.name as period_name, t.name as term_name
+        fp.name as period_name, t.name as term_name, o.name as org_name
       FROM reviews r
       JOIN teachers te ON r.teacher_id = te.id
       JOIN classrooms c ON r.classroom_id = c.id
       JOIN feedback_periods fp ON r.feedback_period_id = fp.id
       JOIN terms t ON r.term_id = t.id
+      LEFT JOIN organizations o ON r.org_id = o.id
       WHERE r.student_id = ?
       ORDER BY r.created_at DESC
     `).all(req.user.id);

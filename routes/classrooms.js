@@ -30,11 +30,12 @@ router.get('/', authenticate, (req, res) => {
     } else if (role === 'student') {
       classrooms = db.prepare(`
         SELECT c.*, t.name as term_name, te.full_name as teacher_name, te.subject as teacher_subject,
-          te.avatar_url as teacher_avatar_url, cm.joined_at
+          te.avatar_url as teacher_avatar_url, cm.joined_at, o.name as org_name
         FROM classroom_members cm
         JOIN classrooms c ON cm.classroom_id = c.id
         LEFT JOIN terms t ON c.term_id = t.id
         JOIN teachers te ON c.teacher_id = te.id
+        LEFT JOIN organizations o ON c.org_id = o.id
         WHERE cm.student_id = ?
         ORDER BY cm.joined_at DESC
       `).all(userId);

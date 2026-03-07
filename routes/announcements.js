@@ -12,11 +12,13 @@ function getVisibleAnnouncements(userId, userRole, orgId, classroomIds = []) {
   let query = `
     SELECT a.*, u.full_name as creator_name,
       GROUP_CONCAT(DISTINCT ac.classroom_id) as classroom_ids,
-      GROUP_CONCAT(DISTINCT c.subject || ' ' || COALESCE(c.grade_level, '')) as classroom_labels
+      GROUP_CONCAT(DISTINCT c.subject || ' ' || COALESCE(c.grade_level, '')) as classroom_labels,
+      o.name as org_name
     FROM announcements a
     JOIN users u ON a.creator_id = u.id
     LEFT JOIN announcement_classrooms ac ON ac.announcement_id = a.id
     LEFT JOIN classrooms c ON c.id = ac.classroom_id
+    LEFT JOIN organizations o ON a.org_id = o.id
     WHERE (
   `;
 
