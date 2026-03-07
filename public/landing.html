@@ -369,8 +369,8 @@
 
     .step-number {
       width: 52px; height: 52px;
-      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-      border: 2px solid rgba(96,165,250,0.4);
+      background: linear-gradient(135deg, #d97706, #fbbf24);
+      border: 2px solid rgba(251,191,36,0.4);
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -378,8 +378,8 @@
       font-weight: 800;
       font-size: 1.2rem;
       margin: 0 auto 20px;
-      color: #fff;
-      box-shadow: 0 0 0 6px rgba(96,165,250,0.1), 0 4px 16px rgba(59,130,246,0.35);
+      color: #1a1200;
+      box-shadow: 0 0 0 6px rgba(251,191,36,0.12), 0 4px 16px rgba(217,119,6,0.4);
     }
 
     .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: #fff; }
@@ -487,6 +487,18 @@
       background: linear-gradient(135deg, #1e40af, #1d4ed8);
       transform: translateY(-2px);
       box-shadow: 0 8px 28px rgba(59,130,246,0.45);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #d97706, #fbbf24);
+      color: #1a1200;
+      border: 2px solid rgba(251,191,36,0.3);
+      box-shadow: 0 4px 20px rgba(217,119,6,0.35);
+      font-weight: 700;
+    }
+    .btn-gold:hover {
+      background: linear-gradient(135deg, #b45309, #d97706);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(217,119,6,0.45);
     }
 
     @media (max-width: 560px) {
@@ -945,7 +957,7 @@
           <h2>Ready to get started?</h2>
           <p>Join EduRate and help teachers grow through honest, anonymous student feedback.</p>
           <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-            <button onclick="showRoleModal()" class="btn btn-blue" style="padding:14px 36px;font-size:1rem;">Create Account</button>
+            <button onclick="showRoleModal()" class="btn btn-gold" style="padding:14px 36px;font-size:1rem;">Create Account</button>
             <a href="/login" class="btn btn-outline" style="padding:14px 36px;font-size:1rem;">Sign In</a>
           </div>
         </div>
