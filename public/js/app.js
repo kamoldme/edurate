@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupUI();
     startNotifPolling();
     const hashView = window.location.hash.slice(1);
-    const validViews = ['student-home','student-classrooms','student-review','student-my-reviews','student-forms','teacher-home','teacher-classrooms','teacher-feedback','teacher-analytics','teacher-forms','head-home','head-teachers','head-classrooms','head-analytics','head-forms','admin-home','admin-users','admin-terms','admin-classrooms','admin-teachers','admin-submissions','admin-moderate','admin-flagged','admin-support','admin-audit','admin-forms','admin-departments','account','help'];
+    const validViews = ['student-home','student-classrooms','student-review','student-my-reviews','student-comms','student-forms','student-announcements','teacher-home','teacher-classrooms','teacher-feedback','teacher-analytics','teacher-comms','teacher-forms','teacher-announcements','head-home','head-teachers','head-classrooms','head-analytics','head-comms','head-forms','head-announcements','admin-home','admin-users','admin-terms','admin-classrooms','admin-teachers','admin-submissions','admin-moderate','admin-flagged','admin-support','admin-audit','admin-comms','admin-forms','admin-announcements','admin-departments','account','help'];
     navigateTo(hashView && validViews.includes(hashView) ? hashView : getDefaultView());
   } catch {
     logout();
@@ -228,7 +228,8 @@ const ICONS = {
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
   megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>',
   help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>',
-  department: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>'
+  department: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>',
+  communication: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
 };
 
 function buildNavigation() {
@@ -242,7 +243,7 @@ function buildNavigation() {
       { id: 'student-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'student-review', label: t('nav.write_review'), icon: 'review' },
       { id: 'student-my-reviews', label: t('nav.my_reviews'), icon: 'chart' },
-      { id: 'student-forms', label: t('nav.announcements'), icon: 'review' },
+      { id: 'student-comms', label: 'Communication', icon: 'communication' },
       { id: 'help', label: 'Help', icon: 'help' }
     ];
   } else if (role === 'teacher') {
@@ -251,7 +252,7 @@ function buildNavigation() {
       { id: 'teacher-classrooms', label: t('nav.my_classrooms'), icon: 'classroom' },
       { id: 'teacher-feedback', label: t('nav.feedback'), icon: 'review' },
       { id: 'teacher-analytics', label: t('nav.analytics'), icon: 'chart' },
-      { id: 'teacher-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'teacher-comms', label: 'Communication', icon: 'communication' },
       { id: 'help', label: 'Help', icon: 'help' }
     ];
   } else if (role === 'head') {
@@ -261,7 +262,7 @@ function buildNavigation() {
       { id: 'head-classrooms', label: t('nav.classrooms'), icon: 'classroom' },
       { id: 'head-analytics', label: t('nav.analytics'), icon: 'chart' },
       { id: 'admin-departments', label: 'Departments', icon: 'department' },
-      { id: 'head-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'head-comms', label: 'Communication', icon: 'communication' },
       { id: 'help', label: 'Help', icon: 'help' }
     ];
   } else if (role === 'admin') {
@@ -273,7 +274,7 @@ function buildNavigation() {
       { id: 'admin-teachers', label: t('nav.teacher_feedback'), icon: 'review' },
       { id: 'admin-submissions', label: t('nav.submission_tracking'), icon: 'check' },
       { id: 'admin-moderate', label: t('nav.moderate_reviews'), icon: 'shield' },
-      { id: 'admin-forms', label: t('nav.forms'), icon: 'review' },
+      { id: 'admin-comms', label: 'Communication', icon: 'communication' },
       { id: 'admin-departments', label: 'Departments', icon: 'department' },
       { id: 'admin-support', label: t('nav.support_messages'), icon: 'settings' },
       { id: 'admin-audit', label: t('nav.audit_logs'), icon: 'list' },
@@ -346,7 +347,9 @@ function navigateTo(view) {
   window.location.hash = view;
   destroyCharts();
   document.querySelectorAll('.nav-item[data-view]').forEach(el => {
-    el.classList.toggle('active', el.dataset.view === view);
+    const dv = el.dataset.view;
+    const isCommsChild = dv.endsWith('-comms') && (view === dv.replace('-comms', '-forms') || view === dv.replace('-comms', '-announcements'));
+    el.classList.toggle('active', dv === view || isCommsChild);
   });
 
   // Close mobile sidebar on navigation
@@ -372,9 +375,15 @@ function navigateTo(view) {
     'head-classrooms': t('title.all_classrooms'),
     'head-analytics': t('title.analytics'),
     'admin-home': t('title.admin_dashboard'),
-    'student-forms': t('nav.announcements'),
+    'student-comms': 'Communication',
+    'student-forms': 'Forms',
+    'student-announcements': t('nav.announcements'),
+    'teacher-comms': 'Communication',
     'teacher-forms': t('nav.forms'),
+    'teacher-announcements': t('nav.announcements'),
+    'admin-comms': 'Communication',
     'admin-forms': t('nav.forms'),
+    'admin-announcements': t('nav.announcements'),
     'admin-users': t('title.user_management'),
     'admin-terms': t('title.terms_periods'),
     'admin-classrooms': t('title.classroom_management'),
@@ -384,7 +393,9 @@ function navigateTo(view) {
     'admin-flagged': t('title.flagged_reviews'),
     'admin-support': t('title.support_messages'),
     'admin-audit': t('title.audit_logs'),
+    'head-comms': 'Communication',
     'head-forms': t('title.forms'),
+    'head-announcements': t('nav.announcements'),
     'account': t('title.account_details'),
     'help': 'Help & Support',
     'admin-departments': 'Departments'
@@ -396,12 +407,16 @@ function navigateTo(view) {
     'student-classrooms': renderStudentClassrooms,
     'student-review': renderStudentReview,
     'student-my-reviews': renderStudentMyReviews,
+    'student-comms': renderStudentComms,
     'student-forms': renderStudentForms,
+    'student-announcements': renderStudentAnnouncements,
     'teacher-home': renderTeacherHome,
     'teacher-classrooms': renderTeacherClassrooms,
     'teacher-feedback': renderTeacherFeedback,
     'teacher-analytics': renderTeacherAnalytics,
+    'teacher-comms': renderTeacherComms,
     'teacher-forms': renderTeacherForms,
+    'teacher-announcements': renderTeacherAnnouncements,
     'head-home': renderHeadHome,
     'head-teachers': renderHeadTeachers,
     'head-classrooms': renderHeadClassrooms,
@@ -416,8 +431,12 @@ function navigateTo(view) {
     'admin-flagged': renderAdminFlagged,
     'admin-support': renderAdminSupport,
     'admin-audit': renderAdminAudit,
+    'admin-comms': renderAdminComms,
     'admin-forms': renderAdminForms,
+    'admin-announcements': renderAdminAnnouncements,
+    'head-comms': renderHeadComms,
     'head-forms': renderHeadForms,
+    'head-announcements': renderHeadAnnouncements,
     'account': renderAccount,
     'help': renderHelp,
     'admin-departments': renderAdminDepartments
@@ -1409,28 +1428,73 @@ async function viewTeacherProfile(teacherId) {
   }
 }
 
+// ============ COMMUNICATION LANDING PAGES ============
+function commsLandingHTML(formsView, announcementsView) {
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:700px;margin:40px auto">
+      <div onclick="navigateTo('${formsView}')" style="cursor:pointer;background:#fff;border:2px solid var(--gray-200);border-radius:20px;padding:40px 24px;text-align:center;transition:all 0.2s;box-shadow:var(--shadow)" onmouseover="this.style.borderColor='var(--primary)';this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(37,99,235,0.12)'" onmouseout="this.style.borderColor='var(--gray-200)';this.style.transform='';this.style.boxShadow='var(--shadow)'">
+        <div style="font-size:3rem;margin-bottom:16px">📋</div>
+        <h3 style="font-size:1.2rem;font-weight:700;color:var(--gray-800);margin-bottom:8px">Forms</h3>
+        <p style="font-size:0.85rem;color:var(--gray-500);line-height:1.5">Create and manage surveys, polls, and questionnaires</p>
+      </div>
+      <div onclick="navigateTo('${announcementsView}')" style="cursor:pointer;background:#fff;border:2px solid var(--gray-200);border-radius:20px;padding:40px 24px;text-align:center;transition:all 0.2s;box-shadow:var(--shadow)" onmouseover="this.style.borderColor='var(--warning)';this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(245,158,11,0.12)'" onmouseout="this.style.borderColor='var(--gray-200)';this.style.transform='';this.style.boxShadow='var(--shadow)'">
+        <div style="font-size:3rem;margin-bottom:16px">📢</div>
+        <h3 style="font-size:1.2rem;font-weight:700;color:var(--gray-800);margin-bottom:8px">Announcements</h3>
+        <p style="font-size:0.85rem;color:var(--gray-500);line-height:1.5">Post and view important updates and news</p>
+      </div>
+    </div>`;
+}
+
+function renderStudentComms() {
+  document.getElementById('contentArea').innerHTML = commsLandingHTML('student-forms', 'student-announcements');
+}
+function renderTeacherComms() {
+  document.getElementById('contentArea').innerHTML = commsLandingHTML('teacher-forms', 'teacher-announcements');
+}
+function renderHeadComms() {
+  document.getElementById('contentArea').innerHTML = commsLandingHTML('head-forms', 'head-announcements');
+}
+function renderAdminComms() {
+  document.getElementById('contentArea').innerHTML = commsLandingHTML('admin-forms', 'admin-announcements');
+}
+
 // ============ STUDENT ANNOUNCEMENTS & FORMS ============
+async function renderStudentAnnouncements() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
+  try {
+    const announcements = await cachedGet('/announcements', CACHE_TTL.medium).catch(() => []);
+    el.innerHTML = `
+      <div style="margin-bottom:24px">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('student-comms')" style="display:inline-flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+      </div>
+      ${announcements.length === 0
+        ? '<div class="card"><div class="card-body"><div class="empty-state"><h3>' + t('ann.no_announcements') + '</h3><p>' + t('ann.no_announcements_student') + '</p></div></div></div>'
+        : announcements.map(a => announcementCardHTML(a, false, true)).join('')}`;
+  } catch (err) {
+    el.innerHTML = '<div class="empty-state"><h3>' + t('common.error') + '</h3><p>' + err.message + '</p></div>';
+  }
+}
+
 async function renderStudentForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
-    const [announcements, forms] = await Promise.all([
-      cachedGet('/announcements', CACHE_TTL.medium).catch(() => []),
-      API.get('/forms/student/available').catch(() => [])
-    ]);
+    const forms = await API.get('/forms/student/available').catch(() => []);
 
-    const announcementsHTML = `
-      <div style="margin-bottom:32px">
-        <h2 style="margin-bottom:16px">${t('nav.announcements')}</h2>
-        ${announcements.length === 0
-          ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.no_announcements_student')}</p></div></div></div>`
-          : announcements.map(a => announcementCardHTML(a, false, true)).join('')}
-      </div>`;
-
-    const formsHTML = forms.length === 0 ? '' : `
-      <div>
-        <h2 style="margin-bottom:16px">${t('forms.title_count', {count: forms.length})}</h2>
-        <div style="display:flex;flex-direction:column;gap:12px">
+    el.innerHTML = `
+      <div style="margin-bottom:24px">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('student-comms')" style="display:inline-flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+      </div>
+      ${forms.length === 0
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>No forms available</h3><p>Your teachers haven't created any forms yet.</p></div></div></div>`
+        : `<div style="display:flex;flex-direction:column;gap:12px">
           ${forms.map(f => `
             <div class="card" style="border-left:4px solid ${f.already_submitted ? 'var(--gray-300)' : 'var(--primary)'}">
               <div class="card-body" style="display:flex;align-items:center;gap:16px">
@@ -1450,10 +1514,7 @@ async function renderStudentForms() {
               </div>
             </div>
           `).join('')}
-        </div>
-      </div>`;
-
-    el.innerHTML = announcementsHTML + formsHTML;
+        </div>`}`;
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
@@ -2245,10 +2306,9 @@ async function renderTeacherForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = `<div class="empty-state"><p>${t('forms.loading')}</p></div>`;
   try {
-    const [forms, classrooms, announcements] = await Promise.all([
+    const [forms, classrooms] = await Promise.all([
       cachedGet('/forms', CACHE_TTL.medium),
-      cachedGet('/classrooms', CACHE_TTL.medium),
-      cachedGet('/announcements', CACHE_TTL.medium).catch(() => [])
+      cachedGet('/classrooms', CACHE_TTL.medium)
     ]);
 
     const statusBadge = s => {
@@ -2258,8 +2318,11 @@ async function renderTeacherForms() {
     };
 
     el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-        <h2 style="margin:0">${t('forms.my_forms')}</h2>
+      <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('teacher-comms')" style="display:inline-flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
         <button class="btn btn-primary" onclick="showCreateFormModal()">${t('forms.new_form')}</button>
       </div>
 
@@ -2304,17 +2367,28 @@ async function renderTeacherForms() {
 
       <!-- Hidden classroom list for modal -->
       <div id="teacherClassroomList" style="display:none">${JSON.stringify(classrooms)}</div>
-
-      <div style="margin-top:40px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <h2 style="margin:0">${t('nav.announcements')}</h2>
-          <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
-        </div>
-        ${announcements.length === 0
-          ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_classrooms_hint')}</p></div></div></div>`
-          : announcements.map(a => announcementCardHTML(a, a.creator_id === (currentUser?.id))).join('')}
-      </div>
     `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function renderTeacherAnnouncements() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const announcements = await cachedGet('/announcements', CACHE_TTL.medium).catch(() => []);
+    el.innerHTML = `
+      <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('teacher-comms')" style="display:inline-flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
+      </div>
+      ${announcements.length === 0
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_classrooms_hint')}</p></div></div></div>`
+        : announcements.map(a => announcementCardHTML(a, a.creator_id === (currentUser?.id))).join('')}`;
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
@@ -2927,12 +3001,27 @@ async function renderHeadAnalytics() {
 // ============ HEAD FORMS (ANNOUNCEMENTS) ============
 async function renderHeadForms() {
   const el = document.getElementById('contentArea');
+  el.innerHTML = `
+    <div style="margin-bottom:24px">
+      <button class="btn btn-sm btn-outline" onclick="navigateTo('head-comms')" style="display:inline-flex;align-items:center;gap:5px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        Back
+      </button>
+    </div>
+    <div class="card"><div class="card-body"><div class="empty-state"><h3>No forms yet</h3><p>Forms management coming soon.</p></div></div></div>`;
+}
+
+async function renderHeadAnnouncements() {
+  const el = document.getElementById('contentArea');
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
     const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
     el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
+      <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('head-comms')" style="display:inline-flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
         <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
       </div>
       ${announcements.length === 0
@@ -2949,35 +3038,41 @@ async function renderAdminForms() {
   const el = document.getElementById('contentArea');
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   try {
-    const [forms, announcements] = await Promise.all([
-      cachedGet('/forms', CACHE_TTL.medium),
-      cachedGet('/announcements', CACHE_TTL.medium).catch(() => [])
-    ]);
-
-    const orgFilterHTML = '';
-    const annHint = t('ann.post_classrooms_hint');
+    const forms = await cachedGet('/forms', CACHE_TTL.medium);
 
     el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <h2 style="margin:0">${t('forms.title')}</h2>
-          ${orgFilterHTML}
-        </div>
+      <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('admin-comms')" style="display:inline-flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
         <button class="btn btn-primary" onclick="showAdminCreateFormModal()">${t('forms.new_form')}</button>
       </div>
       <div id="adminFormsList">
         ${renderAdminFormCards(forms)}
       </div>
-      <div style="margin-top:40px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <h2 style="margin:0">${t('nav.announcements')}</h2>
-          <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
-        </div>
-        ${announcements.length === 0
-          ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${annHint}</p></div></div></div>`
-          : announcements.map(a => announcementCardHTML(a, true)).join('')}
-      </div>
     `;
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function renderAdminAnnouncements() {
+  const el = document.getElementById('contentArea');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const announcements = await cachedGet('/announcements', CACHE_TTL.medium).catch(() => []);
+    el.innerHTML = `
+      <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center">
+        <button class="btn btn-sm btn-outline" onclick="navigateTo('admin-comms')" style="display:inline-flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
+      </div>
+      ${announcements.length === 0
+        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_classrooms_hint')}</p></div></div></div>`
+        : announcements.map(a => announcementCardHTML(a, true)).join('')}`;
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
   }
