@@ -1431,7 +1431,7 @@ async function viewTeacherProfile(teacherId) {
 // ============ COMMUNICATION LANDING PAGES ============
 function commsLandingHTML(formsView, announcementsView) {
   return `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:700px;margin:40px auto">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:700px;margin:0">
       <div onclick="navigateTo('${formsView}')" style="cursor:pointer;background:#fff;border:2px solid var(--gray-200);border-radius:20px;padding:40px 24px;text-align:center;transition:all 0.2s;box-shadow:var(--shadow)" onmouseover="this.style.borderColor='var(--primary)';this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(37,99,235,0.12)'" onmouseout="this.style.borderColor='var(--gray-200)';this.style.transform='';this.style.boxShadow='var(--shadow)'">
         <div style="font-size:3rem;margin-bottom:16px">📋</div>
         <h3 style="font-size:1.2rem;font-weight:700;color:var(--gray-800);margin-bottom:8px">Forms</h3>
@@ -6302,63 +6302,6 @@ function richTextToolbar(editorId) {
     ).join('')}
   </div>
   <div id="${editorId}" contenteditable="true" style="min-height:100px;padding:10px;border:1px solid var(--gray-200);border-radius:6px;font-size:0.92rem;line-height:1.6;outline:none" placeholder="${t('ann.write_placeholder')}"></div>`;
-}
-
-async function renderAdminAnnouncements() {
-  const el = document.getElementById('contentArea');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  try {
-    const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
-    el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
-        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
-      </div>
-      ${announcements.length === 0
-        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_updates_hint')}</p></div></div></div>`
-        : announcements.map(a => announcementCardHTML(a, true)).join('')}
-    `;
-  } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
-  }
-}
-
-async function renderTeacherAnnouncements() {
-  const el = document.getElementById('contentArea');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  try {
-    const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
-    el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
-        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
-      </div>
-      ${announcements.length === 0
-        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_classrooms_hint')}</p></div></div></div>`
-        : announcements.map(a => announcementCardHTML(a, a.creator_id === (currentUser?.id))).join('')}
-    `;
-  } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
-  }
-}
-
-async function renderHeadAnnouncements() {
-  const el = document.getElementById('contentArea');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  try {
-    const announcements = await cachedGet('/announcements', CACHE_TTL.medium);
-    el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-        <p style="color:var(--gray-500)">${announcements.length} announcement${announcements.length !== 1 ? 's' : ''}</p>
-        <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">${t('ann.new_btn')}</button>
-      </div>
-      ${announcements.length === 0
-        ? `<div class="card"><div class="card-body"><div class="empty-state"><h3>${t('ann.no_announcements')}</h3><p>${t('ann.post_school_hint')}</p></div></div></div>`
-        : announcements.map(a => announcementCardHTML(a, true)).join('')}
-    `;
-  } catch (err) {
-    el.innerHTML = `<div class="empty-state"><h3>${t('common.error')}</h3><p>${err.message}</p></div>`;
-  }
 }
 
 async function showCreateAnnouncementModal() {
